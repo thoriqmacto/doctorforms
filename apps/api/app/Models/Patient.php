@@ -24,9 +24,7 @@ class Patient extends Model
         'diagnosis_brief',
         'referring_physician',
         'hospital_id',
-        'user_id',           // <-- make sure this is present
-        'template_id',       // if you store it here
-        'test_id',           // if you store it here
+        'user_id',
     ];
 
     protected $casts = [
@@ -50,15 +48,15 @@ class Patient extends Model
         return $this->belongsTo(Hospital::class);
     }
 
-    // Patient can have many tests
-    public function tests()
+    // Patient belongs to a user
+    public function user()
     {
-        return $this->hasMany(Test::class);
+        return $this->belongsTo(User::class);
     }
 
-    // If you want to link patient to templates (e.g., filled reports)
-    public function templates()
+    // Patient can have many reports
+    public function reports()
     {
-        return $this->hasMany(Template::class);
+        return $this->hasMany(Report::class);
     }
 }
