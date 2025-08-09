@@ -27,4 +27,9 @@ class TemplateField extends Model
     {
         return $this->belongsTo(Template::class, 'template_id');
     }
+
+    public function reportFields()
+    {
+        return $this->hasMany(ReportField::class);
+    }
 }
