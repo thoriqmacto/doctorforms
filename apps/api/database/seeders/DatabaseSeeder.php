@@ -14,9 +14,13 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UsersTableSeeder::class,
             HospitalsTableSeeder::class,
+            HospitalUserTableSeeder::class,
             PatientsTableSeeder::class,
             TestsTableSeeder::class,
             TemplatesTableSeeder::class,
+            ReportsTableSeeder::class,
+            ReportFieldsTableSeeder::class,
+            MeasurementsTableSeeder::class,
         ]);
     }
 }
