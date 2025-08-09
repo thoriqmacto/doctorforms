@@ -74,21 +74,27 @@ class User extends Authenticatable
      |--------------------------------------------------------------------------
      */
 
-    // User can belong to one hospital (staff)
+    // User can belong to many hospitals (staff)
     public function hospital()
     {
-        return $this->belongsTo(Hospital::class);
-    }
-
-    // User can have many tests they performed
-    public function tests()
-    {
-        return $this->hasMany(Test::class);
+        return $this->belongsToMany(Hospital::class, 'hospital_user');
     }
 
     // User can own many templates
     public function templates()
     {
         return $this->hasMany(Template::class);
+    }
+
+    // User can have many patients
+    public function patients()
+    {
+        return $this->hasMany(Patient::class);
+    }
+
+    // User can have many reports
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
     }
 }
