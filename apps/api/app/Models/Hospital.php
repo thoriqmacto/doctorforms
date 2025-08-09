@@ -14,9 +14,6 @@ class Hospital extends Model
     protected $fillable = [
         'name',
         'address',
-        'city',
-        'state',
-        'country',
         'phone',
         'email',
     ];
@@ -44,6 +41,12 @@ class Hospital extends Model
     // Optional: hospital may have many users (staff, doctors)
     public function users()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'hospital_user');
+    }
+
+    // One hospital can have many reports
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
     }
 }
