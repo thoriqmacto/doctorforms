@@ -19,6 +19,7 @@ class ReportsTableSeeder extends Seeder
             'hospital_id' => 1,
             'patient_id' => 1,
             'template_id' => 1,
+            'test_id' => 1,
             'title' => 'TEE Report - Suhaicih Orin',
             'findings' => 'Normal LV function.',
             'conclusion' => 'No significant abnormalities detected.',
