@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Models;
+
+use App\Http\Filters\V1\QueryFilter;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    use Notifiable, HasApiTokens;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'phone',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    public $timestamps = true;
+
+    public function getTokenCreatedAtAttribute($tokenId):string
+    {
+        $token = $this->tokens()->where('id', $tokenId)->first();
+        return Carbon::parse($token->created_at)->setTimezone(config('app.timezone'))->toISOString();
+    }
+
+    public function getTokenExpiresAtAttribute($tokenId): string
+    {
+        $token = $this->tokens()->where('id', $tokenId)->first();
+        // return Carbon::parse($token->expires_at)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s');
+        return Carbon::parse($token->expires_at)->setTimezone(config('app.timezone'))->toISOString();
+    }
+
+    public function scopeFilter(Builder $builder, QueryFilter $filters): Builder
+    {
+        return $filters->apply($builder);
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Relationships
+     |--------------------------------------------------------------------------
+     */
+
+    // User can belong to one hospital (staff)
+    public function hospital()
+    {
+        return $this->belongsTo(Hospital::class);
+    }
+
+    // User can have many tests they performed
+    public function tests()
+    {
+        return $this->hasMany(Test::class);
+    }
+
+    // User can own many templates
+    public function templates()
+    {
+        return $this->hasMany(Template::class);
+    }
+}

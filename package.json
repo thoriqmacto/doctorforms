@@ -1,0 +1,11 @@
+{
+  "name": "doctorforms-monorepo",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm -C apps/web dev",
+    "lint:web": "pnpm -C apps/web lint",
+    "typecheck:web": "pnpm -C apps/web typecheck",
+    "dev:api": "php -S localhost:8080 -t apps/api/public",
+    "test:api": "cd apps/api && php artisan test"
+  }
+}

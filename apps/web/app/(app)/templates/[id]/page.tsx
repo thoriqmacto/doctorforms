@@ -1,0 +1,52 @@
+'use client';
+
+import useSWR from 'swr';
+import { getTemplate } from '@/lib/api';
+import { useParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
+export default function TemplateDetailPage() {
+    const params = useParams<{ id: string }>();
+    const { data, isLoading } = useSWR(['/templates', params.id], () =>
+        getTemplate(params.id, { include: 'fields' }).then((r: any) => r)
+    );
+
+    const tpl = data?.data;
+    const grouped = tpl?.meta?.grouped_sections ?? [];
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-semibold">{tpl?.attributes?.name ?? 'Template'}</h1>
+                <Link href={`/patients/new?templateId=${params.id}`}>
+                    <Button>Use This Template</Button>
+                </Link>
+            </div>
+
+            {isLoading ? 'Loading…' : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sections</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {grouped.map((sec: any) => (
+                            <div key={sec.section}>
+                                <h2 className="text-lg font-medium mb-2">{sec.section}</h2>
+                                <ul className="space-y-1 list-disc list-inside">
+                                    {sec.items.map((f: any) => (
+                                        <li key={f.id}>
+                                            <span className="font-medium">{f.attributes.label}</span>
+                                            <span className="text-muted-foreground"> — {f.attributes.type}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+}

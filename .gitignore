@@ -1,0 +1,25 @@
+# Node/Next
+node_modules/
+.next/
+dist/
+coverage/
+*.log
+
+# PHP/Laravel
+/vendor/
+.env
+.env.*
+.phpunit.result.cache
+storage/*.key
+storage/framework/cache/data
+storage/framework/sessions
+storage/framework/views
+storage/logs
+bootstrap/cache/*.php
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
