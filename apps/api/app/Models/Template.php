@@ -12,6 +12,9 @@ class Template extends Model
     protected $fillable = [
         'name',
         'description',
+        'user_id',
+        'test_id',
+        'hospital_id',
     ];
 
     // timestamps (created_at, updated_at)
@@ -21,5 +24,23 @@ class Template extends Model
     public function fields()
     {
         return $this->hasmany(TemplateField::class, 'template_id');
+    }
+
+    // Template belongs to a user
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // Template belongs to a test
+    public function test()
+    {
+        return $this->belongsTo(Test::class);
+    }
+
+    // Template belongs to a hospital
+    public function hospital()
+    {
+        return $this->belongsTo(Hospital::class);
     }
 }
