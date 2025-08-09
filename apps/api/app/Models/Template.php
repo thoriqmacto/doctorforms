@@ -43,4 +43,10 @@ class Template extends Model
     {
         return $this->belongsTo(Hospital::class);
     }
+
+    // Template has many reports
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
+    }
 }
