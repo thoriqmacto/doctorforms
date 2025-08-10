@@ -10,22 +10,23 @@ export default function NewPatientPage() {
     const sp = useSearchParams();
     const router = useRouter();
     const templateId = sp.get('templateId');
+    const testId = sp.get('testId');
 
     const { data, isLoading } = useSWR(
         templateId ? ['/templates', templateId] : null,
-        () => getTemplate(templateId!, { include: 'fields' }).then((r: any) => r)
+        () => getTemplate(templateId!, { include: 'fields' })
     );
 
-    const tpl = data?.data;
+    const tpl = (data as any)?.data;
     const grouped = tpl?.meta?.grouped_sections ?? [];
 
-    async function onSubmit(values: Record<string, any>) {
+    async function onSubmit(values: Record<string, unknown>) {
         // Map to your backend payload (adjust IDs according to your seeder relations)
-        const payload = {
+        const payload: Record<string, unknown> = {
             template_id: Number(templateId),
             hospital_id: 1,
             user_id: 1,
-            test_id: 1,
+            test_id: Number(testId),
             values,
         };
 

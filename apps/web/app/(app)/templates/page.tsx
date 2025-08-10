@@ -1,18 +1,46 @@
 'use client';
 
+import { useState } from 'react';
 import useSWR from 'swr';
-import { getTemplates } from '@/lib/api';
+import { getTemplates, getTests } from '@/lib/api';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+
+interface TestItem {
+    id: number | string;
+    attributes: {
+        name: string;
+    };
+}
+
+interface TemplateItem {
+    id: number | string;
+    attributes: {
+        name: string;
+        description: string;
+    };
+}
 
 export default function TemplatesPage() {
-    const { data, isLoading, error } = useSWR(['/templates'], () =>
-        getTemplates().then((r: any) => r)
+    const [testId, setTestId] = useState<string>('');
+
+    const { data: testsData } = useSWR(['/tests'], () => getTests());
+    const { data, isLoading, error } = useSWR(
+        testId ? ['/templates', testId] : null,
+        () => getTemplates({ 'filter.test_id': testId })
     );
 
-    const rows = data?.data ?? [];
+    const tests = (testsData as any)?.data ?? [];
+    const rows = (data as any)?.data ?? [];
 
     return (
         <div className="space-y-4">
@@ -20,8 +48,26 @@ export default function TemplatesPage() {
                 <CardHeader>
                     <CardTitle>Templates</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    {isLoading ? 'Loading…' : error ? 'Failed to load' : (
+                <CardContent className="space-y-4">
+                    <Select value={testId} onValueChange={setTestId}>
+                        <SelectTrigger className="w-64">
+                            <SelectValue placeholder="Select test" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {tests.map((t: TestItem) => (
+                                <SelectItem key={t.id} value={String(t.id)}>
+                                    {t.attributes.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {!testId ? (
+                        'Please select a test'
+                    ) : isLoading ? (
+                        'Loading…'
+                    ) : error ? (
+                        'Failed to load'
+                    ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -32,7 +78,7 @@ export default function TemplatesPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {rows.map((t: any) => (
+                                {rows.map((t: TemplateItem) => (
                                     <TableRow key={t.id}>
                                         <TableCell>{t.id}</TableCell>
                                         <TableCell>{t.attributes.name}</TableCell>
@@ -41,7 +87,7 @@ export default function TemplatesPage() {
                                             <Link href={`/templates/${t.id}`}>
                                                 <Button variant="secondary" size="sm">Open</Button>
                                             </Link>
-                                            <Link href={`/patients/new?templateId=${t.id}`}>
+                                            <Link href={`/patients/new?templateId=${t.id}&testId=${testId}`}>
                                                 <Button size="sm">Use Template</Button>
                                             </Link>
                                         </TableCell>
