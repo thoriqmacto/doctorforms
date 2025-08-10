@@ -70,7 +70,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                         control={control}
                                         name={name}
                                         render={({ field }) => (
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value as string}>
                                                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                                                 <SelectContent>
                                                     {(f.attributes.options ?? []).map(opt => (
@@ -91,7 +91,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                     <Controller
                                         control={control}
                                         name={name}
-                                        render={({ field }) => <Textarea {...field} />}
+                                        render={({ field }) => <Textarea {...(field as any)} />}
                                     />
                                 </div>
                             );
@@ -104,7 +104,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                 <Controller
                                     control={control}
                                     name={name}
-                                    render={({ field }) => <Input type={t === 'number' ? 'number' : 'text'} {...field} />}
+                                    render={({ field }) => <Input type={t === 'number' ? 'number' : 'text'} {...(field as any)} />}
                                 />
                             </div>
                         );
