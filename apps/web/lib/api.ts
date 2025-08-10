@@ -3,6 +3,25 @@ import ky from 'ky';
 const api = ky.create({
     prefixUrl: process.env.NEXT_PUBLIC_API_BASE_URL!,
     headers: { 'Content-Type': 'application/json' },
+    hooks: {
+        beforeRequest: [
+            (request) => {
+                if (typeof window !== 'undefined') {
+                    const stored = window.localStorage.getItem('auth');
+                    if (stored) {
+                        try {
+                            const { token } = JSON.parse(stored);
+                            if (token) {
+                                request.headers.set('Authorization', `Bearer ${token}`);
+                            }
+                        } catch {
+                            // ignore parse errors
+                        }
+                    }
+                }
+            },
+        ],
+    },
 });
 
 export const getTemplates = (params?: Record<string, any>) =>
@@ -28,5 +47,10 @@ export const getReport = (id: string | number, params?: Record<string, any>) =>
 
 export const createReport = (payload: any) =>
     api.post('reports', { json: payload }).json<any>();
+
+export const login = (payload: { email: string; password: string }) =>
+    api.post('login', { json: payload }).json<any>();
+
+export const logout = () => api.post('logout').json<any>();
 
 export default api;
