@@ -91,9 +91,11 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                     <Controller
                                         control={control}
                                         name={name}
+
                                         render={({ field }) => (
                                             <Textarea {...field} value={field.value as string | undefined} />
                                         )}
+
                                     />
                                 </div>
                             );
@@ -106,6 +108,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                 <Controller
                                     control={control}
                                     name={name}
+
                                     render={({ field }) => (
                                         <Input
                                             type={t === 'number' ? 'number' : 'text'}
@@ -113,6 +116,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit }: Prop
                                             value={field.value as string | number | undefined}
                                         />
                                     )}
+
                                 />
                             </div>
                         );
