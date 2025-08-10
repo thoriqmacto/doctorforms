@@ -1,5 +1,3 @@
-'use client';
-
 export default function UsersPage() {
     return (
         <div className="container mx-auto p-4 space-y-4">
