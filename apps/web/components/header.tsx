@@ -17,7 +17,20 @@ export default function Header() {
         const email = window.prompt('Email')
         const password = window.prompt('Password')
         if (!email || !password) return
-        await login(email, password)
+        try {
+            await login(email, password)
+        } catch (err) {
+            console.error(err)
+            window.alert('Login failed')
+        }
+    }
+
+    const handleLogout = async () => {
+        try {
+            await logout()
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     return (
@@ -39,7 +52,7 @@ export default function Header() {
                         <DropdownMenuItem asChild>
                             <Link href="/profile">Profile</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={logout}>Logout</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
