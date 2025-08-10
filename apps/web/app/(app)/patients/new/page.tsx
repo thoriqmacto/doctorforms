@@ -3,29 +3,38 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { getTemplate, createPatient } from '@/lib/api';
-import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
+import TemplateFormRenderer, { type Field } from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function NewPatientPage() {
     const sp = useSearchParams();
     const router = useRouter();
     const templateId = sp.get('templateId');
+    const testId = sp.get('testId');
 
-    const { data, isLoading } = useSWR(
+    interface TemplateResponse {
+        data?: {
+            meta?: {
+                grouped_sections?: { section: string | null; items: Field[] }[];
+            };
+        };
+    }
+
+    const { data, isLoading } = useSWR<TemplateResponse>(
         templateId ? ['/templates', templateId] : null,
-        () => getTemplate(templateId!, { include: 'fields' }).then((r: any) => r)
+        () => getTemplate(templateId!, { include: 'fields' }) as Promise<TemplateResponse>
     );
 
     const tpl = data?.data;
     const grouped = tpl?.meta?.grouped_sections ?? [];
 
-    async function onSubmit(values: Record<string, any>) {
+    async function onSubmit(values: Record<string, unknown>) {
         // Map to your backend payload (adjust IDs according to your seeder relations)
-        const payload = {
+        const payload: Record<string, unknown> = {
             template_id: Number(templateId),
             hospital_id: 1,
             user_id: 1,
-            test_id: 1,
+            test_id: Number(testId),
             values,
         };
 

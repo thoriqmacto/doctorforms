@@ -1,11 +1,14 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { pdfConfig } from '@/config/pdf';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generatePatientPdf(detail: any) {
     const doc = await PDFDocument.create();
+
     const page = doc.addPage([pdfConfig.page.width, pdfConfig.page.height]);
     const { height } = page.getSize();
     const margin = pdfConfig.page.margin;
+
     const font = await doc.embedFont(StandardFonts.Helvetica);
 
     const drawText = (text: string, x: number, y: number, size = 10) => {
@@ -28,7 +31,7 @@ export async function generatePatientPdf(detail: any) {
         '---- Values ----',
     ];
 
-    (Object.entries(attrs.values ?? {}) as [string, any][]).forEach(([k, v]) => {
+    (Object.entries(attrs.values ?? {}) as [string, unknown][]).forEach(([k, v]) => {
         lines.push(`${k}: ${String(v)}`);
     });
 
@@ -40,7 +43,7 @@ export async function generatePatientPdf(detail: any) {
     const bytes = await doc.save();
 
     // Download in browser
-    const blob = new Blob([bytes as any], { type: 'application/pdf' });
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `patient_${data.id}.pdf`; a.click();
