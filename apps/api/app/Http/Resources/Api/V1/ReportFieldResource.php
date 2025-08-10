@@ -9,24 +9,13 @@ class ReportFieldResource extends JsonResource
     public function toArray($request)
     {
         return [
-            'type'       => 'report_fields',
-            'id'         => (string) $this->id,
-            'attributes' => [
-                'value' => $this->value,
-            ],
-            'relationships' => [
-                'report' => $this->report_id ? [
-                    'data' => ['type' => 'reports', 'id' => (string) $this->report_id],
-                ] : null,
-                'template_field' => $this->template_field_id ? [
-                    'data' => ['type' => 'template_fields', 'id' => (string) $this->template_field_id],
-                ] : null,
-            ],
+            'id' => (string) $this->id,
+            'label' => optional($this->templateField)->label,
+            'type' => optional($this->templateField)->type,
+            'section' => optional($this->templateField)->section,
+            'field_group_order' => optional($this->templateField)->field_group_order,
+            'order' => optional($this->templateField)->order,
+            'value' => $this->value,
         ];
-    }
-
-    public function with($request)
-    {
-        return ['jsonapi' => ['version' => '1.0']];
     }
 }
