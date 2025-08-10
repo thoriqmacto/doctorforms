@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
-type Field = {
+export type Field = {
     id: string;
     attributes: {
         label: string;
@@ -20,7 +20,7 @@ type Field = {
 
 type Props = {
     groupedSections: { section: string | null; items: Field[] }[];
-    onSubmit: (values: Record<string, any>) => void;
+    onSubmit: (values: Record<string, unknown>) => void;
 };
 
 export default function TemplateFormRenderer({ groupedSections, onSubmit }: Props) {

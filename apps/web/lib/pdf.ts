@@ -1,9 +1,10 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generatePatientPdf(detail: any) {
     const doc = await PDFDocument.create();
     const page = doc.addPage([595.28, 841.89]); // A4 points (72 dpi) 210mm x 297mm
-    const { width, height } = page.getSize();
+    const { height } = page.getSize();
     const margin = 34; // ~12mm
     const font = await doc.embedFont(StandardFonts.Helvetica);
 
@@ -27,7 +28,7 @@ export async function generatePatientPdf(detail: any) {
         '---- Values ----',
     ];
 
-    (Object.entries(attrs.values ?? {}) as [string, any][]).forEach(([k, v]) => {
+    (Object.entries(attrs.values ?? {}) as [string, unknown][]).forEach(([k, v]) => {
         lines.push(`${k}: ${String(v)}`);
     });
 

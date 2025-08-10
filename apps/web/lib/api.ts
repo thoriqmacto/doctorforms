@@ -17,8 +17,6 @@ export const getTemplate = (id: string | number, params?: Record<string, any>) =
 export const getTests = (params?: Record<string, any>) =>
     api.get('tests', { searchParams: params }).json();
 
-// Patients (assuming you’ll implement these)
-// index, show, store
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getPatients = (params?: Record<string, any>) =>
     api.get('patients', { searchParams: params }).json();

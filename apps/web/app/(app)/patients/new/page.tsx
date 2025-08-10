@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { getTemplate, createPatient } from '@/lib/api';
-import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
+import TemplateFormRenderer, { type Field } from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function NewPatientPage() {
@@ -12,12 +12,20 @@ export default function NewPatientPage() {
     const templateId = sp.get('templateId');
     const testId = sp.get('testId');
 
-    const { data, isLoading } = useSWR(
+    interface TemplateResponse {
+        data?: {
+            meta?: {
+                grouped_sections?: { section: string | null; items: Field[] }[];
+            };
+        };
+    }
+
+    const { data, isLoading } = useSWR<TemplateResponse>(
         templateId ? ['/templates', templateId] : null,
-        () => getTemplate(templateId!, { include: 'fields' })
+        () => getTemplate(templateId!, { include: 'fields' }) as Promise<TemplateResponse>
     );
 
-    const tpl = (data as any)?.data;
+    const tpl = data?.data;
     const grouped = tpl?.meta?.grouped_sections ?? [];
 
     async function onSubmit(values: Record<string, unknown>) {

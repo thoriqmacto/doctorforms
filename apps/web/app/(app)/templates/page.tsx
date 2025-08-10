@@ -33,14 +33,17 @@ interface TemplateItem {
 export default function TemplatesPage() {
     const [testId, setTestId] = useState<string>('');
 
-    const { data: testsData } = useSWR(['/tests'], () => getTests());
-    const { data, isLoading, error } = useSWR(
+    const { data: testsData } = useSWR<{ data: TestItem[] }>(
+        ['/tests'],
+        () => getTests() as Promise<{ data: TestItem[] }>
+    );
+    const { data, isLoading, error } = useSWR<{ data: TemplateItem[] }>(
         testId ? ['/templates', testId] : null,
-        () => getTemplates({ 'filter.test_id': testId })
+        () => getTemplates({ 'filter.test_id': testId }) as Promise<{ data: TemplateItem[] }>
     );
 
-    const tests = (testsData as any)?.data ?? [];
-    const rows = (data as any)?.data ?? [];
+    const tests = testsData?.data ?? [];
+    const rows = data?.data ?? [];
 
     return (
         <div className="space-y-4">
