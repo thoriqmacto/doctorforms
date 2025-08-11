@@ -28,7 +28,7 @@ class TestsTableSeeder extends Seeder
             'code' => 'TTE',
             'name' => 'Transthoracic Echocardiography',
             'type' => 'non-invasive',
-            'description' => 'Crdiac imaging using a chest probe.',
+            'description' => 'Cardiac imaging using a chest probe.',
             'created_at' => Carbon::create(2023, 1, 2, 16, 14, 6),
             'updated_at' => Carbon::create(2023, 1, 2, 16, 14, 6),
         ]);

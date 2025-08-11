@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace database\seeders;
 
 use Illuminate\Database\Seeder;
 
@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PatientsTableSeeder::class,
             TestsTableSeeder::class,
             TemplatesTableSeeder::class,
+            TemplatefieldsTableSeeder::class,
             ReportsTableSeeder::class,
             ReportFieldsTableSeeder::class,
             MeasurementsTableSeeder::class,

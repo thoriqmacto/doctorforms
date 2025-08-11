@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace database\seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -52,160 +52,11 @@ class TemplatesTableSeeder extends Seeder
                 'user_id'     => $user_id,
                 'test_id'     => $test_id,
                 'hospital_id' => $hospital_id,
-                'name'        => 'Echocardiography Report Template',
-                'description' => 'Standard echo report template.',
+                'name'        => 'TEE Default v1',
+                'description' => 'TEE structured report (UPF Harapan Kita format)',
                 'created_at'  => $now,
                 'updated_at'  => $now,
             ]);
-
-            // Related fields
-            $fields = [
-                // Header
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Header',
-                    'label'             => 'Logo',
-                    'type'              => 'image',
-                    'options'           => null,
-                    'order'             => 0,
-                    'field_group_order' => 0,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Header',
-                    'label'             => 'Transesophageal Echocardiography Report',
-                    'type'              => 'title',
-                    'options'           => null,
-                    'order'             => 1,
-                    'field_group_order' => 0,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-
-                // LV
-                [
-                    'template_id'       => 1,
-                    'section'           => 'LV',
-                    'label'             => 'LV Size',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Dilated','Small']),
-                    'order'             => 1,
-                    'field_group_order' => 1,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'LV',
-                    'label'             => 'LVEF (%)',
-                    'type'              => 'number',
-                    'options'           => null,
-                    'order'             => 2,
-                    'field_group_order' => 1,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'LV',
-                    'label'             => 'Wall Motion',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Hypokinetic','Akinetic','Dyskinetic']),
-                    'order'             => 3,
-                    'field_group_order' => 1,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-
-                // RV
-                [
-                    'template_id'       => 1,
-                    'section'           => 'RV',
-                    'label'             => 'RV Size',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Dilated']),
-                    'order'             => 1,
-                    'field_group_order' => 2,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'RV',
-                    'label'             => 'RV Function',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Mildly reduced','Moderately reduced','Severely reduced']),
-                    'order'             => 2,
-                    'field_group_order' => 2,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-
-                // Valves
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Valves',
-                    'label'             => 'Mitral Valve Function',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Stenosis','Regurgitation']),
-                    'order'             => 1,
-                    'field_group_order' => 3,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Valves',
-                    'label'             => 'Aortic Valve',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Mild AR','Moderate AR','Severe AR','Mild AS','Moderate AS','Severe AS']),
-                    'order'             => 2,
-                    'field_group_order' => 3,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Valves',
-                    'label'             => 'Tricuspid Valve',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Normal','Mild TR','Moderate TR','Severe TR']),
-                    'order'             => 3,
-                    'field_group_order' => 3,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-
-                // Pericardium
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Pericardium',
-                    'label'             => 'Pericardial Effusion',
-                    'type'              => 'select',
-                    'options'           => json_encode(['Absent','Mild','Moderate','Severe']),
-                    'order'             => 1,
-                    'field_group_order' => 4,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-
-                // Aorta (optional — add if you need)
-                [
-                    'template_id'       => 1,
-                    'section'           => 'Aorta',
-                    'label'             => 'Aortic Root Diameter (mm)',
-                    'type'              => 'number',
-                    'options'           => null,
-                    'order'             => 1,
-                    'field_group_order' => 5,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
-                ],
-            ];
-
-            DB::table('template_fields')->insert($fields);
         });
     }
 }
