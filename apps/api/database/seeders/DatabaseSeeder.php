@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             PatientsTableSeeder::class,
             TestsTableSeeder::class,
             TemplatesTableSeeder::class,
-            TemplatefieldsTableSeeder::class,
+            TemplateFieldsTableSeeder::class,
             ReportsTableSeeder::class,
             ReportFieldsTableSeeder::class,
             MeasurementsTableSeeder::class,
