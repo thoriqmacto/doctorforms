@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('section');
             $table->string('label');
             $table->enum('type',
-                ['text', 'number', 'select', 'textarea', 'subtitle', 'title', 'image']
+                ['text', 'number', 'select', 'textarea', 'subtitle', 'title', 'image','date', 'checkbox_group']
             );
             $table->json('options')->nullable(); // For select fields: [“Normal”, “Abnormal”]
             $table->integer('order')->default(0);

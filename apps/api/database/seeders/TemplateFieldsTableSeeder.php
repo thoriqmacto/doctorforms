@@ -1,6 +1,6 @@
 <?php
 
-namespace Database\Seeders;
+namespace database\seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -358,7 +358,7 @@ class TemplateFieldsTableSeeder extends Seeder
         $i = 0;
         $section = 'Wall Motion';
         $group = $g(19);
-        $add($fields, $section, 'Wall‑Motion Diagram', 'json', ['Normal', 'Hypokinesia', 'Akinesia', 'Aneurysm', 'Dyskinesia', 'Unknown'], ++$i, $group);
+        $add($fields, $section, '2D Wall‑Motion Diagram', 'checkbox_group', ['Normal', 'Hypokinesia', 'Akinesia', 'Aneurysm', 'Dyskinesia', 'Unknown'], ++$i, $group);
 
         // ===================== 19) SUMMARY / ADMIN =====================
         $i = 0;
