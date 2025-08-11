@@ -8,7 +8,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useAuth } from '@/components/auth-provider'
+// import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/components/auth-provider.mock'
 
 export default function Header() {
     const { user, login, logout } = useAuth()

@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google"
 import Header from "@/components/header"
 import Sidebar from "@/components/sidebar"
 import Footer from "@/components/footer"
-import { AuthProvider } from "@/components/auth-provider";
+import { AuthProvider } from "@/components/auth-provider.mock";
+import "./globals.css"
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -33,10 +34,10 @@ export default function RootLayout({
             ].join(" ")}
         >
           
-        <AuthProvider>
-            <Header />
-            {children}
-        </AuthProvider>
+        {/*<AuthProvider>*/}
+        {/*    <Header />*/}
+        {/*    {children}*/}
+        {/*</AuthProvider>*/}
         
           <div className="flex min-h-screen">
             <Sidebar />
