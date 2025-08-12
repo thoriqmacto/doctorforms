@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { getPatients, getPatient } from '@/lib/api';
+import { getPatients } from '@/lib/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +13,6 @@ import {
     TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { generatePatientPdf } from '@/lib/pdf';
 
 export default function PatientsPage() {
     const { data, isLoading } = useSWR(['/patients'], () =>
@@ -21,11 +20,6 @@ export default function PatientsPage() {
     );
 
     const rows = data?.data ?? [];
-
-    async function onExport(id: string) {
-        const detail = await getPatient(id);
-        await generatePatientPdf(detail);
-    }
 
     return (
         <div className="container mx-auto p-4 space-y-4">
@@ -61,11 +55,10 @@ export default function PatientsPage() {
                                         <TableCell>{p.attributes?.name ?? p.attributes?.values?.patient_name ?? '-'}</TableCell>
                                         <TableCell>{p.attributes?.mrn ?? '-'}</TableCell>
                                         <TableCell>{p.relationships?.template?.data?.id ?? '-'}</TableCell>
-                                        <TableCell className="text-right space-x-2">
+                                        <TableCell className="text-right">
                                             <Link href={`/patients/${p.id}`}>
                                                 <Button size="sm" variant="secondary">View</Button>
                                             </Link>
-                                            <Button size="sm" onClick={() => onExport(p.id)}>Export PDF</Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
