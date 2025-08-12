@@ -11,8 +11,8 @@
 1) Correctness
 2) Tests 
 3) Maintainability 
-4) Perf (if measurable)
+4) Performance (if measurable)
 
 # Conventions
 - Web: shadcn table pattern; no inline styles.
-- API: Form Requests for validation; Resources for responses.
+- API: Resources for responses.
