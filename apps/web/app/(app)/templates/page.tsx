@@ -90,6 +90,9 @@ export default function TemplatesPage() {
                                             <Link href={`/templates/${t.id}`}>
                                                 <Button variant="secondary" size="sm">Open</Button>
                                             </Link>
+                                            <Link href={`/templates/${t.id}/edit`}>
+                                                <Button variant="secondary" size="sm">Edit</Button>
+                                            </Link>
                                             <Link href={`/patients/new?templateId=${t.id}&testId=${testId}`}>
                                                 <Button size="sm">Use Template</Button>
                                             </Link>

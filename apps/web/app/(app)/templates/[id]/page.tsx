@@ -20,9 +20,14 @@ export default function TemplateDetailPage() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">{tpl?.attributes?.name ?? 'Template'}</h1>
-                <Link href={`/patients/new?templateId=${params.id}`}>
-                    <Button>Use This Template</Button>
-                </Link>
+                <div className="space-x-2">
+                    <Link href={`/templates/${params.id}/edit`}>
+                        <Button variant="secondary">Edit Template</Button>
+                    </Link>
+                    <Link href={`/patients/new?templateId=${params.id}`}>
+                        <Button>Use This Template</Button>
+                    </Link>
+                </div>
             </div>
 
             {isLoading ? 'Loading…' : (
