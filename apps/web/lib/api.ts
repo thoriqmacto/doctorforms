@@ -49,6 +49,18 @@ export const updateHospital = (id: string | number, payload: any) =>
 export const deleteHospital = (id: string | number) =>
     api.delete(`hospitals/${id}`).json<any>();
 
+// Users
+export const getUsers = (params?: Record<string, any>) =>
+    api.get('users', { searchParams: params }).json<any>();
+export const getUser = (id: string | number) =>
+    api.get(`users/${id}`).json<any>();
+export const createUser = (payload: any) =>
+    api.post('users', { json: payload }).json<any>();
+export const updateUser = (id: string | number, payload: any) =>
+    api.put(`users/${id}`, { json: payload }).json<any>();
+export const deleteUser = (id: string | number) =>
+    api.delete(`users/${id}`).json<any>();
+
 // Reports
 export const getReport = (id: string | number, params?: Record<string, any>) =>
     api.get(`reports/${id}`, { searchParams: params }).json<any>();
