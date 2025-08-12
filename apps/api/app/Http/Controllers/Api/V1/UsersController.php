@@ -10,43 +10,15 @@ use App\Models\User;
 
 class UsersController extends ApiController
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // GET /api/v1/users
     public function index(UserFilter $filters)
     {
         return UserResource::collection(User::filter($filters)->paginate());
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreUserRequest $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
+    // GET /api/v1/users/{user}
     public function show(User $user)
     {
         return new UserResource($user);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateUserRequest $request, User $user)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(User $user)
-    {
-        //
     }
 }
