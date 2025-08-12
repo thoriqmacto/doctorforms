@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import Header from "@/components/header"
 import Sidebar from "@/components/sidebar"
 import Footer from "@/components/footer"
-import { AuthProvider } from "@/components/auth-provider.mock";
+import { SidebarProvider } from "@/components/sidebar-provider"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -34,19 +34,18 @@ export default function RootLayout({
             ].join(" ")}
         >
           
-        {/*<AuthProvider>*/}
-        {/*    <Header />*/}
-        {/*    {children}*/}
-        {/*</AuthProvider>*/}
+        {/* Authentication provider can be re-enabled here when needed */}
         
-          <div className="flex min-h-screen">
-            <Sidebar />
-            <div className="flex flex-1 flex-col">
-                <Header />
-                <main className="flex-1 p-4">{children}</main>
-                <Footer />
+          <SidebarProvider>
+            <div className="flex min-h-screen">
+                <Sidebar />
+                <div className="flex flex-1 flex-col">
+                    <Header />
+                    <main className="flex-1 p-4">{children}</main>
+                    <Footer />
+                </div>
             </div>
-        </div>
+          </SidebarProvider>
         </body>
         </html>
     )

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
@@ -10,9 +11,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 // import { useAuth } from '@/components/auth-provider'
 import { useAuth } from '@/components/auth-provider.mock'
+import { useSidebar } from '@/components/sidebar-provider'
 
 export default function Header() {
     const { user, login, logout } = useAuth()
+    const { toggle } = useSidebar()
 
     const handleLogin = async () => {
         const email = window.prompt('Email')
@@ -36,9 +39,20 @@ export default function Header() {
 
     return (
         <header className="flex items-center justify-between border-b p-4">
-            <Link href="/" className="font-semibold">
-                DoctorForms
-            </Link>
+            <div className="flex items-center gap-2">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={toggle}
+                    aria-label="Toggle sidebar"
+                >
+                    <Menu className="h-5 w-5" />
+                </Button>
+                <Link href="/" className="font-semibold">
+                    DoctorForms
+                </Link>
+            </div>
             {user ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
