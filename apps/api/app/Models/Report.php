@@ -13,6 +13,7 @@ class Report extends Model
         'hospital_id',
         'patient_id',
         'template_id',
+        'test_id',
         'title',
         'findings',
         'conclusion',
