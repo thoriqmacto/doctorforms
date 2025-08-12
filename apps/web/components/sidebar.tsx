@@ -17,21 +17,26 @@ export default function Sidebar() {
       )}
     >
       <nav className="space-y-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
+        <Button variant="ghost" className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
           <Home className="mr-2 h-4 w-4" /> Dashboard
         </Button>
-        <Link href="/users" className="block">
-          Users
-        </Link>
-        <Link href="/patients" className="block">
-          Patients
-        </Link>
+
         <Link href="/reports" className="block">
           Reports
         </Link>
+
+        <Link href="/hospitals" className="block">
+          Hospitals
+        </Link>
+
+        <Link href="/patients" className="block">
+          Patients
+        </Link>
+
+        <Link href="/users" className="block">
+          Users
+        </Link>
+
         <Link href="/templates" className="block">
           Templates
         </Link>
