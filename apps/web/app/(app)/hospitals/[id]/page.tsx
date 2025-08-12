@@ -10,13 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import HospitalLogoUploader from '@/components/HospitalLogoUploader';
+import HospitalAvatar from '@/components/HospitalAvatar';
 
 export default function EditHospitalPage() {
     const router = useRouter();
     const params = useParams();
     const id = params?.id as string;
 
-    const { data } = useSWR(id ? ['/hospitals', id] : null, () => getHospital(id));
+    const { data, mutate } = useSWR(id ? ['/hospitals', id] : null, () => getHospital(id));
     const form = useForm({
         defaultValues: { name: '', address: '', phone: '', email: '' },
     });
@@ -63,6 +65,15 @@ export default function EditHospitalPage() {
                     </Button>
                 </CardHeader>
                 <CardContent>
+                    {data?.data && (
+                        <div className="mb-4 space-y-4">
+                            <HospitalAvatar
+                                name={data.data.attributes.name}
+                                logoUrl={data.data.attributes.logo_url}
+                            />
+                            <HospitalLogoUploader hospitalId={id} onUploaded={() => mutate()} />
+                        </div>
+                    )}
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField

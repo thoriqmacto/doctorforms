@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Hospital extends Model
 {
@@ -16,9 +17,23 @@ class Hospital extends Model
         'address',
         'phone',
         'email',
+        'logo_url',
+        'logo_path',
     ];
 
+    protected $appends = ['logo_url'];
+
     public $timestamps = true;
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        $path = $this->attributes['logo_path'] ?? null;
+        if ($path) {
+            return Storage::url($path);
+        }
+
+        return $this->attributes['logo_url'] ?? null;
+    }
 
     /*
      |--------------------------------------------------------------------------
