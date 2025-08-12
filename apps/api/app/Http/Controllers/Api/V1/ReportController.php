@@ -12,7 +12,7 @@ class ReportController extends Controller
     // GET /api/v1/reports
     public function index(Request $request)
     {
-        $reports = Report::with(['patient', 'fields.templateField'])
+        $reports = Report::with(['patient', 'fields.templateField', 'measurements'])
             ->orderByDesc('id')
             ->paginate($request->integer('page.size', 25))
             ->appends($request->query());
@@ -23,7 +23,7 @@ class ReportController extends Controller
     // GET /api/v1/reports/{report}
     public function show(Report $report)
     {
-        $report->load(['patient', 'fields.templateField']);
+        $report->load(['patient', 'fields.templateField', 'measurements']);
 
         return new ReportResource($report);
     }
