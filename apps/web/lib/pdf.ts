@@ -1,7 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { pdfConfig } from '@/config/pdf';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generatePatientPdf(detail: any) {
     const doc = await PDFDocument.create();
 
