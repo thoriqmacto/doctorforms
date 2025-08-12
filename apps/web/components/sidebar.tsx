@@ -7,6 +7,7 @@ import { useSidebar } from '@/components/sidebar-provider'
 import { cn } from '@/lib/utils'
 
 export default function Sidebar() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { open, toggle } = useSidebar()
   return (
     <aside
@@ -19,20 +20,19 @@ export default function Sidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          onClick={open ? toggle : undefined}
         >
           <Home className="mr-2 h-4 w-4" /> Dashboard
         </Button>
-        <Link href="/users" className="block" onClick={open ? toggle : undefined}>
+        <Link href="/users" className="block">
           Users
         </Link>
-        <Link href="/patients" className="block" onClick={open ? toggle : undefined}>
+        <Link href="/patients" className="block">
           Patients
         </Link>
-        <Link href="/reports" className="block" onClick={open ? toggle : undefined}>
+        <Link href="/reports" className="block">
           Reports
         </Link>
-        <Link href="/templates" className="block" onClick={open ? toggle : undefined}>
+        <Link href="/templates" className="block">
           Templates
         </Link>
       </nav>
