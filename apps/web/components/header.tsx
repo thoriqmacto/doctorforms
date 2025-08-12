@@ -43,7 +43,6 @@ export default function Header() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="md:hidden"
                     onClick={toggle}
                     aria-label="Toggle sidebar"
                 >

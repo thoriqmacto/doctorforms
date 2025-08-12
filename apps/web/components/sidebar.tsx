@@ -12,8 +12,7 @@ export default function Sidebar() {
     <aside
       className={cn(
         'bg-sidebar text-sidebar-foreground w-64 border-r border-sidebar-border p-4',
-        open ? 'block' : 'hidden',
-        'md:block'
+        open ? 'block' : 'hidden'
       )}
     >
       <nav className="space-y-2">

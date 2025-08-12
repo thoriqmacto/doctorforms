@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 type SidebarContextValue = {
   open: boolean
@@ -11,6 +11,13 @@ const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) {
+      setOpen(true)
+    }
+  }, [])
+
   const toggle = () => setOpen((prev) => !prev)
 
   return (
