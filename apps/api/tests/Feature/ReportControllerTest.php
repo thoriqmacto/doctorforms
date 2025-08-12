@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\{User, Hospital, Test as TestModel, Template, TemplateField, Patient, Report, ReportField};
+use App\Models\{User, Hospital, Test as TestModel, Template, TemplateField, Patient, Report, ReportField, Measurement};
 
-it('returns reports with metadata, patient details and fields', function () {
+it('returns reports with attributes, relationships and fields', function () {
     $user = User::factory()->create();
     $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
     $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
@@ -57,18 +57,26 @@ it('returns reports with metadata, patient details and fields', function () {
         'template_field_id' => $templateField->id,
         'value' => 'Normal',
     ]);
+    Measurement::create([
+        'report_id' => $report->id,
+        'name' => 'LVIDd',
+        'value' => '5.2',
+        'unit' => 'cm',
+        'category' => 'LV',
+    ]);
 
     $indexResponse = $this->getJson('/api/v1/reports');
     $indexResponse->assertStatus(200)
-        ->assertJsonPath('data.0.metadata.title', 'Report 1')
-        ->assertJsonPath('data.0.patient.name', 'John Doe')
-        ->assertJsonPath('data.0.fields.0.label', 'LV Size')
-        ->assertJsonPath('data.0.fields.0.value', 'Normal');
+        ->assertJsonPath('data.0.attributes.title', 'Report 1')
+        ->assertJsonPath('data.0.relationships.patient.data.id', (string) $patient->id)
+        ->assertJsonPath('data.0.relationships.fields.data.0.label', 'LV Size')
+        ->assertJsonPath('data.0.relationships.fields.data.0.value', 'Normal')
+        ->assertJsonPath('data.0.relationships.measurements.data.0.attributes.name', 'LVIDd');
 
     $showResponse = $this->getJson('/api/v1/reports/'.$report->id);
     $showResponse->assertStatus(200)
-        ->assertJsonPath('data.metadata.title', 'Report 1')
-        ->assertJsonPath('data.patient.name', 'John Doe')
-        ->assertJsonPath('data.fields.0.label', 'LV Size')
-        ->assertJsonPath('data.fields.0.value', 'Normal');
+        ->assertJsonPath('data.attributes.title', 'Report 1')
+        ->assertJsonPath('data.relationships.patient.data.id', (string) $patient->id)
+        ->assertJsonPath('data.relationships.fields.data.0.label', 'LV Size')
+        ->assertJsonPath('data.relationships.measurements.data.0.attributes.name', 'LVIDd');
 });
