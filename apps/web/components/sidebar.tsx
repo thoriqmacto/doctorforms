@@ -12,7 +12,7 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        'bg-sidebar text-sidebar-foreground w-64 border-r border-sidebar-border p-4',
+        'bg-sidebar text-sidebar-foreground w-48 border-r border-sidebar-border p-4',
         open ? 'block' : 'hidden'
       )}
     >
