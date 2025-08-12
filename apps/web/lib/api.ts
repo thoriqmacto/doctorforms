@@ -37,6 +37,18 @@ export const getPatient = (id: string | number) =>
 export const createPatient = (payload: any) =>
     api.post('patients', { json: payload }).json<any>();
 
+// Hospitals
+export const getHospitals = (params?: Record<string, any>) =>
+    api.get('hospitals', { searchParams: params }).json<any>();
+export const getHospital = (id: string | number) =>
+    api.get(`hospitals/${id}`).json<any>();
+export const createHospital = (payload: any) =>
+    api.post('hospitals', { json: payload }).json<any>();
+export const updateHospital = (id: string | number, payload: any) =>
+    api.put(`hospitals/${id}`, { json: payload }).json<any>();
+export const deleteHospital = (id: string | number) =>
+    api.delete(`hospitals/${id}`).json<any>();
+
 // Reports
 export const getReport = (id: string | number, params?: Record<string, any>) =>
     api.get(`reports/${id}`, { searchParams: params }).json<any>();

@@ -51,3 +51,22 @@ export type PatientPayload = {
     test_id?: number;
     values: Record<string, string | number | null>;
 };
+
+export type HospitalResource = {
+    type: 'hospitals';
+    id: string;
+    attributes: {
+        name: string;
+        address: string;
+        phone?: string | null;
+        email?: string | null;
+    };
+};
+
+export type HospitalsIndexResponse = {
+    data: HospitalResource[];
+};
+
+export type HospitalShowResponse = {
+    data: HospitalResource;
+};
