@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { getTemplates, getTests } from '@/lib/api';
 import Link from 'next/link';
@@ -32,6 +33,8 @@ interface TemplateItem {
 
 export default function TemplatesPage() {
     const [testId, setTestId] = useState<string>('');
+    const sp = useSearchParams();
+    const patientId = sp.get('patientId');
 
     const { data: testsData } = useSWR<{ data: TestItem[] }>(
         ['/tests'],
@@ -93,7 +96,9 @@ export default function TemplatesPage() {
                                             <Link href={`/templates/${t.id}/edit`}>
                                                 <Button variant="secondary" size="sm">Edit</Button>
                                             </Link>
-                                            <Link href={`/patients/new?templateId=${t.id}&testId=${testId}`}>
+                                            <Link
+                                                href={`/reports/new?templateId=${t.id}&testId=${testId}${patientId ? `&patientId=${patientId}` : ''}`}
+                                            >
                                                 <Button size="sm">Use Template</Button>
                                             </Link>
                                         </TableCell>
