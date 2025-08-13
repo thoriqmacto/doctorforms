@@ -12,6 +12,7 @@ export default function NewReportPage() {
     const router = useRouter();
     const templateId = sp.get('templateId');
     const patientId = sp.get('patientId');
+    const testId = sp.get('testId');
 
     const { data, isLoading } = useSWR(
         templateId ? ['/templates', templateId] : null,
@@ -27,7 +28,7 @@ export default function NewReportPage() {
             patient_id: Number(patientId),
             hospital_id: 1,
             user_id: 1,
-            test_id: 1,
+            test_id: Number(testId),
             values,
         };
 
@@ -35,7 +36,7 @@ export default function NewReportPage() {
             const created: any = await createReport(payload);
             const detail = await getReport(created.data.id, { include: 'patient,fields' });
             await generateReportPdf(detail);
-            router.push('/patients');
+            router.push('/reports');
         } catch (e) {
             console.error(e);
             alert('Failed to save');

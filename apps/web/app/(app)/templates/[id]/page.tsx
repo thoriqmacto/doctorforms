@@ -2,13 +2,16 @@
 
 import useSWR from 'swr';
 import { getTemplate } from '@/lib/api';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function TemplateDetailPage() {
     const params = useParams<{ id: string }>();
+    const sp = useSearchParams();
+    const patientId = sp.get('patientId');
+    const testId = sp.get('testId');
     const { data, isLoading } = useSWR(['/templates', params.id], () =>
         getTemplate(params.id, { include: 'fields' }).then((r: any) => r)
     );
@@ -24,7 +27,9 @@ export default function TemplateDetailPage() {
                     <Link href={`/templates/${params.id}/edit`}>
                         <Button variant="secondary">Edit Template</Button>
                     </Link>
-                    <Link href={`/patients/new?templateId=${params.id}`}>
+                    <Link
+                        href={`/reports/new?templateId=${params.id}${testId ? `&testId=${testId}` : ''}${patientId ? `&patientId=${patientId}` : ''}`}
+                    >
                         <Button>Use This Template</Button>
                     </Link>
                 </div>
