@@ -66,11 +66,16 @@ export const deleteUser = (id: string | number) =>
     api.delete(`users/${id}`).json<any>();
 
 // Reports
+export const getReports = (params?: Record<string, any>) =>
+    api.get('reports', { searchParams: params }).json<any>();
 export const getReport = (id: string | number, params?: Record<string, any>) =>
     api.get(`reports/${id}`, { searchParams: params }).json<any>();
-
+export const updateReport = (id: string | number, payload: any) =>
+    api.put(`reports/${id}`, { json: payload }).json<any>();
 export const createReport = (payload: any) =>
     api.post('reports', { json: payload }).json<any>();
+export const deleteReport = (id: string | number) =>
+    api.delete(`reports/${id}`).json<any>();
 
 export const login = (payload: { email: string; password: string }) =>
     api.post('login', { json: payload }).json<any>();
