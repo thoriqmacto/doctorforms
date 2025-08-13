@@ -21,16 +21,18 @@ export default function ReportsPage() {
     }
 
     return (
-        <div className="container mx-auto p-4 space-y-4">
-            <h1 className="text-2xl font-semibold">Reports</h1>
-            {isLoading ? (
-                'Loading…'
-            ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>All Reports</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
+        <div className="space-y-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Reports</CardTitle>
+                    <Link href="/reports/new">
+                        <Button>Create Report</Button>
+                    </Link>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {isLoading ? (
+                        'Loading…'
+                    ) : (
                         <Table>
                             <TableHeader className="bg-muted/40">
                                 <TableRow className="border-b">
@@ -54,6 +56,11 @@ export default function ReportsPage() {
                                                     </Button>
                                                 </Link>
                                             )}
+                                            <Link href={`/reports/${r.id}`}>
+                                                <Button size="sm" variant="secondary">
+                                                    Edit
+                                                </Button>
+                                            </Link>
                                             <Button
                                                 variant="destructive"
                                                 size="sm"
@@ -66,9 +73,9 @@ export default function ReportsPage() {
                                 ))}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
-            )}
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
