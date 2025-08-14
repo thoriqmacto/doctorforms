@@ -28,14 +28,17 @@ export default function HospitalLogoUploader({ hospitalId, authToken, onUploaded
     try {
       const form = new FormData();
       form.append("logo", file);
-      const res = await fetch(`/api/v1/hospitals/${hospitalId}/logo`, {
-        method: "POST",
-        body: form,
-        headers: {
-          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        },
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/hospitals/${hospitalId}/logo`,
+        {
+          method: "POST",
+          body: form,
+          headers: {
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          credentials: "include",
+        }
+      );
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       const url = json?.data?.attributes?.logo_url ?? "";
