@@ -15,6 +15,7 @@ export default function NewReportPage() {
     const testId = sp.get('testId');
     const hospitalId = sp.get('hospitalId');
     const name = sp.get('name');
+    const debug = true;
 
     const { data, isLoading } = useSWR(
         templateId ? ['/templates', templateId] : null,
@@ -34,6 +35,10 @@ export default function NewReportPage() {
             title: name,
             values,
         };
+
+        // if(debug){
+        //     console.log('[DEBUG] createReport payload:', JSON.stringify(payload));
+        // }
 
         try {
             const created: any = await createReport(payload);

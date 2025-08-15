@@ -54,7 +54,7 @@ export default function ReportsPage() {
                     <CardTitle>Reports</CardTitle>
                     <div className="flex items-center gap-2">
                         <Input
-                            placeholder="Report name"
+                            placeholder="Patient Name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-48"
