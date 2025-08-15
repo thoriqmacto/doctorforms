@@ -145,12 +145,12 @@ class TemplateFieldsTableSeeder extends Seeder
         $add($fields, $section, 'ECG Rhythm', 'checkbox_group', [
             'ECG is sinus rhythm', 'ECG is in atrial fibrillation', 'ECG is pacing rhythm', 'Other'
         ], ++$i, $group);
-        $add($fields, $section, 'ECG (custom text)', 'text', null, ++$i, $group);
+        $add($fields, $section, 'ECG (custom text)', 'textarea', null, ++$i, $group);
         $add($fields, $section, 'Study Quality', 'checkbox_group', [
             'The quality of the study is good', 'The quality of the study is adequate',
             'The quality of the study is poor', 'The study is technically difficult due to ...'
         ], ++$i, $group);
-        $add($fields, $section, 'Study Quality (custom text)', 'text', null, ++$i, $group);
+        $add($fields, $section, 'Study Quality (custom text)', 'textarea', null, ++$i, $group);
 
         // ===================== 8) LV =====================
         $i = 0;
@@ -192,7 +192,7 @@ class TemplateFieldsTableSeeder extends Seeder
             'Gap at interatrial septum (size ...)', 'Stretched PFO L→R shunt', 'Iatrogenic ASD (size ...)',
             'Post ASO closure', 'Post device closure'
         ], ++$i, $group);
-        $add($fields, $section, 'IAS (notes)', 'text', null, ++$i, $group);
+        $add($fields, $section, 'IAS (notes)', 'textarea', null, ++$i, $group);
 
         $i = 0;
         $section = 'Interventricular Septum';
@@ -200,7 +200,7 @@ class TemplateFieldsTableSeeder extends Seeder
         $add($fields, $section, 'Interventricular Septum Findings', 'checkbox_group', [
             'Intact interventricular septum', 'Gap at IVS (size ...)', 'Ventricular septal rupture'
         ], ++$i, $group);
-        $add($fields, $section, 'IVS (notes)', 'text', null, ++$i, $group);
+        $add($fields, $section, 'IVS (notes)', 'textarea', null, ++$i, $group);
 
         // ===================== 11) AORTIC VALVE =====================
         $i = 0;
