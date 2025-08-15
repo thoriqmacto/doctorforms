@@ -23,14 +23,23 @@ const api = ky.create({
         ],
     },
 });
+export interface TemplatePayload {
+    name: string;
+    description?: string;
+    user_id: number;
+    test_id: number;
+    hospital_id: number;
+}
 export const getTemplates = (params?: Record<string, any>) =>
     api.get('templates', { searchParams: params }).json<any>();
 export const getTemplate = (id: string | number, params?: Record<string, any>) =>
     api.get(`templates/${id}`, { searchParams: params }).json<any>();
-export const createTemplate = (payload: any) =>
+export const createTemplate = (payload: TemplatePayload) =>
     api.post('templates', { json: payload }).json<any>();
-export const updateTemplate = (id: string | number, payload: any) =>
-    api.put(`templates/${id}`, { json: payload }).json<any>();
+export const updateTemplate = (
+    id: string | number,
+    payload: Partial<TemplatePayload>,
+) => api.patch(`templates/${id}`, { json: payload }).json<any>();
 export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
 export const getTests = (params?: Record<string, any>) =>
