@@ -127,11 +127,28 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
 
-    const { control, handleSubmit, watch, setValue } = useForm({
+    const { control, handleSubmit, watch, setValue, getFieldState, formState } = useForm({
         resolver: zodResolver(schema),
         defaultValues: {},
         mode: "onChange",
     });
+
+    // Group fields by field_group_order (used for sentence auto-fill)
+    const fieldGroups = useMemo(() => {
+        const map = new Map<number, Field[]>();
+        groupedSections.forEach((sec) => {
+            sec.items.forEach((f) => {
+                const key = f.attributes.field_group_order;
+                if (key === undefined || key === null) return;
+                const arr = map.get(key) ?? [];
+                arr.push(f);
+                map.set(key, arr);
+            });
+        });
+        return Array.from(map.values()).map((items) =>
+            items.sort((a, b) => (a.attributes.order ?? 0) - (b.attributes.order ?? 0))
+        );
+    }, [groupedSections]);
 
     // Find fields by label (for helpers, but only if labels exist in the template)
     const byLabel = useMemo(() => {
@@ -166,6 +183,33 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
             if (typeof bsa === "number") setValue(fBSA, String(bsa), { shouldValidate: false, shouldDirty: true });
         }
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
+
+    // Auto-fill concluding textarea in field groups
+    const allVals = watch();
+    useEffect(() => {
+        fieldGroups.forEach((items) => {
+            if (items.length < 2) return;
+            const last = items[items.length - 1];
+            if (last.attributes.type !== "textarea") return;
+
+            const textareaName = `f_${last.id}`;
+            const parts: string[] = [];
+            items.slice(0, -1).forEach((f) => {
+                const name = `f_${f.id}`;
+                const val = (allVals as any)[name];
+                if (Array.isArray(val)) {
+                    if (val.length) parts.push(`${f.attributes.label}: ${val.join(", ")}`);
+                } else if (val !== undefined && val !== null && String(val).trim() !== "") {
+                    parts.push(`${f.attributes.label}: ${val}`);
+                }
+            });
+            const sentence = parts.join(". ") + (parts.length ? "." : "");
+            const curr = (allVals as any)[textareaName];
+            if (!getFieldState(textareaName, formState).isDirty && curr !== sentence) {
+                setValue(textareaName, sentence, { shouldDirty: false, shouldValidate: false });
+            }
+        });
+    }, [allVals, fieldGroups, formState, getFieldState, setValue]);
 
     // ---- Renderers ----
     function renderSectionHeader(title?: string | null) {
