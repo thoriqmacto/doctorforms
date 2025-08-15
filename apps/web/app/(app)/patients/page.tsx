@@ -64,6 +64,9 @@ export default function PatientsPage() {
         <div className="container mx-auto p-4 space-y-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Patients</h1>
+                <Link href="/patients/new">
+                    <Button>Add Patient</Button>
+                </Link>
             </div>
 
             {isLoading ? (
