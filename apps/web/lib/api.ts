@@ -27,6 +27,8 @@ export const getTemplates = (params?: Record<string, any>) =>
     api.get('templates', { searchParams: params }).json<any>();
 export const getTemplate = (id: string | number, params?: Record<string, any>) =>
     api.get(`templates/${id}`, { searchParams: params }).json<any>();
+export const createTemplate = (payload: any) =>
+    api.post('templates', { json: payload }).json<any>();
 export const updateTemplate = (id: string | number, payload: any) =>
     api.put(`templates/${id}`, { json: payload }).json<any>();
 export const deleteTemplate = (id: string | number) =>
