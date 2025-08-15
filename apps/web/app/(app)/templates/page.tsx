@@ -39,9 +39,15 @@ export default function TemplatesPage() {
     return (
         <div className="space-y-4">
             <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Templates' }]} />
+            <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-semibold">Templates</h1>
+                <Link href="/templates/new">
+                    <Button>Add Template</Button>
+                </Link>
+            </div>
             <Card>
                 <CardHeader>
-                    <CardTitle>Templates</CardTitle>
+                    <CardTitle>All Templates</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {isLoading ? (
