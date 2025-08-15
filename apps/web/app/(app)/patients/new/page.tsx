@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { getTemplate, createPatient } from '@/lib/api';
 import TemplateFormRenderer, { type Field } from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewPatientPage() {
     const sp = useSearchParams();
@@ -49,6 +50,13 @@ export default function NewPatientPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Patients', href: '/patients' },
+                    { label: 'New Patient' },
+                ]}
+            />
             <Card>
                 <CardHeader>
                     <CardTitle>New Patient (Template #{templateId})</CardTitle>

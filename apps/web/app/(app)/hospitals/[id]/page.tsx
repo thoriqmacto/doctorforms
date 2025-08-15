@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import HospitalLogoUploader from '@/components/HospitalLogoUploader';
 import HospitalAvatar from '@/components/HospitalAvatar';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function EditHospitalPage() {
     const router = useRouter();
@@ -19,6 +20,7 @@ export default function EditHospitalPage() {
     const id = params?.id as string;
 
     const { data, mutate } = useSWR(id ? ['/hospitals', id] : null, () => getHospital(id));
+    const name = data?.data?.attributes?.name ?? 'Hospital';
     const form = useForm({
         defaultValues: { name: '', address: '', phone: '', email: '' },
     });
@@ -57,6 +59,13 @@ export default function EditHospitalPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Hospitals', href: '/hospitals' },
+                    { label: name },
+                ]}
+            />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Edit Hospital</CardTitle>

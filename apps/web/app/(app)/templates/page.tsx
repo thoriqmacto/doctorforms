@@ -14,6 +14,7 @@ import type {
     TemplateResource,
     TemplatesIndexResponse,
 } from '@/types/api';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function TemplatesPage() {
     const sp = useSearchParams();
@@ -37,6 +38,7 @@ export default function TemplatesPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Templates' }]} />
             <Card>
                 <CardHeader>
                     <CardTitle>Templates</CardTitle>

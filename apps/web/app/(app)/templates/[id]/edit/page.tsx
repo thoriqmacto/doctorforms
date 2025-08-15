@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function EditTemplatePage() {
     const router = useRouter();
@@ -17,6 +18,7 @@ export default function EditTemplatePage() {
     const id = params.id;
 
     const { data } = useSWR(id ? ['/templates', id] : null, () => getTemplate(id));
+    const name = data?.data?.attributes?.name ?? 'Template';
     const form = useForm({ defaultValues: { name: '', description: '' } });
 
     useEffect(() => {
@@ -48,9 +50,16 @@ export default function EditTemplatePage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Templates', href: '/templates' },
+                    { label: `Edit ${name}` },
+                ]}
+            />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Edit Template</CardTitle>
+                    <CardTitle>Edit {name}</CardTitle>
                     <Button variant="destructive" onClick={onDelete} type="button">
                         Delete
                     </Button>
