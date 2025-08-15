@@ -15,7 +15,8 @@ export default function NewReportPage() {
     const testId = sp.get('testId');
     const hospitalId = sp.get('hospitalId');
     const name = sp.get('name');
-    const debug = true;
+    const hospitalName = sp.get('hospitalName');
+    const templateNameParam = sp.get('templateName');
 
     const { data, isLoading } = useSWR(
         templateId ? ['/templates', templateId] : null,
@@ -36,10 +37,6 @@ export default function NewReportPage() {
             values,
         };
 
-        // if(debug){
-        //     console.log('[DEBUG] createReport payload:', JSON.stringify(payload));
-        // }
-
         try {
             const created: any = await createReport(payload);
             const detail = await getReport(created.data.id, { include: 'patient,fields' });
@@ -51,12 +48,16 @@ export default function NewReportPage() {
         }
     }
 
+    const templateName = templateNameParam ?? tpl?.attributes?.name;
+    const hospitalLabel = hospitalName ?? `#${hospitalId}`;
+    const templateLabel = templateName ?? `#${templateId}`;
+
     return (
         <div className="space-y-4">
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        New Report for {name} (Hospital #{hospitalId}, Template #{templateId})
+                        New Report for {name} (Hospital: {hospitalLabel}, Template: {templateLabel})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
