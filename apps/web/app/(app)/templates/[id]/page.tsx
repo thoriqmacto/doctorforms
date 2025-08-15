@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function TemplateDetailPage() {
     const params = useParams<{ id: string }>();
@@ -17,12 +18,20 @@ export default function TemplateDetailPage() {
     );
 
     const tpl = data?.data;
+    const name = tpl?.attributes?.name ?? 'Template';
     const grouped = tpl?.meta?.grouped_sections ?? [];
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Templates', href: '/templates' },
+                    { label: name },
+                ]}
+            />
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold">{tpl?.attributes?.name ?? 'Template'}</h1>
+                <h1 className="text-2xl font-semibold">{name}</h1>
                 <div className="space-x-2">
                     <Link href={`/templates/${params.id}/edit`}>
                         <Button variant="secondary">Edit Template</Button>

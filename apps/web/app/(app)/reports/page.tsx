@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function ReportsPage() {
     const router = useRouter();
@@ -89,6 +90,7 @@ export default function ReportsPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Reports' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Reports</CardTitle>

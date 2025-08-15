@@ -6,6 +6,7 @@ import { getUsers } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function UsersPage() {
     const { data, isLoading } = useSWR(['/users'], () => getUsers());
@@ -13,6 +14,7 @@ export default function UsersPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Users' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Users</CardTitle>

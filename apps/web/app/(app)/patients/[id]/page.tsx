@@ -12,6 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function PatientDetailPage() {
     const params = useParams<{ id: string }>();
@@ -22,17 +23,25 @@ export default function PatientDetailPage() {
 
     const patient = data?.data;
     const attrs = patient?.attributes ?? {};
+    const name = attrs.name ?? attrs.values?.patient_name ?? 'Patient';
     const values = Object.entries(attrs.values ?? {}) as [string, unknown][];
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Patients', href: '/patients' },
+                    { label: name },
+                ]}
+            />
             {isLoading ? (
                 'Loading…'
             ) : (
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            {attrs.name ?? attrs.values?.patient_name ?? 'Patient'}
+                            {name}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">

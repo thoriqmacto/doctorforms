@@ -6,6 +6,7 @@ import { getHospitals } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function HospitalsPage() {
     const { data, isLoading } = useSWR(['/hospitals'], () => getHospitals());
@@ -13,6 +14,7 @@ export default function HospitalsPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Hospitals' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Hospitals</CardTitle>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewHospitalPage() {
     const router = useRouter();
@@ -27,6 +28,13 @@ export default function NewHospitalPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Hospitals', href: '/hospitals' },
+                    { label: 'New Hospital' },
+                ]}
+            />
             <Card>
                 <CardHeader>
                     <CardTitle>New Hospital</CardTitle>

@@ -24,6 +24,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function PatientsPage() {
     const { data, isLoading, mutate } = useSWR(['/patients'], () =>
@@ -62,6 +63,7 @@ export default function PatientsPage() {
 
     return (
         <div className="container mx-auto p-4 space-y-4">
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Patients' }]} />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Patients</h1>
             </div>

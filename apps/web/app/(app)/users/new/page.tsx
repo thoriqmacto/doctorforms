@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewUserPage() {
     const router = useRouter();
@@ -26,6 +27,13 @@ export default function NewUserPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Users', href: '/users' },
+                    { label: 'New User' },
+                ]}
+            />
             <Card>
                 <CardHeader>
                     <CardTitle>New User</CardTitle>

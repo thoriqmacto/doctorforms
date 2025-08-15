@@ -6,6 +6,7 @@ import { getTemplate, createReport, getReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateReportPdf } from '@/lib/pdf';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewReportPage() {
     const sp = useSearchParams();
@@ -54,6 +55,13 @@ export default function NewReportPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Reports', href: '/reports' },
+                    { label: 'New Report' },
+                ]}
+            />
             <Card>
                 <CardHeader>
                     <CardTitle>

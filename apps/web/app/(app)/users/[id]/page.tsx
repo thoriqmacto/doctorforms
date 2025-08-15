@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function EditUserPage() {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function EditUserPage() {
     const id = params?.id as string;
 
     const { data } = useSWR(id ? ['/users', id] : null, () => getUser(id));
+    const name = data?.data?.attributes?.name ?? 'User';
     const form = useForm({
         defaultValues: { name: '', email: '', phone: '', password: '' },
     });
@@ -58,6 +60,13 @@ export default function EditUserPage() {
 
     return (
         <div className="space-y-4">
+            <Breadcrumbs
+                items={[
+                    { label: 'Dashboard', href: '/' },
+                    { label: 'Users', href: '/users' },
+                    { label: name },
+                ]}
+            />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Edit User</CardTitle>
