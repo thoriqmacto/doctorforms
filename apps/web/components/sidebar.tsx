@@ -17,8 +17,14 @@ export default function Sidebar() {
       )}
     >
       <nav className="space-y-2">
-        <Button variant="ghost" className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-          <Home className="mr-2 h-4 w-4" /> Dashboard
+        <Button
+          asChild
+          variant="ghost"
+          className="w-full justify-start hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <Link href="/">
+            <Home className="mr-2 h-4 w-4" /> Dashboard
+          </Link>
         </Button>
 
         <Link href="/reports" className="block">
