@@ -16,12 +16,26 @@ export type GroupedSection = {
     items: TemplateField[];
 };
 
+export type TestResource = {
+    type: 'tests';
+    id: string;
+    attributes: {
+        code: string;
+        name: string;
+        type: string;
+        description: string | null;
+    };
+};
+
 export type TemplateResource = {
     type: 'templates';
     id: string;
     attributes: {
         name: string;
         description: string | null;
+    };
+    relationships?: {
+        test?: { data: { type: 'tests'; id: string } | null };
     };
     meta?: {
         page?: {
@@ -36,6 +50,7 @@ export type TemplateResource = {
 
 export type TemplatesIndexResponse = {
     data: TemplateResource[];
+    included?: TestResource[];
     meta?: any;
 };
 
