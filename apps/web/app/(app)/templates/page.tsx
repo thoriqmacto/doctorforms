@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import type {
     TemplateResource,
     TemplatesIndexResponse,
-    TestResource,
 } from '@/types/api';
 
 export default function TemplatesPage() {

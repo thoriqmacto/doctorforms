@@ -40,6 +40,10 @@ export const getPatient = (id: string | number) =>
     api.get(`patients/${id}`).json<any>();
 export const createPatient = (payload: any) =>
     api.post('patients', { json: payload }).json<any>();
+export const updatePatient = (id: string | number, payload: any) =>
+    api.put(`patients/${id}`, { json: payload }).json<any>();
+export const deletePatient = (id: string | number) =>
+    api.delete(`patients/${id}`).json<any>();
 
 // Hospitals
 export const getHospitals = (params?: Record<string, any>) =>
