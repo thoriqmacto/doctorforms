@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
     getReports,
     deleteReport,
@@ -22,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function ReportsPage() {
+    const router = useRouter();
     const { data, isLoading, mutate } = useSWR(['/reports'], () =>
         getReports().then((r: any) => r)
     );
@@ -54,6 +56,11 @@ export default function ReportsPage() {
         if (!confirm('Delete this report?')) return;
         await deleteReport(id);
         mutate();
+    }
+
+    function handleCreate() {
+        if (!hospitalId || !templateId) return;
+        router.push(newReportHref);
     }
 
     return (
@@ -92,11 +99,12 @@ export default function ReportsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Link href={newReportHref}>
-                            <Button disabled={!hospitalId || !templateId}>
-                                Create Report
-                            </Button>
-                        </Link>
+                        <Button
+                            onClick={handleCreate}
+                            disabled={!hospitalId || !templateId}
+                        >
+                            Create Report
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
