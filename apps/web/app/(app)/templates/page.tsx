@@ -1,11 +1,7 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import {
-    getTemplates,
-    getTests,
-} from '@/lib/api';
+import { getTemplates, getTests } from '@/lib/api';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,16 +13,13 @@ import type {
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function TemplatesPage() {
-    const sp = useSearchParams();
-    const patientId = sp.get('patientId');
-
     const { data, isLoading, error } = useSWR<TemplatesIndexResponse>(
         ['/templates'],
         () => getTemplates({ include: 'test' }) as Promise<TemplatesIndexResponse>
     );
 
-    const { data: testData } = useSWR(['/tests'], ()=>
-        getTests().then((r:any) => r)
+    const { data: testData } = useSWR(['/tests'], () =>
+        getTests().then((r: any) => r)
     );
 
     const rows = data?.data ?? [];
@@ -78,23 +71,11 @@ export default function TemplatesPage() {
                                             <TableCell>{t.attributes.name}</TableCell>
                                             <TableCell>{testName}</TableCell>
                                             <TableCell>{t.attributes.description}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Link href={`/templates/${t.id}`}>
-                                                    <Button variant="secondary" size="sm">
-                                                        Open
-                                                    </Button>
-                                                </Link>
+                                            <TableCell className="text-right">
                                                 <Link href={`/templates/${t.id}/edit`}>
                                                     <Button variant="secondary" size="sm">
                                                         Edit
                                                     </Button>
-                                                </Link>
-                                                <Link
-                                                    href={`/reports/new?templateId=${t.id}${
-                                                        testId ? `&testId=${testId}` : ''
-                                                    }${patientId ? `&patientId=${patientId}` : ''}`}
-                                                >
-                                                    <Button size="sm">Use Template</Button>
                                                 </Link>
                                             </TableCell>
                                         </TableRow>
