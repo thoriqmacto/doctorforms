@@ -13,6 +13,8 @@ export default function NewReportPage() {
     const templateId = sp.get('templateId');
     const patientId = sp.get('patientId');
     const testId = sp.get('testId');
+    const hospitalId = sp.get('hospitalId');
+    const name = sp.get('name');
 
     const { data, isLoading } = useSWR(
         templateId ? ['/templates', templateId] : null,
@@ -26,9 +28,10 @@ export default function NewReportPage() {
         const payload = {
             template_id: Number(templateId),
             patient_id: Number(patientId),
-            hospital_id: 1,
+            hospital_id: Number(hospitalId),
             user_id: 1,
             test_id: Number(testId),
+            title: name,
             values,
         };
 
@@ -47,7 +50,9 @@ export default function NewReportPage() {
         <div className="space-y-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>New Report (Template #{templateId})</CardTitle>
+                    <CardTitle>
+                        New Report for {name} (Hospital #{hospitalId}, Template #{templateId})
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? 'Loading…' : (
