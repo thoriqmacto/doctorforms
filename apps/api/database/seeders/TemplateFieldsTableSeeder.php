@@ -138,24 +138,28 @@ class TemplateFieldsTableSeeder extends Seeder
         $add($fields, $section, 'IVC (Inspiration) (mm)', 'number', null, ++$i, $group);
         $add($fields, $section, 'IVC (Expiration) (mm)', 'number', null, ++$i, $group);
 
-        // ===================== 7) STUDY META =====================
+        // ===================== 7) ECG =====================
         $i = 0;
-        $section = 'Study Meta';
+        $section = 'ECG';
         $group = $g(7);
         $add($fields, $section, 'ECG Rhythm', 'checkbox_group', [
             'ECG is sinus rhythm', 'ECG is in atrial fibrillation', 'ECG is pacing rhythm', 'Other'
         ], ++$i, $group);
         $add($fields, $section, 'ECG (custom text)', 'textarea', null, ++$i, $group);
+
+        // ===================== 8) STUDY META =====================
+        $section = 'Study Meta';
+        $group = $g(8);
         $add($fields, $section, 'Study Quality', 'checkbox_group', [
             'The quality of the study is good', 'The quality of the study is adequate',
             'The quality of the study is poor', 'The study is technically difficult due to ...'
         ], ++$i, $group);
         $add($fields, $section, 'Study Quality (custom text)', 'textarea', null, ++$i, $group);
 
-        // ===================== 8) LV =====================
+        // ===================== 9) LV =====================
         $i = 0;
         $section = 'LV';
-        $group = $g(8);
+        $group = $g(9);
         $add($fields, $section, 'LV (overall)', 'checkbox_group', ['Normal', 'Abnormal'], ++$i, $group);
         $add($fields, $section, 'Cavity Size', 'checkbox_group', [
             'Left ventricle size is normal', 'Left ventricle is dilated', 'Left ventricle is smallish', 'Left ventricle is D-shaped'
@@ -172,10 +176,10 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'LV (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 9) RV / LA / RA =====================
+        // ===================== 10) RV / LA / RA =====================
         $i = 0;
         $section = 'RV / LA / RA';
-        $group = $g(9);
+        $group = $g(10);
         $add($fields, $section, 'RV (overall)', 'checkbox_group', ['Normal (size and function)', 'Abnormal'], ++$i, $group);
         $add($fields, $section, 'RV Wall Thickness', 'checkbox_group', ['Normal', 'Right ventricular hypertrophy'], ++$i, $group);
         $add($fields, $section, 'RV Systolic Function', 'checkbox_group', ['Normal', 'Decreased'], ++$i, $group);
@@ -183,10 +187,10 @@ class TemplateFieldsTableSeeder extends Seeder
         $add($fields, $section, 'RA Size', 'checkbox_group', ['Right atrial size is normal', 'Right atrium is dilated'], ++$i, $group);
         $add($fields, $section, 'Right heart (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 10) INTERATRIAL / INTERVENTRICULAR SEPTUM =====================
+        // ===================== 11 / 12) INTERATRIAL / INTERVENTRICULAR SEPTUM =====================
         $i = 0;
         $section = 'Interatrial Septum';
-        $group = $g(10);
+        $group = $g(11);
         $add($fields, $section, 'Interatrial Septum Findings', 'checkbox_group', [
             'Intact interatrial septum', 'Atrial septal aneurysm', 'Hyperkinetic interatrial septum',
             'Gap at interatrial septum (size ...)', 'Stretched PFO L→R shunt', 'Iatrogenic ASD (size ...)',
@@ -196,16 +200,16 @@ class TemplateFieldsTableSeeder extends Seeder
 
         $i = 0;
         $section = 'Interventricular Septum';
-        $group = $g(11);
+        $group = $g(12);
         $add($fields, $section, 'Interventricular Septum Findings', 'checkbox_group', [
             'Intact interventricular septum', 'Gap at IVS (size ...)', 'Ventricular septal rupture'
         ], ++$i, $group);
         $add($fields, $section, 'IVS (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 11) AORTIC VALVE =====================
+        // ===================== 13) AORTIC VALVE =====================
         $i = 0;
         $section = 'Aortic Valve';
-        $group = $g(12);
+        $group = $g(13);
         $add($fields, $section, 'Structure', 'checkbox_group', [
             'Not well visualized / cusp number unknown', 'Trileaflet', 'Bicuspid', 'Leaflets thickened',
             'Rheumatic appearance', 'No calcification', 'Cusp heavily calcified', 'Calcification at ...', 'Nodular thickening of ...'
@@ -232,10 +236,10 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'Aortic Valve (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 12) MITRAL VALVE =====================
+        // ===================== 14) MITRAL VALVE =====================
         $i = 0;
         $section = 'Mitral Valve';
-        $group = $g(13);
+        $group = $g(14);
         $add($fields, $section, 'Structure', 'checkbox_group', [
             'Not well visualized', 'Normal structure', 'Leaflets thickened', 'Rheumatic appearance', 'Myxomatous leaflets',
             'Redundant elongated chordae', 'No annular calcification', 'Mitral annular calcification',
@@ -267,10 +271,10 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'Mitral Valve (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 13) TRICUSPID VALVE =====================
+        // ===================== 15) TRICUSPID VALVE =====================
         $i = 0;
         $section = 'Tricuspid Valve';
-        $group = $g(14);
+        $group = $g(15);
         $add($fields, $section, 'Structure', 'checkbox_group', [
             'Not well visualized', 'Normal structure', 'Rheumatic appearance', 'Leaflets thickened',
             'Carcinoid pattern', 'No annular calcification', 'Annular calcification'
@@ -300,10 +304,10 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'Tricuspid Valve (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 14) PULMONIC VALVE =====================
+        // ===================== 16) PULMONIC VALVE =====================
         $i = 0;
         $section = 'Pulmonic Valve';
-        $group = $g(15);
+        $group = $g(16);
         $add($fields, $section, 'Structure', 'checkbox_group', [
             'Not well visualized', 'Grossly normal', 'Thickened', 'Notching of PV Doppler (↑PVR)', 'Absent pulmonary valve'
         ], ++$i, $group);
@@ -323,20 +327,20 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'Pulmonic Valve (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 15) MASS / THROMBUS =====================
+        // ===================== 17) MASS / THROMBUS =====================
         $i = 0;
         $section = 'Mass / Thrombus';
-        $group = $g(16);
+        $group = $g(17);
         $add($fields, $section, 'Findings', 'checkbox_group', [
             'No abnormal mass or thrombus', 'Mass/Thrombus cannot be clearly visualized',
             'Spontaneous echo contrast at ...', 'Thrombus at ...', 'Mass at ...', 'Myxoma present at ...'
         ], ++$i, $group);
         $add($fields, $section, 'Mass / Thrombus (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 16) PERICARDIUM =====================
+        // ===================== 18) PERICARDIUM =====================
         $i = 0;
         $section = 'Pericardium';
-        $group = $g(17);
+        $group = $g(18);
         $add($fields, $section, 'Findings', 'checkbox_group', [
             'Pericardium is normal', 'No pericardial effusion', 'Pericardial effusion at ...',
             'No sign of tamponade', 'Findings consistent with tamponade', 'Pericardium thickened',
@@ -344,33 +348,33 @@ class TemplateFieldsTableSeeder extends Seeder
         ], ++$i, $group);
         $add($fields, $section, 'Pericardium (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 17) AORTA =====================
+        // ===================== 19) AORTA =====================
         $i = 0;
         $section = 'Aorta';
-        $group = $g(18);
+        $group = $g(19);
         $add($fields, $section, 'Findings', 'checkbox_group', [
             'No atheroma at descending aorta', 'Atheroma plaque at descending aorta',
             'Aortic dissection at ...', 'Aortic diameter ...'
         ], ++$i, $group);
         $add($fields, $section, 'Aorta (notes)', 'textarea', null, ++$i, $group);
 
-        // ===================== 18) WALL MOTION =====================
+        // ===================== 20) WALL MOTION =====================
         $i = 0;
         $section = 'Wall Motion';
-        $group = $g(19);
+        $group = $g(20);
         $add($fields, $section, '2D Wall‑Motion Diagram', 'checkbox_group', ['Normal', 'Hypokinesia', 'Akinesia', 'Aneurysm', 'Dyskinesia', 'Unknown'], ++$i, $group);
 
-        // ===================== 19) SUMMARY / ADMIN =====================
+        // ===================== 21/22) SUMMARY / ADMIN =====================
         $i = 0;
         $section = 'Summary';
-        $group = $g(20);
+        $group = $g(21);
         $add($fields, $section, 'Diagnosis', 'textarea', null, ++$i, $group);
         $add($fields, $section, 'Conclusion', 'textarea', null, ++$i, $group);
         $add($fields, $section, 'Comments', 'textarea', null, ++$i, $group);
 
         $i = 0;
         $section = 'Administrative';
-        $group = $g(21);
+        $group = $g(22);
         $add($fields, $section, 'Referring Physician', 'text', null, ++$i, $group);
         $add($fields, $section, 'Operator', 'text', null, ++$i, $group);
         $add($fields, $section, 'Fellow', 'text', null, ++$i, $group);
