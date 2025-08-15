@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TemplateResource;
 use App\Models\Template;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class TemplateController extends Controller
 {
@@ -54,5 +55,60 @@ class TemplateController extends Controller
         }
 
         return new TemplateResource($template);
+    }
+
+    // POST /api/v1/templates
+    public function store(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'name'        => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'user_id'     => ['required', 'exists:users,id'],
+            'test_id'     => ['required', 'exists:tests,id'],
+            'hospital_id' => ['required', 'exists:hospitals,id'],
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
+        }
+
+        $template = Template::create($v->validated());
+
+        return (new TemplateResource($template))
+            ->additional(['meta' => ['status' => 'created']])
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    // PUT/PATCH /api/v1/templates/{template}
+    public function update(Request $request, Template $template)
+    {
+        $v = Validator::make($request->all(), [
+            'name'        => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'user_id'     => ['sometimes', 'exists:users,id'],
+            'test_id'     => ['sometimes', 'exists:tests,id'],
+            'hospital_id' => ['sometimes', 'exists:hospitals,id'],
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
+        }
+
+        $template->update($v->validated());
+
+        return (new TemplateResource($template))
+            ->additional(['meta' => ['status' => 'updated']]);
+    }
+
+    // DELETE /api/v1/templates/{template}
+    public function destroy(Template $template)
+    {
+        $template->delete();
+
+        return response()->json([
+            'jsonapi' => ['version' => '1.0'],
+            'meta'    => ['status' => 'deleted'],
+        ], 200);
     }
 }
