@@ -39,7 +39,15 @@ export default function ReportsPage() {
     const rows = data?.data ?? [];
     const hospitals = hospitalsData?.data ?? [];
     const templates = templatesData?.data ?? [];
-    const newReportHref = `/reports/new?name=${encodeURIComponent(name)}&hospitalId=${hospitalId}&templateId=${templateId}`;
+    const hospitalName =
+        hospitals.find((h: any) => String(h.id) === hospitalId)?.attributes?.name ?? '';
+    const templateName =
+        templates.find((t: any) => String(t.id) === templateId)?.attributes?.name ?? '';
+    const newReportHref = `/reports/new?name=${encodeURIComponent(
+        name
+    )}&hospitalId=${hospitalId}&templateId=${templateId}&hospitalName=${encodeURIComponent(
+        hospitalName
+    )}&templateName=${encodeURIComponent(templateName)}`;
 
     async function handleDelete(id: number | string) {
         if (!confirm('Delete this report?')) return;
