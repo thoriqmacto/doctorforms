@@ -2,7 +2,10 @@
 
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { getTemplates } from '@/lib/api';
+import {
+    getTemplates,
+    getTests,
+} from '@/lib/api';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,9 +25,16 @@ export default function TemplatesPage() {
         () => getTemplates({ include: 'test' }) as Promise<TemplatesIndexResponse>
     );
 
+    const { data: testData } = useSWR(['/tests'], ()=>
+        getTests().then((r:any) => r)
+    );
+
     const rows = data?.data ?? [];
-    const includedTests = (data?.included ?? []) as TestResource[];
-    const testsMap = new Map(includedTests.map((t) => [t.id, t]));
+    const tests = testData?.data ?? [];
+
+    const testsMap = new Map<string, any>(
+        tests.map((t:any) => [String(t.id), t])
+    );
 
     return (
         <div className="space-y-4">
@@ -51,12 +61,15 @@ export default function TemplatesPage() {
                             <TableBody>
                                 {rows.map((t: TemplateResource) => {
                                     const testId = t.relationships?.test?.data?.id;
-                                    const test = testId ? testsMap.get(testId) : undefined;
+                                    const test = testId
+                                        ? testsMap.get(String(testId))
+                                        : undefined;
+                                    const testName = test?.attributes?.code ?? '-';
                                     return (
                                         <TableRow key={t.id}>
                                             <TableCell>{t.id}</TableCell>
                                             <TableCell>{t.attributes.name}</TableCell>
-                                            <TableCell>{test?.attributes.name ?? '-'}</TableCell>
+                                            <TableCell>{testName}</TableCell>
                                             <TableCell>{t.attributes.description}</TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Link href={`/templates/${t.id}`}>
