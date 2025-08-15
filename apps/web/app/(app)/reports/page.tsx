@@ -8,6 +8,8 @@ import {
     deleteReport,
     getHospitals,
     getTemplates,
+    getPatients,
+    getTests,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,12 @@ export default function ReportsPage() {
     const { data: templatesData } = useSWR(['/templates'], () =>
         getTemplates().then((r: any) => r)
     );
+    const { data: patientsData } = useSWR(['/patients'], () =>
+        getPatients().then((r: any) => r)
+    );
+    const { data: testsData } = useSWR(['/tests'], () =>
+        getTests().then((r: any) => r)
+    );
 
     const [name, setName] = useState('');
     const [hospitalId, setHospitalId] = useState('');
@@ -39,6 +47,18 @@ export default function ReportsPage() {
     const rows = data?.data ?? [];
     const hospitals = hospitalsData?.data ?? [];
     const templates = templatesData?.data ?? [];
+    const patients = patientsData?.data ?? [];
+    const tests = testsData?.data ?? [];
+
+    const hospitalsMap = new Map<string, any>(
+        hospitals.map((h: any) => [String(h.id), h])
+    );
+    const patientsMap = new Map<string, any>(
+        patients.map((p: any) => [String(p.id), p])
+    );
+    const testsMap = new Map<string, any>(
+        tests.map((t: any) => [String(t.id), t])
+    );
     const hospitalName =
         hospitals.find((h: any) => String(h.id) === hospitalId)?.attributes?.name ?? '';
     const templateName =
@@ -108,39 +128,66 @@ export default function ReportsPage() {
                                 <TableRow className="border-b">
                                     <TableHead className="w-20">ID</TableHead>
                                     <TableHead>Title</TableHead>
-                                    <TableHead>Patient</TableHead>
+                                    <TableHead>Patient Name</TableHead>
+                                    <TableHead>Test Method</TableHead>
+                                    <TableHead>Hospital Name</TableHead>
                                     <TableHead className="text-right w-40">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {rows.map((r: any) => (
-                                    <TableRow key={r.id} className="border-b hover:bg-muted/30">
-                                        <TableCell>{r.id}</TableCell>
-                                        <TableCell>{r.attributes?.title ?? '-'}</TableCell>
-                                        <TableCell>{r.relationships?.patient?.data?.id ?? '-'}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            {r.attributes?.pdf_url && (
-                                                <Link href={r.attributes.pdf_url} target="_blank">
-                                                    <Button variant="secondary" size="sm">
-                                                        PDF
+                                {rows.map((r: any) => {
+                                    const patientId = r.relationships?.patient?.data?.id;
+                                    const patient = patientId
+                                        ? patientsMap.get(String(patientId))
+                                        : undefined;
+                                    const patientName =
+                                        patient?.attributes?.name ??
+                                        patient?.attributes?.values?.patient_name ??
+                                        '-';
+
+                                    const testId = r.relationships?.test?.data?.id;
+                                    const test = testId
+                                        ? testsMap.get(String(testId))
+                                        : undefined;
+                                    const testName = test?.attributes?.name ?? '-';
+
+                                    const hospitalId = r.relationships?.hospital?.data?.id;
+                                    const hospital = hospitalId
+                                        ? hospitalsMap.get(String(hospitalId))
+                                        : undefined;
+                                    const hospitalName = hospital?.attributes?.name ?? '-';
+
+                                    return (
+                                        <TableRow key={r.id} className="border-b hover:bg-muted/30">
+                                            <TableCell>{r.id}</TableCell>
+                                            <TableCell>{r.attributes?.title ?? '-'}</TableCell>
+                                            <TableCell>{patientName}</TableCell>
+                                            <TableCell>{testName}</TableCell>
+                                            <TableCell>{hospitalName}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                {r.attributes?.pdf_url && (
+                                                    <Link href={r.attributes.pdf_url} target="_blank">
+                                                        <Button variant="secondary" size="sm">
+                                                            PDF
+                                                        </Button>
+                                                    </Link>
+                                                )}
+                                                <Link href={`/reports/${r.id}`}>
+                                                    <Button size="sm" variant="secondary">
+                                                        Edit
                                                     </Button>
                                                 </Link>
-                                            )}
-                                            <Link href={`/reports/${r.id}`}>
-                                                <Button size="sm" variant="secondary">
-                                                    Edit
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(r.id)}
+                                                >
+                                                    Delete
                                                 </Button>
-                                            </Link>
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={() => handleDelete(r.id)}
-                                            >
-                                                Delete
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     )}
