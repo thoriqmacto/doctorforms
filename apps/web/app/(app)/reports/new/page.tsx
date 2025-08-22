@@ -1,8 +1,9 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 import useSWR from 'swr';
-import { getTemplate, createReport, getReport } from '@/lib/api';
+import { getTemplate, createReport, getReport, getHospital } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateReportPdf } from '@/lib/pdf';
@@ -23,9 +24,14 @@ export default function NewReportPage() {
         templateId ? ['/templates', templateId] : null,
         () => getTemplate(templateId!, { include: 'fields' }).then((r: any) => r)
     );
+    const { data: hospitalRes, isLoading: hospitalLoading } = useSWR(
+        hospitalId ? ['/hospitals', hospitalId] : null,
+        () => getHospital(hospitalId!).then((r: any) => r)
+    );
 
     const tpl = data?.data;
-    const grouped = tpl?.meta?.grouped_sections ?? [];
+    const grouped = useMemo(() => tpl?.meta?.grouped_sections ?? [], [tpl]);
+    const hospital = hospitalRes?.data;
 
     async function onSubmit(values: Record<string, any>) {
         const payload = {
@@ -50,8 +56,30 @@ export default function NewReportPage() {
     }
 
     const templateName = templateNameParam ?? tpl?.attributes?.name;
-    const hospitalLabel = hospitalName ?? `#${hospitalId}`;
+    const hospitalLabel =
+        hospital?.attributes?.name ?? hospitalName ?? `#${hospitalId}`;
     const templateLabel = templateName ?? `#${templateId}`;
+
+    const initialValues = useMemo(() => {
+        if (!hospital || grouped.length === 0) return {};
+        const labelMap = new Map<string, string>();
+        grouped.forEach((sec: any) =>
+            sec.items.forEach((f: any) =>
+                labelMap.set(f.attributes.label, `f_${f.id}`)
+            )
+        );
+        const attrs = hospital.attributes ?? {};
+        const vals: Record<string, string> = {};
+        const assign = (label: string, value?: string | null) => {
+            const key = labelMap.get(label);
+            if (key && value) vals[key] = value;
+        };
+        assign('Hospital Name', attrs.name);
+        assign('Unit / Department', (attrs as any).unit_department ?? (attrs as any).department);
+        assign('Address', attrs.address);
+        assign('Phone / Fax', (attrs as any).phone_fax ?? attrs.phone);
+        return vals;
+    }, [hospital, grouped]);
 
     return (
         <div className="space-y-4">
@@ -69,9 +97,13 @@ export default function NewReportPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? 'Loading…' : (
+                    {isLoading || hospitalLoading ? 'Loading…' : (
                         <div className="page-a4 rounded-xl shadow-md">
-                            <TemplateFormRenderer groupedSections={grouped} onSubmit={onSubmit} />
+                            <TemplateFormRenderer
+                                groupedSections={grouped}
+                                onSubmit={onSubmit}
+                                initialValues={initialValues}
+                            />
                         </div>
                     )}
                 </CardContent>
