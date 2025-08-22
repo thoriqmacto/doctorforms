@@ -8,6 +8,7 @@ export type TemplateField = {
         options: string[] | null;
         order: number;
         field_group_order: number;
+        required?: boolean;
     };
 };
 
