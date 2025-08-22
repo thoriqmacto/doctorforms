@@ -41,7 +41,7 @@ export default function EditTemplatePage() {
 
     const { data } = useSWR(
         id ? ['/templates', id, 'edit'] : null,
-        () => getTemplate(id, { include: 'test,hospital,fields' })
+        () => getTemplate(id, { include: 'user,test,hospital,fields' })
     );
     const { data: testsData } = useSWR(['/tests'], () =>
         getTests().then((r: any) => r)
@@ -54,6 +54,7 @@ export default function EditTemplatePage() {
         defaultValues: {
             name: '',
             description: '',
+            user_id: '',
             test_id: '',
             hospital_id: '',
             fields: [] as any[],
@@ -72,6 +73,7 @@ export default function EditTemplatePage() {
             form.reset({
                 name: a.name,
                 description: a.description ?? '',
+                user_id: rels?.user?.data?.id ?? '',
                 test_id: rels?.test?.data?.id ?? '',
                 hospital_id: rels?.hospital?.data?.id ?? '',
                 fields: [],
@@ -84,6 +86,7 @@ export default function EditTemplatePage() {
             await updateTemplate(id, {
                 name: values.name,
                 description: values.description,
+                user_id: Number(values.user_id),
                 test_id: Number(values.test_id),
                 hospital_id: Number(values.hospital_id),
             });
@@ -122,9 +125,10 @@ export default function EditTemplatePage() {
     const templateName = data?.data?.attributes?.name ?? 'Template';
     const tests = testsData?.data ?? [];
     const hospitals = hospitalsData?.data ?? [];
-    const existingFields = (data?.included ?? []).filter(
-        (r: any) => r.type === 'template_fields'
-    );
+    const included = data?.included ?? [];
+    const existingFields = included.filter((r: any) => r.type === 'template_fields');
+    const user = included.find((r: any) => r.type === 'users');
+    const userName = user?.attributes?.name ?? '';
 
     return (
         <div className="space-y-4">
@@ -169,6 +173,20 @@ export default function EditTemplatePage() {
                                             <Textarea {...field} />
                                         </FormControl>
                                         <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="user_id"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>User</FormLabel>
+                                        <FormControl>
+                                            <Input value={userName} disabled />
+                                        </FormControl>
+                                        <FormMessage />
+                                        <input type="hidden" {...field} />
                                     </FormItem>
                                 )}
                             />
