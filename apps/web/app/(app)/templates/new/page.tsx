@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import useSWR from 'swr';
-import { createTemplate, getHospitals, getTests } from '@/lib/api';
+import { createTemplate, createTemplateField, getHospitals, getTests } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -16,12 +16,23 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewTemplatePage() {
     const router = useRouter();
     const form = useForm({
-        defaultValues: { name: '', description: '', test_id: '', hospital_id: '' },
+        defaultValues: {
+            name: '',
+            description: '',
+            test_id: '',
+            hospital_id: '',
+            fields: [{ label: '', required: false }],
+        },
+    });
+    const { fields: templateFields, append, remove } = useFieldArray({
+        control: form.control,
+        name: 'fields',
     });
 
     const { data: testsData } = useSWR(['/tests'], () => getTests().then((r: any) => r));
@@ -34,12 +45,27 @@ export default function NewTemplatePage() {
 
     async function onSubmit(values: any) {
         try {
-            await createTemplate({
+            const result = await createTemplate({
                 ...values,
                 test_id: Number(values.test_id),
                 hospital_id: Number(values.hospital_id),
                 user_id: 1,
             });
+            const templateId = Number(result?.data?.id ?? result?.id);
+            if (templateId && values.fields?.length) {
+                await Promise.all(
+                    values.fields.map((f: any, idx: number) =>
+                        createTemplateField({
+                            template_id: templateId,
+                            section: 'General',
+                            label: f.label,
+                            type: 'text',
+                            order: idx + 1,
+                            required: f.required,
+                        }),
+                    ),
+                );
+            }
             router.push('/templates');
         } catch (e) {
             console.error(e);
@@ -140,6 +166,55 @@ export default function NewTemplatePage() {
                                     </FormItem>
                                 )}
                             />
+                            <div className="space-y-2">
+                                {templateFields.map((field, index) => (
+                                    <div key={field.id} className="flex items-end gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name={`fields.${index}.label`}
+                                            rules={{ required: 'Field label is required' }}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormLabel>Field Label</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`fields.${index}.required`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-col items-center justify-center">
+                                                    <FormLabel>Required</FormLabel>
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={() => remove(index)}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => append({ label: '', required: false })}
+                                >
+                                    Add Field
+                                </Button>
+                            </div>
                             <Button type="submit">Save</Button>
                         </form>
                     </Form>

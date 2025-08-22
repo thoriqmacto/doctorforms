@@ -30,12 +30,25 @@ export interface TemplatePayload {
     test_id: number;
     hospital_id: number;
 }
+
+export interface TemplateFieldPayload {
+    template_id: number;
+    section: string;
+    label: string;
+    type: string;
+    options?: string[] | null;
+    order?: number;
+    field_group_order?: number;
+    required?: boolean;
+}
 export const getTemplates = (params?: Record<string, any>) =>
     api.get('templates', { searchParams: params }).json<any>();
 export const getTemplate = (id: string | number, params?: Record<string, any>) =>
     api.get(`templates/${id}`, { searchParams: params }).json<any>();
 export const createTemplate = (payload: TemplatePayload) =>
     api.post('templates', { json: payload }).json<any>();
+export const createTemplateField = (payload: TemplateFieldPayload) =>
+    api.post('template-fields', { json: payload }).json<any>();
 export const updateTemplate = (
     id: string | number,
     payload: Partial<TemplatePayload>,
