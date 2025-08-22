@@ -362,6 +362,55 @@ class TemplateFieldsTableSeeder extends Seeder
         $i = 0;
         $section = 'Wall Motion';
         $group = $g(20);
+
+        $fields[] = [
+            'template_id' => $GLOBALS['templateId'],
+            'section' => $section,
+            'label' => '2D Wall‑Motion Bullseye',
+            'type' => 'bullseye',
+            'options' => json_encode([
+                'model' => 'AHA17',
+                'scheme' => 'wall_motion_v1',
+                'legend' => [
+                    'N' => 'Normal',
+                    'H' => 'Hypokinesia',
+                    'A' => 'Akinesia',
+                    'An' => 'Aneurysm',
+                    'D' => 'Dyskinesia',
+                    'U' => 'Unknown',
+                ],
+                'segments' => [
+                    ['id' => 1, 'code' => 'basal-anterior'],
+                    ['id' => 2, 'code' => 'basal-anteroseptal'],
+                    ['id' => 3, 'code' => 'basal-inferoseptal'],
+                    ['id' => 4, 'code' => 'basal-inferior'],
+                    ['id' => 5, 'code' => 'basal-inferolateral'],
+                    ['id' => 6, 'code' => 'basal-anterolateral'],
+                    ['id' => 7, 'code' => 'mid-anterior'],
+                    ['id' => 8, 'code' => 'mid-anteroseptal'],
+                    ['id' => 9, 'code' => 'mid-inferoseptal'],
+                    ['id' => 10, 'code' => 'mid-inferior'],
+                    ['id' => 11, 'code' => 'mid-inferolateral'],
+                    ['id' => 12, 'code' => 'mid-anterolateral'],
+                    ['id' => 13, 'code' => 'apical-anterior'],
+                    ['id' => 14, 'code' => 'apical-septal'],
+                    ['id' => 15, 'code' => 'apical-inferior'],
+                    ['id' => 16, 'code' => 'apical-lateral'],
+                    ['id' => 17, 'code' => 'apex-cap'],
+                ],
+                'rings' => [
+                    'basal' => [1, 2, 3, 4, 5, 6],
+                    'mid' => [7, 8, 9, 10, 11, 12],
+                    'apical' => [13, 14, 15, 16],
+                    'apex' => [17],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+            'order' => ++$i,
+            'field_group_order' => $group,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
         $add($fields, $section, '2D Wall‑Motion Diagram', 'checkbox_group', ['Normal', 'Hypokinesia', 'Akinesia', 'Aneurysm', 'Dyskinesia', 'Unknown'], ++$i, $group);
 
         // ===================== 21/22) SUMMARY / ADMIN =====================
