@@ -5,7 +5,7 @@ export type TemplateField = {
         section: string | null;
         label: string;
         type: 'text' | 'number' | 'select' | 'textarea' | 'title' | 'image';
-        options: string[] | null;
+        options: Record<string, any> | string[] | null;
         order: number;
         field_group_order: number;
         required?: boolean;
@@ -37,6 +37,7 @@ export type TemplateResource = {
     };
     relationships?: {
         test?: { data: { type: 'tests'; id: string } | null };
+        hospital?: { data: { type: 'hospitals'; id: string } | null };
     };
     meta?: {
         page?: {
@@ -51,12 +52,13 @@ export type TemplateResource = {
 
 export type TemplatesIndexResponse = {
     data: TemplateResource[];
-    included?: TestResource[];
+    included?: (TestResource | HospitalResource)[];
     meta?: any;
 };
 
 export type TemplateShowResponse = {
     data: TemplateResource;
+    included?: (TestResource | HospitalResource | TemplateField)[];
     meta?: any;
 };
 
