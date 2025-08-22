@@ -36,7 +36,7 @@ export interface TemplateFieldPayload {
     section: string;
     label: string;
     type: string;
-    options?: string[] | null;
+    options?: Record<string, any> | string[] | null;
     order?: number;
     field_group_order?: number;
     required?: boolean;
