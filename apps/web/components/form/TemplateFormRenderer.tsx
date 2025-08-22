@@ -52,6 +52,8 @@ type Props = {
         /** Pair fields side-by-side: key is left label, value is right label */
         pairFields?: Record<string, string>;
     };
+    /** Prefill values keyed by field name (`f_<id>`) */
+    initialValues?: Record<string, unknown>;
 };
 
 // === Helpers ===
@@ -111,7 +113,7 @@ function sortSections(sections: Section[]) {
         .map((x) => x.sec);
 }
 
-export default function TemplateFormRenderer({ groupedSections, onSubmit, layoutHints }: Props) {
+export default function TemplateFormRenderer({ groupedSections, onSubmit, layoutHints, initialValues }: Props) {
     // Zod schema from field types
     const baseShape: Record<string, z.ZodTypeAny> = {};
     groupedSections.forEach((sec) => {
@@ -127,11 +129,16 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
 
-    const { control, handleSubmit, watch, setValue, getFieldState, formState } = useForm({
+    const { control, handleSubmit, watch, setValue, getFieldState, formState, reset } = useForm({
         resolver: zodResolver(schema),
-        defaultValues: {},
+        defaultValues: initialValues || {},
         mode: "onChange",
     });
+
+    // Reset form when initial values change (e.g., after async load)
+    useEffect(() => {
+        if (initialValues) reset(initialValues);
+    }, [initialValues, reset]);
 
     // Group fields by field_group_order (used for sentence auto-fill)
     const fieldGroups = useMemo(() => {
