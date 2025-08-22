@@ -49,4 +49,37 @@ class Template extends Model
     {
         return $this->hasMany(Report::class);
     }
+
+    /**
+     * Instantiate a new report based on this template and populate
+     * report fields with their default values.
+     */
+    public function instantiateReport(array $attributes): Report
+    {
+        $report = $this->reports()->create(array_merge([
+            'template_id' => $this->id,
+            'test_id'     => $this->test_id,
+            'hospital_id' => $this->hospital_id,
+        ], $attributes));
+
+        $fieldsPayload = $this->fields()->get()->map(function (TemplateField $field) {
+            $options = $field->options;
+            $default = '';
+
+            if (is_array($options) && array_key_exists('default', $options)) {
+                $default = $options['default'];
+            }
+
+            return [
+                'template_field_id' => $field->id,
+                'value'             => $default,
+            ];
+        })->all();
+
+        if (!empty($fieldsPayload)) {
+            $report->fields()->createMany($fieldsPayload);
+        }
+
+        return $report;
+    }
 }
