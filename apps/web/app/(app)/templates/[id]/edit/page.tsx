@@ -8,6 +8,7 @@ import {
     createTemplateField,
     deleteTemplate,
     getHospitals,
+    getUser,
     getTemplate,
     getTests,
     updateTemplate,
@@ -127,8 +128,12 @@ export default function EditTemplatePage() {
     const hospitals = hospitalsData?.data ?? [];
     const included = data?.included ?? [];
     const existingFields = included.filter((r: any) => r.type === 'template_fields');
-    const user = included.find((r: any) => r.type === 'users');
-    const userName = user?.attributes?.name ?? '';
+    const userId = data?.data?.relationships?.user?.data?.id;
+    const { data: userData } = useSWR(
+        userId ? ['/users', userId] : null,
+        () => getUser(userId as string).then((r: any) => r)
+    );
+    const userName = userData?.data?.attributes?.name ?? '';
 
     return (
         <div className="space-y-4">
