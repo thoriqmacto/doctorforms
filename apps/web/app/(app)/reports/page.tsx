@@ -191,6 +191,11 @@ export default function ReportsPage() {
                                                         View
                                                     </Button>
                                                 </Link>
+                                                <Link href={`/reports/${r.id}/edit`}>
+                                                    <Button size="sm" variant="secondary">
+                                                        Edit
+                                                    </Button>
+                                                </Link>
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"
