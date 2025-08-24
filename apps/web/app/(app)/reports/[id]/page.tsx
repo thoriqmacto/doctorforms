@@ -7,6 +7,7 @@ import {
     getPatient,
     getHospital,
     getTests,
+    getTemplate,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -25,13 +26,34 @@ export default function ReportDetailPage() {
 
     const { data, isLoading } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields' }).then((r: any) => r)
+        () => getReport(id, { include: 'fields,template' }).then((r: any) => r)
     );
 
     const report = data?.data;
     const attrs = report?.attributes ?? {};
     const title = attrs.title ?? `Report #${id}`;
-    const fields = report?.relationships?.fields?.data ?? [];
+    const reportFields = report?.relationships?.fields?.data ?? [];
+    const templateId = report?.relationships?.template?.data?.id;
+
+    const { data: templateRes } = useSWR(
+        templateId ? ['/templates', templateId] : null,
+        () => getTemplate(templateId as string, { include: 'fields' }).then((r: any) => r)
+    );
+    const template = templateRes?.data;
+    const templateFields =
+        template?.meta?.grouped_sections?.flatMap((sec: any) => sec.items) ?? [];
+
+    const reportFieldMap = new Map<string, any>(
+        reportFields.map((f: any) => [f.label, f])
+    );
+    const allFields = templateFields.map((f: any) => {
+        const found = reportFieldMap.get(f.attributes.label);
+        return {
+            id: f.id,
+            label: f.attributes.label,
+            value: found?.value ?? '',
+        };
+    });
 
     const patientId = report?.relationships?.patient?.data?.id;
     const hospitalId = report?.relationships?.hospital?.data?.id;
@@ -73,45 +95,40 @@ export default function ReportDetailPage() {
                         <CardHeader>
                             <CardTitle>{title}</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-1">
-                            <div>
-                                <span className="font-medium">Patient:</span> {patientName}
-                            </div>
-                            <div>
-                                <span className="font-medium">Test:</span> {testName}
-                            </div>
-                            <div>
-                                <span className="font-medium">Hospital:</span> {hospitalName}
+                        <CardContent>
+                            <div className="page-a4 rounded-xl shadow-md space-y-4">
+                                <div className="space-y-1">
+                                    <div>
+                                        <span className="font-medium">Patient:</span> {patientName}
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Test:</span> {testName}
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Hospital:</span> {hospitalName}
+                                    </div>
+                                </div>
+                                {templateFields.length > 0 && (
+                                    <Table>
+                                        <TableHeader className="bg-muted/40">
+                                            <TableRow className="border-b">
+                                                <TableHead>Label</TableHead>
+                                                <TableHead>Value</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {allFields.map((f: any) => (
+                                                <TableRow key={f.id} className="border-b">
+                                                    <TableCell>{f.label ?? '-'}</TableCell>
+                                                    <TableCell>{String(f.value ?? '')}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
-                    {fields.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Fields</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <Table>
-                                    <TableHeader className="bg-muted/40">
-                                        <TableRow className="border-b">
-                                            <TableHead>Label</TableHead>
-                                            <TableHead>Value</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {fields.map((f: any) => (
-                                            <TableRow key={f.id} className="border-b">
-                                                <TableCell>{f.label ?? '-'}</TableCell>
-                                                <TableCell>
-                                                    {String(f.value ?? '')}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    )}
                 </>
             )}
         </div>
