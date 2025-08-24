@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import {
     createTemplateField,
@@ -67,6 +67,20 @@ export default function EditTemplatePage() {
         name: 'fields',
     });
 
+    const groupedFields = useMemo(() => {
+        const groups: { section: string; items: Array<{ index: number; field: any }> }[] = [];
+        fields.forEach((field, index) => {
+            const section = (field as any).section || 'General';
+            let group = groups.find((g) => g.section === section);
+            if (!group) {
+                group = { section, items: [] };
+                groups.push(group);
+            }
+            group.items.push({ index, field });
+        });
+        return groups;
+    }, [fields]);
+
     useEffect(() => {
         if (data?.data) {
             const a = data.data.attributes;
@@ -76,11 +90,19 @@ export default function EditTemplatePage() {
                 .filter((r: any) => r.type === 'template_fields')
                 .map((f: any) => ({
                     field_id: f.id,
+                    section: f.attributes?.section ?? 'General',
                     label: f.attributes?.label,
                     type: f.attributes?.type,
                     default_value: f.attributes?.options?.default ?? '',
                     required: f.attributes?.required ?? false,
-                }));
+                    order: f.attributes?.order ?? 0,
+                    field_group_order: f.attributes?.field_group_order ?? 0,
+                }))
+                .sort((a: any, b: any) =>
+                    a.field_group_order === b.field_group_order
+                        ? a.order - b.order
+                        : a.field_group_order - b.field_group_order
+                );
             form.reset({
                 name: a.name,
                 description: a.description ?? '',
@@ -110,7 +132,7 @@ export default function EditTemplatePage() {
                         newFields.map((f: any, idx: number) =>
                             createTemplateField({
                                 template_id: Number(id),
-                                section: 'General',
+                                section: f.section || 'General',
                                 label: f.label,
                                 type: f.type,
                                 order: idx + 1,
@@ -261,89 +283,98 @@ export default function EditTemplatePage() {
                                 )}
                             />
                             <div className="space-y-2">
-                                {fields.map((fieldItem, index) => (
-                                    <div
-                                        key={fieldItem.id}
-                                        className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            {...form.register(`fields.${index}.field_id`)}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`fields.${index}.label`}
-                                            rules={{ required: 'Field label is required' }}
-                                            render={({ field }) => (
-                                                <FormItem className="md:col-span-1">
-                                                    <FormLabel>Field Label</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`fields.${index}.type`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Type</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select type" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="text">Text</SelectItem>
-                                                            <SelectItem value="number">Number</SelectItem>
-                                                            <SelectItem value="select">Select</SelectItem>
-                                                            <SelectItem value="textarea">Textarea</SelectItem>
-                                                            <SelectItem value="title">Title</SelectItem>
-                                                            <SelectItem value="image">Image</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`fields.${index}.default_value`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Default Value</FormLabel>
-                                                    <FormControl>
-                                                        <Input {...field} />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <div className="flex items-center space-x-2">
-                                            <FormField
-                                                control={form.control}
-                                                name={`fields.${index}.required`}
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-col items-center justify-center">
-                                                        <FormLabel>Required</FormLabel>
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value}
-                                                                onCheckedChange={field.onChange}
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                onClick={() => remove(index)}
+                                {groupedFields.map((group) => (
+                                    <div key={group.section} className="space-y-2">
+                                        <h3 className="font-semibold">{group.section}</h3>
+                                        {group.items.map(({ field: fieldItem, index }) => (
+                                            <div
+                                                key={fieldItem.id}
+                                                className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end"
                                             >
-                                                Remove
-                                            </Button>
-                                        </div>
+                                                <input
+                                                    type="hidden"
+                                                    {...form.register(`fields.${index}.field_id`)}
+                                                />
+                                                <input
+                                                    type="hidden"
+                                                    {...form.register(`fields.${index}.section`)}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`fields.${index}.label`}
+                                                    rules={{ required: 'Field label is required' }}
+                                                    render={({ field }) => (
+                                                        <FormItem className="md:col-span-1">
+                                                            <FormLabel>Field Label</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`fields.${index}.type`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Type</FormLabel>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <FormControl>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select type" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent>
+                                                                    <SelectItem value="text">Text</SelectItem>
+                                                                    <SelectItem value="number">Number</SelectItem>
+                                                                    <SelectItem value="select">Select</SelectItem>
+                                                                    <SelectItem value="textarea">Textarea</SelectItem>
+                                                                    <SelectItem value="title">Title</SelectItem>
+                                                                    <SelectItem value="image">Image</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`fields.${index}.default_value`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Default Value</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <div className="flex items-center space-x-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`fields.${index}.required`}
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex flex-col items-center justify-center">
+                                                                <FormLabel>Required</FormLabel>
+                                                                <FormControl>
+                                                                    <Checkbox
+                                                                        checked={field.value}
+                                                                        onCheckedChange={field.onChange}
+                                                                    />
+                                                                </FormControl>
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        onClick={() => remove(index)}
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ))}
                                 <Button
@@ -351,6 +382,7 @@ export default function EditTemplatePage() {
                                     variant="secondary"
                                     onClick={() =>
                                         append({
+                                            section: 'General',
                                             label: '',
                                             type: 'text',
                                             default_value: '',
