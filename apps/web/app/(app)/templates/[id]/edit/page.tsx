@@ -71,13 +71,23 @@ export default function EditTemplatePage() {
         if (data?.data) {
             const a = data.data.attributes;
             const rels = data.data.relationships;
+            const included = data.included ?? [];
+            const existing = included
+                .filter((r: any) => r.type === 'template_fields')
+                .map((f: any) => ({
+                    field_id: f.id,
+                    label: f.attributes?.label,
+                    type: f.attributes?.type,
+                    default_value: f.attributes?.options?.default ?? '',
+                    required: f.attributes?.required ?? false,
+                }));
             form.reset({
                 name: a.name,
                 description: a.description ?? '',
                 user_id: rels?.user?.data?.id ?? '',
                 test_id: rels?.test?.data?.id ?? '',
                 hospital_id: rels?.hospital?.data?.id ?? '',
-                fields: [],
+                fields: existing,
             });
         }
     }, [data, form]);
@@ -92,19 +102,26 @@ export default function EditTemplatePage() {
                 hospital_id: Number(values.hospital_id),
             });
             if (values.fields?.length) {
-                await Promise.all(
-                    values.fields.map((f: any, idx: number) =>
-                        createTemplateField({
-                            template_id: Number(id),
-                            section: 'General',
-                            label: f.label,
-                            type: f.type,
-                            order: idx + 1,
-                            required: f.required,
-                            options: f.default_value ? { default: f.default_value } : null,
-                        })
-                    )
+                const newFields = values.fields.filter(
+                    (f: any) => !f.field_id
                 );
+                if (newFields.length) {
+                    await Promise.all(
+                        newFields.map((f: any, idx: number) =>
+                            createTemplateField({
+                                template_id: Number(id),
+                                section: 'General',
+                                label: f.label,
+                                type: f.type,
+                                order: idx + 1,
+                                required: f.required,
+                                options: f.default_value
+                                    ? { default: f.default_value }
+                                    : null,
+                            })
+                        )
+                    );
+                }
             }
             router.push('/templates');
         } catch (e) {
@@ -126,8 +143,6 @@ export default function EditTemplatePage() {
     const templateName = data?.data?.attributes?.name ?? 'Template';
     const tests = testsData?.data ?? [];
     const hospitals = hospitalsData?.data ?? [];
-    const included = data?.included ?? [];
-    const existingFields = included.filter((r: any) => r.type === 'template_fields');
     const userId = data?.data?.relationships?.user?.data?.id;
     const { data: userData } = useSWR(
         userId ? ['/users', userId] : null,
@@ -245,25 +260,16 @@ export default function EditTemplatePage() {
                                     </FormItem>
                                 )}
                             />
-                            {existingFields.length > 0 && (
-                                <div className="space-y-2">
-                                    <h3 className="text-lg font-medium">Existing Fields</h3>
-                                    <ul className="space-y-1 list-disc list-inside">
-                                        {existingFields.map((f: any) => (
-                                            <li key={f.id}>
-                                                <span className="font-medium">{f.attributes?.label}</span>
-                                                <span className="text-muted-foreground"> — {f.attributes?.type}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
                             <div className="space-y-2">
                                 {fields.map((fieldItem, index) => (
                                     <div
                                         key={fieldItem.id}
                                         className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end"
                                     >
+                                        <input
+                                            type="hidden"
+                                            {...form.register(`fields.${index}.field_id`)}
+                                        />
                                         <FormField
                                             control={form.control}
                                             name={`fields.${index}.label`}
