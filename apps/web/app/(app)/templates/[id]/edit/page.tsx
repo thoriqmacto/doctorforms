@@ -85,24 +85,24 @@ export default function EditTemplatePage() {
         if (data?.data) {
             const a = data.data.attributes;
             const rels = data.data.relationships;
-            const included = data.included ?? [];
-            const existing = included
-                .filter((r: any) => r.type === 'template_fields')
-                .map((f: any) => ({
-                    field_id: f.id,
-                    section: f.attributes?.section ?? 'General',
-                    label: f.attributes?.label,
-                    type: f.attributes?.type,
-                    default_value: f.attributes?.options?.default ?? '',
-                    required: f.attributes?.required ?? false,
-                    order: f.attributes?.order ?? 0,
-                    field_group_order: f.attributes?.field_group_order ?? 0,
-                }))
+            const grouped = data?.data?.meta?.grouped_sections ?? [];
+            const existing = grouped
+                .flatMap((g: any) =>
+                    (g.items ?? []).map((f: any) => ({
+                        field_id: f.id,
+                        section: f.attributes?.section ?? g.section ?? 'General',
+                        label: f.attributes?.label ?? '',
+                        type: f.attributes?.type ?? 'text',
+                        default_value: f.attributes?.options?.default ?? '',
+                        required: !!f.attributes?.required,
+                        order: f.attributes?.order ?? 0,
+                        field_group_order: f.attributes?.field_group_order ?? 0,
+                    }))
+                )
                 .sort((a: any, b: any) =>
-                    a.field_group_order === b.field_group_order
-                        ? a.order - b.order
-                        : a.field_group_order - b.field_group_order
+                    a.field_group_order === b.field_group_order ? a.order - b.order : a.field_group_order - b.field_group_order
                 );
+
             form.reset({
                 name: a.name,
                 description: a.description ?? '',
@@ -181,6 +181,11 @@ export default function EditTemplatePage() {
                     { label: `Edit ${templateName}` },
                 ]}
             />
+            {/*{groupedFields.length === 0 ? (*/}
+            {/*    <div className="text-sm text-muted-foreground">No grouped fields to show.</div>*/}
+            {/*) : (*/}
+            {/*    <pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(groupedFields, null, 2)}</pre>*/}
+            {/*)}*/}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Edit {templateName}</CardTitle>
