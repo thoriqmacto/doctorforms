@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+    BullseyeWallMotion,
+    makeDefaultBullseye,
+    type BullseyeValue,
+} from "@/components/form/BullseyeWallMotion";
 
 // === Types ===
 export type Field = {
@@ -30,7 +35,8 @@ export type Field = {
             | "title"
             | "image"
             | "checkbox_group"
-            | "date";
+            | "date"
+            | "bullseye";
         options: string[] | null;
         order?: number | null;
         field_group_order?: number | null;
@@ -122,6 +128,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
             const t = f.attributes.type;
             if (t === "number") baseShape[name] = z.coerce.number().optional();
             else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
+            else if (t === "bullseye") baseShape[name] = z.any().optional();
             else baseShape[name] = z.string().optional(); // text | select | textarea | date | title | image
         });
     });
@@ -236,7 +243,8 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
             !!layoutHints?.fullWidthLabels?.some((x) => x.toLowerCase() === label.toLowerCase()) ||
             t === "textarea" ||
             t === "image" ||
-            t === "title";
+            t === "title" ||
+            t === "bullseye";
 
         if (t === "title") {
             return (
@@ -251,6 +259,25 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
                 <div key={name} className="space-y-1 col-span-full">
                     <Label>{label}</Label>
                     <div className="text-sm text-muted-foreground">Image upload not implemented.</div>
+                </div>
+            );
+        }
+
+        if (t === "bullseye") {
+            return (
+                <div key={name} className="space-y-1 col-span-full">
+                    <Label>{label}</Label>
+                    <Controller
+                        control={control}
+                        name={name}
+                        defaultValue={makeDefaultBullseye()}
+                        render={({ field }) => (
+                            <BullseyeWallMotion
+                                value={(field.value as BullseyeValue) ?? makeDefaultBullseye()}
+                                onChange={field.onChange}
+                            />
+                        )}
+                    />
                 </div>
             );
         }
