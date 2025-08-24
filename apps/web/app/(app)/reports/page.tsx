@@ -188,7 +188,7 @@ export default function ReportsPage() {
                                                 )}
                                                 <Link href={`/reports/${r.id}`}>
                                                     <Button size="sm" variant="secondary">
-                                                        Edit
+                                                        View
                                                     </Button>
                                                 </Link>
                                                 <Button
