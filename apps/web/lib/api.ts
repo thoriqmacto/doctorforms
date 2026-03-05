@@ -49,6 +49,12 @@ export const createTemplate = (payload: TemplatePayload) =>
     api.post('templates', { json: payload }).json<any>();
 export const createTemplateField = (payload: TemplateFieldPayload) =>
     api.post('template-fields', { json: payload }).json<any>();
+export const updateTemplateField = (
+    id: string | number,
+    payload: Partial<TemplateFieldPayload>,
+) => api.patch(`template-fields/${id}`, { json: payload }).json<any>();
+export const deleteTemplateField = (id: string | number) =>
+    api.delete(`template-fields/${id}`).json<any>();
 export const updateTemplate = (
     id: string | number,
     payload: Partial<TemplatePayload>,
