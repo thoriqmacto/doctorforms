@@ -97,10 +97,10 @@ export default function EditTemplatePage() {
         id ? ['/templates', id, 'edit'] : null,
         () => getTemplate(id, { include: 'user,test,hospital,fields' })
     );
-    const { data: testsData } = useSWR(['/tests'], () =>
+    const { data: testsData, mutate: mutateTests } = useSWR(['/tests'], () =>
         getTests().then((r: any) => r)
     );
-    const { data: hospitalsData } = useSWR(['/hospitals'], () =>
+    const { data: hospitalsData, mutate: mutateHospitals } = useSWR(['/hospitals'], () =>
         getHospitals().then((r: any) => r)
     );
 
@@ -120,6 +120,8 @@ export default function EditTemplatePage() {
         name: 'fields',
     });
     const watchedFields = useWatch({ control: form.control, name: 'fields' });
+    const selectedTestId = useWatch({ control: form.control, name: 'test_id' });
+    const selectedHospitalId = useWatch({ control: form.control, name: 'hospital_id' });
     const [successMessage, setSuccessMessage] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -168,6 +170,16 @@ export default function EditTemplatePage() {
         });
     }
 
+    function removeSection(groupIndices: number[]) {
+        [...groupIndices]
+            .sort((a, b) => b - a)
+            .forEach((fieldIndex) => remove(fieldIndex));
+    }
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     useEffect(() => {
         if (data?.data) {
             const a = data.data.attributes;
@@ -205,6 +217,7 @@ export default function EditTemplatePage() {
         try {
             setIsSaving(true);
             setSuccessMessage('');
+            scrollToTop();
             const payload = {
                 name: values.name,
                 description: values.description,
@@ -259,6 +272,7 @@ export default function EditTemplatePage() {
 
             setSuccessMessage('Template has been successfully updated.');
             await mutateTemplate();
+            scrollToTop();
         } catch (e: any) {
             const errors = e?.response ? await e.response.json().catch(() => null) : null;
             const firstErrorPath = Object.keys(errors?.errors ?? {})[0];
@@ -272,6 +286,7 @@ export default function EditTemplatePage() {
 
             console.error(e);
             alert('Failed to save');
+            scrollToTop();
         } finally {
             setIsSaving(false);
         }
@@ -301,7 +316,7 @@ export default function EditTemplatePage() {
         try {
             setIsRefreshing(true);
             setSuccessMessage('');
-            await mutateTemplate();
+            await Promise.all([mutateTemplate(), mutateTests(), mutateHospitals()]);
         } catch (e) {
             console.error(e);
             alert('Failed to refresh template data');
@@ -311,8 +326,54 @@ export default function EditTemplatePage() {
     }
 
     const templateName = data?.data?.attributes?.name ?? 'Template';
-    const tests = testsData?.data ?? [];
-    const hospitals = hospitalsData?.data ?? [];
+    const included = useMemo(() => data?.included ?? [], [data?.included]);
+
+    const tests = useMemo(() => {
+        const mappedTests = testsData?.data ?? [];
+
+        if (!selectedTestId || mappedTests.some((t: any) => String(t.id) === selectedTestId)) {
+            return mappedTests;
+        }
+
+        const includedTest = included.find(
+            (item: any) => item.type === 'tests' && String(item.id) === selectedTestId
+        );
+
+        return [
+            ...mappedTests,
+            {
+                id: selectedTestId,
+                attributes: {
+                    name: includedTest?.attributes?.name ?? `Test #${selectedTestId}`,
+                },
+            },
+        ];
+    }, [included, selectedTestId, testsData?.data]);
+
+    const hospitals = useMemo(() => {
+        const mappedHospitals = hospitalsData?.data ?? [];
+
+        if (
+            !selectedHospitalId ||
+            mappedHospitals.some((h: any) => String(h.id) === selectedHospitalId)
+        ) {
+            return mappedHospitals;
+        }
+
+        const includedHospital = included.find(
+            (item: any) => item.type === 'hospitals' && String(item.id) === selectedHospitalId
+        );
+
+        return [
+            ...mappedHospitals,
+            {
+                id: selectedHospitalId,
+                attributes: {
+                    name: includedHospital?.attributes?.name ?? `Hospital #${selectedHospitalId}`,
+                },
+            },
+        ];
+    }, [hospitalsData?.data, included, selectedHospitalId]);
     const userId = data?.data?.relationships?.user?.data?.id;
     const { data: userData } = useSWR(
         userId ? ['/users', userId] : null,
@@ -479,18 +540,30 @@ export default function EditTemplatePage() {
                                 {groupedFields.map((group) => (
                                     <Card key={group.groupOrder}>
                                         <CardHeader>
-                                            <div className="max-w-sm space-y-2">
-                                                <FormLabel>Section Name</FormLabel>
-                                                <Input
-                                                    value={group.section}
-                                                    onChange={(e) =>
-                                                        updateSectionName(
-                                                            group.items.map((item) => item.index),
-                                                            e.target.value
-                                                        )
+                                            <div className="flex items-end justify-between gap-3">
+                                                <div className="max-w-sm space-y-2">
+                                                    <FormLabel>Section Name</FormLabel>
+                                                    <Input
+                                                        value={group.section}
+                                                        onChange={(e) =>
+                                                            updateSectionName(
+                                                                group.items.map((item) => item.index),
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        data-field-path={`fields.${group.items[0]?.index}.section`}
+                                                    />
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    onClick={() =>
+                                                        removeSection(group.items.map((item) => item.index))
                                                     }
-                                                    data-field-path={`fields.${group.items[0]?.index}.section`}
-                                                />
+                                                    disabled={isProcessing}
+                                                >
+                                                    Remove Section
+                                                </Button>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3">
