@@ -12,7 +12,7 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 export default function NewUserPage() {
     const router = useRouter();
     const form = useForm({
-        defaultValues: { name: '', email: '', phone: '', password: '' },
+        defaultValues: { name: '', email: '', phone: '', position_title: '', password: '' },
     });
 
     async function onSubmit(values: any) {
@@ -75,6 +75,19 @@ export default function NewUserPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Phone</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="position_title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Position Title</FormLabel>
                                         <FormControl>
                                             <Input {...field} />
                                         </FormControl>

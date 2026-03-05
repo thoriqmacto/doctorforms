@@ -19,7 +19,7 @@ export default function EditUserPage() {
     const { data } = useSWR(id ? ['/users', id] : null, () => getUser(id));
     const name = data?.data?.attributes?.name ?? 'User';
     const form = useForm({
-        defaultValues: { name: '', email: '', phone: '', password: '' },
+        defaultValues: { name: '', email: '', phone: '', position_title: '', password: '' },
     });
 
     useEffect(() => {
@@ -29,6 +29,7 @@ export default function EditUserPage() {
                 name: a.name,
                 email: a.email,
                 phone: a.phone ?? '',
+                position_title: a.positionTitle ?? '',
                 password: '',
             });
         }
@@ -111,6 +112,19 @@ export default function EditUserPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Phone</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="position_title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Position Title</FormLabel>
                                         <FormControl>
                                             <Input {...field} />
                                         </FormControl>
