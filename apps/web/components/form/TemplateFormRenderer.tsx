@@ -49,6 +49,9 @@ type Section = { section: string | null; items: Field[] };
 type Props = {
     groupedSections: Section[];
     onSubmit: (values: Record<string, unknown>) => void;
+    showSubmitButton?: boolean;
+    showPrintButton?: boolean;
+    onPrint?: () => void;
     /** Optional hints to override layout heuristics per section or label */
     layoutHints?: {
         /** Force a section into a specific grid columns template (e.g., "grid-cols-1 md:grid-cols-2 lg:grid-cols-3") */
@@ -119,7 +122,7 @@ function sortSections(sections: Section[]) {
         .map((x) => x.sec);
 }
 
-export default function TemplateFormRenderer({ groupedSections, onSubmit, layoutHints, initialValues }: Props) {
+export default function TemplateFormRenderer({ groupedSections, onSubmit, showSubmitButton = true, showPrintButton = true, onPrint, layoutHints, initialValues }: Props) {
     // Zod schema from field types
     const baseShape: Record<string, z.ZodTypeAny> = {};
     groupedSections.forEach((sec) => {
@@ -480,10 +483,12 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, layout
                 ))}
 
                 <div className="flex gap-2 pt-2 print:hidden">
-                    <Button type="submit">Save</Button>
-                    <Button type="button" variant="secondary" onClick={() => window.print()} className="no-print">
-                        Print
-                    </Button>
+                    {showSubmitButton && <Button type="submit">Save</Button>}
+                    {showPrintButton && (
+                        <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())} className="no-print">
+                            Print
+                        </Button>
+                    )}
                 </div>
             </div>
         </form>

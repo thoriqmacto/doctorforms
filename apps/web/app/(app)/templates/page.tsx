@@ -72,11 +72,23 @@ export default function TemplatesPage() {
                                             <TableCell>{testName}</TableCell>
                                             <TableCell>{t.attributes.description}</TableCell>
                                             <TableCell className="text-right">
-                                                <Link href={`/templates/${t.id}/edit`}>
-                                                    <Button variant="secondary" size="sm">
-                                                        Edit
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex justify-end gap-2">
+                                                    <Link href={`/templates/${t.id}/view`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            View
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/templates/${t.id}/print`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            Print
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/templates/${t.id}/edit`}>
+                                                        <Button variant="secondary" size="sm">
+                                                            Edit
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     );
