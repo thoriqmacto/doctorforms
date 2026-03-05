@@ -131,7 +131,7 @@ export default function EditTemplatePage() {
         const groups: {
             groupOrder: number;
             section: string;
-            items: Array<{ index: number; field: TemplateFieldForm & { id: string } }>;
+            items: Array<{ index: number; renderKey: string }>;
         }[] = [];
 
         const currentFields = watchedFields ?? [];
@@ -144,7 +144,13 @@ export default function EditTemplatePage() {
                 group = { groupOrder, section, items: [] };
                 groups.push(group);
             }
-            group.items.push({ index, field: fields[index] as TemplateFieldForm & { id: string } });
+            group.items.push({
+                index,
+                renderKey:
+                    fields[index]?.id ??
+                    field?.field_id ??
+                    `${groupOrder}-${index}`,
+            });
         });
 
         return groups.sort((a, b) => a.groupOrder - b.groupOrder);
@@ -174,6 +180,15 @@ export default function EditTemplatePage() {
         [...groupIndices]
             .sort((a, b) => b - a)
             .forEach((fieldIndex) => remove(fieldIndex));
+
+        setSuccessMessage('Section has been successfully removed.');
+        scrollToTop();
+    }
+
+    function removeField(fieldIndex: number) {
+        remove(fieldIndex);
+        setSuccessMessage('Field has been successfully removed.');
+        scrollToTop();
     }
 
     function scrollToTop() {
@@ -567,9 +582,9 @@ export default function EditTemplatePage() {
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3">
-                                            {group.items.map(({ field: fieldItem, index }) => (
+                                            {group.items.map(({ renderKey, index }) => (
                                                 <div
-                                                    key={fieldItem.id}
+                                                    key={renderKey}
                                                     className="grid grid-cols-1 items-end gap-3 md:grid-cols-12"
                                                 >
                                                     <input
@@ -658,7 +673,7 @@ export default function EditTemplatePage() {
                                                         <Button
                                                             type="button"
                                                             variant="secondary"
-                                                            onClick={() => remove(index)}
+                                                            onClick={() => removeField(index)}
                                                             disabled={isProcessing}
                                                         >
                                                             Remove
