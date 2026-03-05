@@ -3,7 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useEffect, useMemo, useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import {
     createTemplateField,
     deleteTemplate,
@@ -74,12 +74,26 @@ function findFirstErrorPath(errors: any, parent = ''): string | null {
     return null;
 }
 
+
+function toSlug(value: string) {
+    return value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function buildUniqueName(section: string, label: string) {
+    const sectionSlug = toSlug(section || 'general') || 'general';
+    const labelSlug = toSlug(label || 'field') || 'field';
+    return `${sectionSlug}.${labelSlug}`;
+}
 export default function EditTemplatePage() {
     const router = useRouter();
     const params = useParams<{ id: string }>();
     const id = params.id;
 
-    const { data } = useSWR(
+    const { data, isLoading: isTemplateLoading, mutate: mutateTemplate } = useSWR(
         id ? ['/templates', id, 'edit'] : null,
         () => getTemplate(id, { include: 'user,test,hospital,fields' })
     );
@@ -105,7 +119,11 @@ export default function EditTemplatePage() {
         control: form.control,
         name: 'fields',
     });
+    const watchedFields = useWatch({ control: form.control, name: 'fields' });
     const [successMessage, setSuccessMessage] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const groupedFields = useMemo(() => {
         const groups: {
@@ -114,19 +132,21 @@ export default function EditTemplatePage() {
             items: Array<{ index: number; field: TemplateFieldForm & { id: string } }>;
         }[] = [];
 
-        fields.forEach((field, index) => {
-            const section = (field as TemplateFieldForm).section || 'General';
-            const groupOrder = (field as TemplateFieldForm).field_group_order ?? 0;
+        const currentFields = watchedFields ?? [];
+
+        currentFields.forEach((field, index) => {
+            const section = field?.section || 'General';
+            const groupOrder = field?.field_group_order ?? 0;
             let group = groups.find((g) => g.groupOrder === groupOrder);
             if (!group) {
                 group = { groupOrder, section, items: [] };
                 groups.push(group);
             }
-            group.items.push({ index, field: field as TemplateFieldForm & { id: string } });
+            group.items.push({ index, field: fields[index] as TemplateFieldForm & { id: string } });
         });
 
         return groups.sort((a, b) => a.groupOrder - b.groupOrder);
-    }, [fields]);
+    }, [fields, watchedFields]);
 
     function scrollToField(path: string) {
         const byName = document.querySelector(`[name="${path}"]`);
@@ -183,6 +203,7 @@ export default function EditTemplatePage() {
 
     async function onSubmit(values: EditTemplateFormValues) {
         try {
+            setIsSaving(true);
             setSuccessMessage('');
             const payload = {
                 name: values.name,
@@ -237,6 +258,7 @@ export default function EditTemplatePage() {
             }
 
             setSuccessMessage('Template has been successfully updated.');
+            await mutateTemplate();
         } catch (e: any) {
             const errors = e?.response ? await e.response.json().catch(() => null) : null;
             const firstErrorPath = Object.keys(errors?.errors ?? {})[0];
@@ -250,6 +272,8 @@ export default function EditTemplatePage() {
 
             console.error(e);
             alert('Failed to save');
+        } finally {
+            setIsSaving(false);
         }
     }
 
@@ -262,11 +286,27 @@ export default function EditTemplatePage() {
 
     async function onDelete() {
         try {
+            setIsDeleting(true);
             await deleteTemplate(id);
             router.push('/templates');
         } catch (e) {
             console.error(e);
             alert('Failed to delete');
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
+    async function onRefresh() {
+        try {
+            setIsRefreshing(true);
+            setSuccessMessage('');
+            await mutateTemplate();
+        } catch (e) {
+            console.error(e);
+            alert('Failed to refresh template data');
+        } finally {
+            setIsRefreshing(false);
         }
     }
 
@@ -279,6 +319,7 @@ export default function EditTemplatePage() {
         () => getUser(userId as string).then((r: any) => r)
     );
     const userName = userData?.data?.attributes?.name ?? '';
+    const isProcessing = isTemplateLoading || isSaving || isDeleting || isRefreshing;
 
     return (
         <div className="space-y-4">
@@ -294,14 +335,18 @@ export default function EditTemplatePage() {
                     <div className="flex flex-row items-center justify-between gap-3">
                         <CardTitle>Edit {templateName}</CardTitle>
                         <div className="flex items-center gap-2">
+                            <Button type="button" variant="secondary" onClick={onRefresh} disabled={isProcessing}>
+                                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                            </Button>
                             <Button
                                 type="button"
                                 onClick={form.handleSubmit(onSubmit, onInvalid)}
+                                disabled={isProcessing}
                             >
-                                Save
+                                {isSaving ? 'Saving...' : 'Save'}
                             </Button>
-                            <Button variant="destructive" onClick={onDelete} type="button">
-                                Delete
+                            <Button variant="destructive" onClick={onDelete} type="button" disabled={isProcessing}>
+                                {isDeleting ? 'Deleting...' : 'Delete'}
                             </Button>
                         </div>
                     </div>
@@ -312,6 +357,21 @@ export default function EditTemplatePage() {
                             {successMessage ? (
                                 <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
                                     {successMessage}
+                                </p>
+                            ) : null}
+                            {isTemplateLoading ? (
+                                <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                                    Loading template data...
+                                </p>
+                            ) : null}
+                            {isSaving ? (
+                                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                                    Saving changes...
+                                </p>
+                            ) : null}
+                            {isRefreshing ? (
+                                <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                                    Refreshing template data...
                                 </p>
                             ) : null}
                             <Card>
@@ -453,7 +513,12 @@ export default function EditTemplatePage() {
                                                         rules={{ required: 'Field label is required' }}
                                                         render={({ field }) => (
                                                             <FormItem className="md:col-span-4 md:min-w-[180px]" data-field-path={`fields.${index}.label`}>
-                                                                <FormLabel>Field Label</FormLabel>
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <FormLabel>Field Label</FormLabel>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {buildUniqueName(group.section, field.value)}
+                                                                    </span>
+                                                                </div>
                                                                 <FormControl>
                                                                     <Input {...field} />
                                                                 </FormControl>
@@ -521,6 +586,7 @@ export default function EditTemplatePage() {
                                                             type="button"
                                                             variant="secondary"
                                                             onClick={() => remove(index)}
+                                                            disabled={isProcessing}
                                                         >
                                                             Remove
                                                         </Button>
@@ -541,6 +607,7 @@ export default function EditTemplatePage() {
                                                         field_group_order: group.groupOrder,
                                                     })
                                                 }
+                                                disabled={isProcessing}
                                             >
                                                 Add Field
                                             </Button>
@@ -552,7 +619,7 @@ export default function EditTemplatePage() {
                                     variant="secondary"
                                     onClick={() =>
                                         append({
-                                            section: `New Section ${groupedFields.length + 1}`,
+                                            section: window.prompt('Section name', `New Section ${groupedFields.length + 1}`)?.trim() || `New Section ${groupedFields.length + 1}`,
                                             label: '',
                                             type: 'text',
                                             default_value: '',
@@ -564,11 +631,12 @@ export default function EditTemplatePage() {
                                                     : 1,
                                         })
                                     }
+                                    disabled={isProcessing}
                                 >
                                     Add Section
                                 </Button>
                             </div>
-                            <Button type="submit">Save</Button>
+                            <Button type="submit" disabled={isProcessing}>{isSaving ? 'Saving...' : 'Save'}</Button>
                         </form>
                     </Form>
                 </CardContent>

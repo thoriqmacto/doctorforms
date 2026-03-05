@@ -26,6 +26,37 @@ it('creates template fields', function () {
 
     $response->assertStatus(201)
         ->assertJsonPath('data.attributes.label', 'LV Size')
+        ->assertJsonPath('data.attributes.unique_name', 'measurements.lv_size')
         ->assertJsonPath('data.relationships.template.data.id', (string) $template->id);
 });
 
+it('updates unique_name when section or label changes', function () {
+    $user = User::factory()->create();
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $template = Template::create([
+        'name' => 'Echo Template',
+        'description' => 'desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+    ]);
+
+    $created = $this->postJson('/api/v1/template-fields', [
+        'template_id' => $template->id,
+        'section' => 'Header',
+        'label' => 'Logo URL',
+        'type' => 'text',
+        'order' => 1,
+        'field_group_order' => 1,
+    ]);
+
+    $created->assertStatus(201);
+    $fieldId = $created->json('data.id');
+
+    $this->patchJson("/api/v1/template-fields/{$fieldId}", [
+        'section' => 'Footer',
+        'label' => 'Contact Email',
+    ])->assertStatus(200)
+        ->assertJsonPath('data.attributes.unique_name', 'footer.contact_email');
+});

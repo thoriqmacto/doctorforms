@@ -22,6 +22,7 @@ class TemplateFieldResource extends JsonResource
             'attributes' => [
                 'section'           => $this->section,
                 'label'             => $this->label,
+                'unique_name'       => $this->unique_name,
                 'type'              => $this->type,  // text|number|select|textarea|title|image
                 'options'           => $options,     // array|null
                 'order'             => (int) $this->order,
