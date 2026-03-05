@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import {
     createTemplateField,
@@ -105,20 +105,48 @@ export default function EditTemplatePage() {
         control: form.control,
         name: 'fields',
     });
+    const [successMessage, setSuccessMessage] = useState('');
 
     const groupedFields = useMemo(() => {
-        const groups: { section: string; items: Array<{ index: number; field: TemplateFieldForm & { id: string } }> }[] = [];
+        const groups: {
+            groupOrder: number;
+            section: string;
+            items: Array<{ index: number; field: TemplateFieldForm & { id: string } }>;
+        }[] = [];
+
         fields.forEach((field, index) => {
             const section = (field as TemplateFieldForm).section || 'General';
-            let group = groups.find((g) => g.section === section);
+            const groupOrder = (field as TemplateFieldForm).field_group_order ?? 0;
+            let group = groups.find((g) => g.groupOrder === groupOrder);
             if (!group) {
-                group = { section, items: [] };
+                group = { groupOrder, section, items: [] };
                 groups.push(group);
             }
             group.items.push({ index, field: field as TemplateFieldForm & { id: string } });
         });
-        return groups;
+
+        return groups.sort((a, b) => a.groupOrder - b.groupOrder);
     }, [fields]);
+
+    function scrollToField(path: string) {
+        const byName = document.querySelector(`[name="${path}"]`);
+        const byDataAttr = document.querySelector(`[data-field-path="${path}"]`);
+        const target = byName ?? byDataAttr;
+
+        if (target instanceof HTMLElement) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.focus();
+        }
+    }
+
+    function updateSectionName(groupIndices: number[], sectionName: string) {
+        groupIndices.forEach((fieldIndex) => {
+            form.setValue(`fields.${fieldIndex}.section`, sectionName, {
+                shouldDirty: true,
+                shouldTouch: true,
+            });
+        });
+    }
 
     useEffect(() => {
         if (data?.data) {
@@ -155,6 +183,7 @@ export default function EditTemplatePage() {
 
     async function onSubmit(values: EditTemplateFormValues) {
         try {
+            setSuccessMessage('');
             const payload = {
                 name: values.name,
                 description: values.description,
@@ -207,7 +236,7 @@ export default function EditTemplatePage() {
                 );
             }
 
-            router.push('/templates');
+            setSuccessMessage('Template has been successfully updated.');
         } catch (e: any) {
             const errors = e?.response ? await e.response.json().catch(() => null) : null;
             const firstErrorPath = Object.keys(errors?.errors ?? {})[0];
@@ -216,11 +245,7 @@ export default function EditTemplatePage() {
                     type: 'server',
                     message: errors.errors[firstErrorPath]?.[0] ?? 'Invalid value',
                 });
-                const target = document.querySelector(`[name="${firstErrorPath}"]`);
-                if (target instanceof HTMLElement) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    target.focus();
-                }
+                scrollToField(firstErrorPath);
             }
 
             console.error(e);
@@ -232,11 +257,7 @@ export default function EditTemplatePage() {
         const errorName = findFirstErrorPath(form.formState.errors);
         if (!errorName) return;
 
-        const target = document.querySelector(`[name="${errorName}"]`);
-        if (target instanceof HTMLElement) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            target.focus();
-        }
+        scrollToField(errorName);
     }
 
     async function onDelete() {
@@ -288,6 +309,11 @@ export default function EditTemplatePage() {
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+                            {successMessage ? (
+                                <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                                    {successMessage}
+                                </p>
+                            ) : null}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-base">Template Details</CardTitle>
@@ -391,15 +417,27 @@ export default function EditTemplatePage() {
 
                             <div className="space-y-4">
                                 {groupedFields.map((group) => (
-                                    <Card key={group.section}>
+                                    <Card key={group.groupOrder}>
                                         <CardHeader>
-                                            <CardTitle className="text-base">{group.section}</CardTitle>
+                                            <div className="max-w-sm space-y-2">
+                                                <FormLabel>Section Name</FormLabel>
+                                                <Input
+                                                    value={group.section}
+                                                    onChange={(e) =>
+                                                        updateSectionName(
+                                                            group.items.map((item) => item.index),
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    data-field-path={`fields.${group.items[0]?.index}.section`}
+                                                />
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3">
                                             {group.items.map(({ field: fieldItem, index }) => (
                                                 <div
                                                     key={fieldItem.id}
-                                                    className="grid grid-cols-1 items-end gap-3 md:grid-cols-5"
+                                                    className="grid grid-cols-1 items-end gap-3 md:grid-cols-12"
                                                 >
                                                     <input
                                                         type="hidden"
@@ -414,7 +452,7 @@ export default function EditTemplatePage() {
                                                         name={`fields.${index}.label`}
                                                         rules={{ required: 'Field label is required' }}
                                                         render={({ field }) => (
-                                                            <FormItem className="md:col-span-2">
+                                                            <FormItem className="md:col-span-4 md:min-w-[180px]" data-field-path={`fields.${index}.label`}>
                                                                 <FormLabel>Field Label</FormLabel>
                                                                 <FormControl>
                                                                     <Input {...field} />
@@ -427,7 +465,7 @@ export default function EditTemplatePage() {
                                                         control={form.control}
                                                         name={`fields.${index}.type`}
                                                         render={({ field }) => (
-                                                            <FormItem>
+                                                            <FormItem className="md:col-span-2" data-field-path={`fields.${index}.type`}>
                                                                 <FormLabel>Type</FormLabel>
                                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                                     <FormControl>
@@ -442,6 +480,7 @@ export default function EditTemplatePage() {
                                                                         <SelectItem value="textarea">Textarea</SelectItem>
                                                                         <SelectItem value="title">Title</SelectItem>
                                                                         <SelectItem value="image">Image</SelectItem>
+                                                                        <SelectItem value="date">Date</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                             </FormItem>
@@ -451,15 +490,18 @@ export default function EditTemplatePage() {
                                                         control={form.control}
                                                         name={`fields.${index}.default_value`}
                                                         render={({ field }) => (
-                                                            <FormItem>
+                                                            <FormItem className="md:col-span-4 md:min-w-[180px]" data-field-path={`fields.${index}.default_value`}>
                                                                 <FormLabel>Default Value</FormLabel>
                                                                 <FormControl>
-                                                                    <Input {...field} />
+                                                                    <Input
+                                                                        {...field}
+                                                                        type={form.watch(`fields.${index}.type`) === 'date' ? 'date' : 'text'}
+                                                                    />
                                                                 </FormControl>
                                                             </FormItem>
                                                         )}
                                                     />
-                                                    <div className="flex items-center justify-between gap-2 md:justify-end">
+                                                    <div className="flex items-center justify-between gap-2 md:col-span-2 md:justify-end">
                                                         <FormField
                                                             control={form.control}
                                                             name={`fields.${index}.required`}
@@ -485,6 +527,23 @@ export default function EditTemplatePage() {
                                                     </div>
                                                 </div>
                                             ))}
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                onClick={() =>
+                                                    append({
+                                                        section: group.section || 'General',
+                                                        label: '',
+                                                        type: 'text',
+                                                        default_value: '',
+                                                        required: false,
+                                                        order: fields.length + 1,
+                                                        field_group_order: group.groupOrder,
+                                                    })
+                                                }
+                                            >
+                                                Add Field
+                                            </Button>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -493,17 +552,20 @@ export default function EditTemplatePage() {
                                     variant="secondary"
                                     onClick={() =>
                                         append({
-                                            section: 'General',
+                                            section: `New Section ${groupedFields.length + 1}`,
                                             label: '',
                                             type: 'text',
                                             default_value: '',
                                             required: false,
                                             order: fields.length + 1,
-                                            field_group_order: groupedFields.length + 1,
+                                            field_group_order:
+                                                groupedFields.length > 0
+                                                    ? Math.max(...groupedFields.map((group) => group.groupOrder)) + 1
+                                                    : 1,
                                         })
                                     }
                                 >
-                                    Add Field
+                                    Add Section
                                 </Button>
                             </div>
                             <Button type="submit">Save</Button>
