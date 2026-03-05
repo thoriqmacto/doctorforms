@@ -33,6 +33,7 @@ export default function UsersPage() {
                                     <TableHead>Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Phone</TableHead>
+                                    <TableHead>Position Title</TableHead>
                                     <TableHead className="text-right w-40">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -43,6 +44,7 @@ export default function UsersPage() {
                                         <TableCell>{u.attributes.name}</TableCell>
                                         <TableCell>{u.attributes.email}</TableCell>
                                         <TableCell>{u.attributes.phone ?? '-'}</TableCell>
+                                        <TableCell>{u.attributes.positionTitle ?? '-'}</TableCell>
                                         <TableCell className="text-right space-x-2">
                                             <Link href={`/users/${u.id}`}>
                                                 <Button size="sm" variant="secondary">Edit</Button>

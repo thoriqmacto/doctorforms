@@ -29,6 +29,7 @@ class UsersController extends ApiController
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email', 'unique:users,email'],
             'phone'    => ['nullable', 'string', 'max:32', 'unique:users,phone'],
+            'position_title' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
         ]);
 
@@ -40,6 +41,7 @@ class UsersController extends ApiController
             'name'     => $request->string('name'),
             'email'    => $request->string('email'),
             'phone'    => $request->input('phone'),
+            'position_title' => $request->input('position_title'),
             'password' => $request->string('password'),
         ]);
 
@@ -56,6 +58,7 @@ class UsersController extends ApiController
             'name'     => ['sometimes', 'string', 'max:255'],
             'email'    => ['sometimes', 'email', 'unique:users,email,' . $user->id],
             'phone'    => ['sometimes', 'nullable', 'string', 'max:32', 'unique:users,phone,' . $user->id],
+            'position_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['sometimes', 'string', 'min:8'],
         ]);
 
