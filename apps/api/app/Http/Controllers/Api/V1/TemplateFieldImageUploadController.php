@@ -18,8 +18,10 @@ class TemplateFieldImageUploadController extends Controller
             ],
         ]);
 
-        $disk = config('filesystems.default');
+        $disk = 'public';
         $storedPath = $data['image']->store('template-fields/images', $disk);
+        $publicUrl = Storage::disk($disk)->url($storedPath);
+        $absoluteUrl = url($publicUrl);
 
         return response()->json([
             'jsonapi' => ['version' => '1.0'],
@@ -27,7 +29,7 @@ class TemplateFieldImageUploadController extends Controller
                 'type' => 'template-field-images',
                 'attributes' => [
                     'path' => $storedPath,
-                    'url' => Storage::disk($disk)->url($storedPath),
+                    'url' => $absoluteUrl,
                 ],
             ],
             'meta' => ['status' => 'uploaded'],
