@@ -136,10 +136,12 @@ function resolveApiAssetUrl(url: string) {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
 
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-  if (!apiBase) return url;
+  const assetBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL ?? "";
+  if (!assetBase) return url;
 
-  const normalizedBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+  const normalizedBase = assetBase.endsWith("/")
+    ? assetBase.slice(0, -1)
+    : assetBase;
   const normalizedPath = url.startsWith("/") ? url : `/${url}`;
   return `${normalizedBase}${normalizedPath}`;
 }
@@ -198,6 +200,12 @@ export default function EditTemplatePage() {
     Record<number, boolean>
   >({});
   const [sectionJumpValue, setSectionJumpValue] = useState<string>("");
+  const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(
+    null,
+  );
+  const [draggedSectionOrder, setDraggedSectionOrder] = useState<number | null>(
+    null,
+  );
 
   const groupedFields = useMemo(() => {
     const groups: {
@@ -223,6 +231,14 @@ export default function EditTemplatePage() {
       });
     });
 
+    groups.forEach((group) => {
+      group.items.sort((a, b) => {
+        const leftOrder = currentFields[a.index]?.order ?? 0;
+        const rightOrder = currentFields[b.index]?.order ?? 0;
+        return leftOrder - rightOrder;
+      });
+    });
+
     return groups.sort((a, b) => a.groupOrder - b.groupOrder);
   }, [fields, watchedFields]);
 
@@ -244,6 +260,61 @@ export default function EditTemplatePage() {
   function updateSectionName(groupIndices: number[], sectionName: string) {
     groupIndices.forEach((fieldIndex) => {
       form.setValue(`fields.${fieldIndex}.section`, sectionName, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  }
+
+  function reorderSectionGroups(sourceGroupOrder: number, targetPosition: number) {
+    const orderedGroups = [...groupedFields].sort(
+      (a, b) => a.groupOrder - b.groupOrder,
+    );
+    const sourceIndex = orderedGroups.findIndex(
+      (group) => group.groupOrder === sourceGroupOrder,
+    );
+
+    if (sourceIndex < 0) return;
+
+    const boundedTarget = Math.min(
+      Math.max(targetPosition, 1),
+      orderedGroups.length,
+    );
+    const [movedGroup] = orderedGroups.splice(sourceIndex, 1);
+    orderedGroups.splice(boundedTarget - 1, 0, movedGroup);
+
+    orderedGroups.forEach((group, idx) => {
+      group.items.forEach((item) => {
+        form.setValue(`fields.${item.index}.field_group_order`, idx + 1, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      });
+    });
+  }
+
+  function reorderFieldsInGroup(
+    groupOrder: number,
+    sourceFieldIndex: number,
+    targetPosition: number,
+  ) {
+    const group = groupedFields.find((item) => item.groupOrder === groupOrder);
+    if (!group) return;
+
+    const orderedIndexes = [...group.items.map((item) => item.index)];
+    const sourceIndex = orderedIndexes.findIndex((idx) => idx === sourceFieldIndex);
+    if (sourceIndex < 0) return;
+
+    const boundedTarget = Math.min(
+      Math.max(targetPosition, 1),
+      orderedIndexes.length,
+    );
+
+    const [movedField] = orderedIndexes.splice(sourceIndex, 1);
+    orderedIndexes.splice(boundedTarget - 1, 0, movedField);
+
+    orderedIndexes.forEach((fieldIndex, idx) => {
+      form.setValue(`fields.${fieldIndex}.order`, idx + 1, {
         shouldDirty: true,
         shouldTouch: true,
       });
@@ -313,7 +384,10 @@ export default function EditTemplatePage() {
                 f.attributes?.type === "checkbox_group"
                   ? "checkbox"
                   : (f.attributes?.type ?? "text"),
-              default_value: resolveApiAssetUrl(options.default),
+              default_value:
+                f.attributes?.type === "image"
+                  ? resolveApiAssetUrl(options.default)
+                  : options.default,
               required: options.required,
               static: options.static,
               order: f.attributes?.order ?? 0,
@@ -449,7 +523,7 @@ export default function EditTemplatePage() {
               section: f.section || "General",
               label: f.label,
               type: f.type === "checkbox" ? "checkbox_group" : f.type,
-              order: idx + 1,
+              order: f.order ?? idx + 1,
               field_group_order: f.field_group_order ?? 0,
               options: baseOptions,
             };
@@ -854,15 +928,42 @@ export default function EditTemplatePage() {
                     data-section-group-order={group.groupOrder}
                   >
                     <CardHeader>
-                      <div className="flex items-end justify-between gap-3">
+                      <div
+                        className="flex items-end justify-between gap-3"
+                        draggable={collapsedSections[group.groupOrder]}
+                        onDragStart={() => {
+                          if (!collapsedSections[group.groupOrder]) return;
+                          setDraggedSectionOrder(group.groupOrder);
+                        }}
+                        onDragOver={(event) => {
+                          if (!collapsedSections[group.groupOrder]) return;
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          if (!collapsedSections[group.groupOrder]) return;
+                          event.preventDefault();
+                          if (
+                            draggedSectionOrder === null ||
+                            draggedSectionOrder === group.groupOrder
+                          ) {
+                            setDraggedSectionOrder(null);
+                            return;
+                          }
+
+                          const targetPosition =
+                            groupedFields.findIndex(
+                              (item) => item.groupOrder === group.groupOrder,
+                            ) + 1;
+                          reorderSectionGroups(draggedSectionOrder, targetPosition);
+                          setDraggedSectionOrder(null);
+                        }}
+                        onDragEnd={() => setDraggedSectionOrder(null)}
+                      >
                         <div className="max-w-sm space-y-2">
                           {collapsedSections[group.groupOrder] ? (
-                            <>
-                              <FormLabel>Section Name</FormLabel>
-                              <p className="text-sm font-medium">
-                                {group.section || "Untitled section"}
-                              </p>
-                            </>
+                            <p className="text-sm font-medium">
+                              {group.section || "Untitled section"}
+                            </p>
                           ) : (
                             <>
                               <FormLabel>Section Name</FormLabel>
@@ -879,7 +980,25 @@ export default function EditTemplatePage() {
                             </>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-end gap-2">
+                          <div className="w-20 space-y-1">
+                            <FormLabel>Order</FormLabel>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={
+                                groupedFields.findIndex(
+                                  (item) => item.groupOrder === group.groupOrder,
+                                ) + 1
+                              }
+                              onChange={(event) => {
+                                const nextValue = Number(event.target.value);
+                                if (!Number.isFinite(nextValue)) return;
+                                reorderSectionGroups(group.groupOrder, nextValue);
+                              }}
+                              disabled={isProcessing}
+                            />
+                          </div>
                           <Button
                             type="button"
                             variant="secondary"
@@ -923,6 +1042,31 @@ export default function EditTemplatePage() {
                             <div
                               key={renderKey}
                               className="grid grid-cols-1 items-end gap-3 md:grid-cols-12"
+                              draggable
+                              onDragStart={() => setDraggedFieldIndex(index)}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                if (
+                                  draggedFieldIndex === null ||
+                                  draggedFieldIndex === index
+                                ) {
+                                  setDraggedFieldIndex(null);
+                                  return;
+                                }
+
+                                const targetPosition =
+                                  group.items.findIndex(
+                                    (item) => item.index === index,
+                                  ) + 1;
+                                reorderFieldsInGroup(
+                                  group.groupOrder,
+                                  draggedFieldIndex,
+                                  targetPosition,
+                                );
+                                setDraggedFieldIndex(null);
+                              }}
+                              onDragEnd={() => setDraggedFieldIndex(null)}
                             >
                               <input
                                 type="hidden"
@@ -939,11 +1083,40 @@ export default function EditTemplatePage() {
 
                               <FormField
                                 control={form.control}
+                                name={`fields.${index}.order`}
+                                render={({ field }) => (
+                                  <FormItem
+                                    className="md:col-span-1"
+                                    data-field-path={`fields.${index}.order`}
+                                  >
+                                    <FormLabel>Order</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        value={field.value ?? 1}
+                                        onChange={(event) => {
+                                          const nextValue = Number(event.target.value);
+                                          if (!Number.isFinite(nextValue)) return;
+                                          reorderFieldsInGroup(
+                                            group.groupOrder,
+                                            index,
+                                            nextValue,
+                                          );
+                                        }}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
                                 name={`fields.${index}.label`}
                                 rules={{ required: "Field label is required" }}
                                 render={({ field }) => (
                                   <FormItem
-                                    className="md:col-span-4 md:min-w-[180px]"
+                                    className="md:col-span-3 md:min-w-[180px]"
                                     data-field-path={`fields.${index}.label`}
                                   >
                                     <div className="flex items-center justify-between gap-2">
@@ -1315,7 +1488,7 @@ export default function EditTemplatePage() {
                               default_value: "",
                               required: false,
                               static: false,
-                              order: fields.length + 1,
+                              order: group.items.length + 1,
                               field_group_order: group.groupOrder,
                               option_values: [],
                               title_tag: "h2",
@@ -1349,12 +1522,7 @@ export default function EditTemplatePage() {
                       required: false,
                       static: false,
                       order: fields.length + 1,
-                      field_group_order:
-                        groupedFields.length > 0
-                          ? Math.max(
-                              ...groupedFields.map((group) => group.groupOrder),
-                            ) + 1
-                          : 1,
+                      field_group_order: groupedFields.length + 1,
                       option_values: [],
                       title_tag: "h2",
                       image_url: "",

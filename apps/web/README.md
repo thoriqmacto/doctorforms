@@ -22,9 +22,10 @@ The web app expects an API base URL for all server requests. Create a `.env.loca
 
 ```
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+NEXT_PUBLIC_ASSET_BASE_URL=http://localhost:8000/
 ```
 
-Adjust the URL to point to your Laravel backend. Without this value, actions such as hospital logo uploads will fail with a 404.
+Adjust the URLs to point to your Laravel backend. `NEXT_PUBLIC_API_BASE_URL` is used for API requests, while `NEXT_PUBLIC_ASSET_BASE_URL` is used for rendering uploaded assets (for example template field images).
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
