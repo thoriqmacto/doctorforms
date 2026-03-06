@@ -73,6 +73,26 @@ function norm(s: string) {
     return s.replace(/\s+/g, " ").trim();
 }
 
+function optionList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item));
+    }
+
+    if (value && typeof value === "object") {
+        const options = (value as { options?: unknown }).options;
+        if (Array.isArray(options)) {
+            return options.map((item) => String(item));
+        }
+
+        const values = (value as { values?: unknown }).values;
+        if (Array.isArray(values)) {
+            return values.map((item) => String(item));
+        }
+    }
+
+    return [];
+}
+
 // Well-known labels (only used if present)
 const LBL = {
     DOB: "DOB",
@@ -286,6 +306,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         }
 
         if (t === "select") {
+            const selectOptions = optionList(f.attributes.options);
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
                     <Label>{label}</Label>
@@ -298,7 +319,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {(f.attributes.options ?? []).map((opt) => (
+                                    {selectOptions.map((opt) => (
                                         <SelectItem key={opt} value={opt}>
                                             {opt}
                                         </SelectItem>
@@ -325,7 +346,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         }
 
         if (t === "checkbox_group") {
-            const options = f.attributes.options ?? [];
+            const options = optionList(f.attributes.options);
             return (
                 <div key={name} className="space-y-2 col-span-full">
                     <Label className="font-medium">{label}</Label>
