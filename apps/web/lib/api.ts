@@ -23,6 +23,29 @@ const api = ky.create({
         ],
     },
 });
+
+const multipartApi = ky.create({
+    prefixUrl: process.env.NEXT_PUBLIC_API_BASE_URL!,
+    hooks: {
+        beforeRequest: [
+            (request) => {
+                if (typeof window !== 'undefined') {
+                    const stored = window.localStorage.getItem('auth');
+                    if (stored) {
+                        try {
+                            const { token } = JSON.parse(stored);
+                            if (token) {
+                                request.headers.set('Authorization', `Bearer ${token}`);
+                            }
+                        } catch {
+                            // ignore parse errors
+                        }
+                    }
+                }
+            },
+        ],
+    },
+});
 export interface TemplatePayload {
     name: string;
     description?: string;
@@ -117,3 +140,11 @@ export const login = (payload: { email: string; password: string }) =>
 export const logout = () => api.post('logout').json<any>();
 
 export default api;
+
+
+export const uploadTemplateFieldImage = (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return multipartApi.post('template-field-images', { body: formData }).json<any>();
+};
