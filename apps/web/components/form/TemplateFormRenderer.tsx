@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,6 +66,14 @@ type Props = {
     };
     /** Prefill values keyed by field name (`f_<id>`) */
     initialValues?: Record<string, unknown>;
+    /** Render required+static fields as plain text without field labels */
+    hideStaticRequiredLabelAndInput?: boolean;
+};
+
+type FieldOptionMeta = {
+    defaultValue: string;
+    required: boolean;
+    static: boolean;
 };
 
 // === Helpers ===
@@ -94,6 +102,19 @@ function optionList(value: unknown): string[] {
     }
 
     return [];
+}
+
+function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return { defaultValue: "", required: false, static: false };
+    }
+
+    const options = value as { default?: unknown; required?: unknown; static?: unknown };
+    return {
+        defaultValue: options.default ? String(options.default) : "",
+        required: !!options.required,
+        static: !!options.static,
+    };
 }
 
 // Well-known labels (only used if present)
@@ -145,7 +166,7 @@ function sortSections(sections: Section[]) {
         .map((x) => x.sec);
 }
 
-export default function TemplateFormRenderer({ groupedSections, onSubmit, showSubmitButton = true, showPrintButton = true, onPrint, layoutHints, initialValues }: Props) {
+export default function TemplateFormRenderer({ groupedSections, onSubmit, showSubmitButton = true, showPrintButton = true, onPrint, layoutHints, initialValues, hideStaticRequiredLabelAndInput = false }: Props) {
     // Zod schema from field types
     const baseShape: Record<string, z.ZodTypeAny> = {};
     groupedSections.forEach((sec) => {
@@ -162,7 +183,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
 
-    const { control, handleSubmit, watch, setValue, getFieldState, formState, reset } = useForm({
+    const { control, handleSubmit, watch, setValue, reset } = useForm({
         resolver: zodResolver(schema),
         defaultValues: initialValues || {},
         mode: "onChange",
@@ -225,6 +246,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
 
     // Auto-fill concluding textarea in field groups
+    const lastAutoSentenceByFieldRef = useRef<Record<string, string>>({});
     const allVals = watch();
     useEffect(() => {
         fieldGroups.forEach((items) => {
@@ -245,11 +267,19 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             });
             const sentence = parts.join(". ") + (parts.length ? "." : "");
             const curr = (allVals as any)[textareaName];
-            if (!getFieldState(textareaName, formState).isDirty && curr !== sentence) {
+            const lastAutoSentence = lastAutoSentenceByFieldRef.current[textareaName] ?? "";
+            const canReplace = curr === undefined || curr === null || String(curr) === "" || String(curr) === lastAutoSentence;
+
+            if (canReplace && curr !== sentence) {
                 setValue(textareaName, sentence, { shouldDirty: false, shouldValidate: false });
+                lastAutoSentenceByFieldRef.current[textareaName] = sentence;
+            }
+
+            if (curr === sentence) {
+                lastAutoSentenceByFieldRef.current[textareaName] = sentence;
             }
         });
-    }, [allVals, fieldGroups, formState, getFieldState, setValue]);
+    }, [allVals, fieldGroups, setValue]);
 
     // ---- Renderers ----
     function renderSectionHeader(title?: string | null) {
@@ -265,12 +295,21 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         const name = `f_${f.id}`;
         const t = f.attributes.type;
         const label = f.attributes.label;
+        const optionMeta = parseFieldOptionMeta(f.attributes.options);
         const fullWidth =
             !!layoutHints?.fullWidthLabels?.some((x) => x.toLowerCase() === label.toLowerCase()) ||
             t === "textarea" ||
             t === "image" ||
             t === "title" ||
             t === "bullseye";
+
+        if (hideStaticRequiredLabelAndInput && optionMeta.static && optionMeta.required) {
+            return (
+                <div key={name} className={fullWidth ? "col-span-full" : undefined}>
+                    <p className="text-sm text-foreground">{optionMeta.defaultValue}</p>
+                </div>
+            );
+        }
 
         if (t === "title") {
             return (

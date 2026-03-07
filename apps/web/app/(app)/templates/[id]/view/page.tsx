@@ -18,6 +18,11 @@ export default function TemplateViewPage() {
     const tpl = data?.data;
     const name = tpl?.attributes?.name ?? 'Template';
     const grouped = tpl?.meta?.grouped_sections ?? [];
+    const page = tpl?.meta?.page;
+
+    const pageInfo = page
+        ? `${page.size} · ${Number(page.width_mm / 10).toFixed(1)}cm × ${Number(page.height_mm / 10).toFixed(1)}cm`
+        : 'Page info unavailable';
 
     return (
         <div className="space-y-4">
@@ -38,7 +43,7 @@ export default function TemplateViewPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Rendered Template (HTML)</CardTitle>
+                    <CardTitle className="text-base font-medium text-muted-foreground">{pageInfo}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -49,6 +54,7 @@ export default function TemplateViewPage() {
                                 groupedSections={grouped}
                                 onSubmit={() => {}}
                                 showSubmitButton={false}
+                                hideStaticRequiredLabelAndInput
                                 onPrint={() => window.open(`/templates/${params.id}/print`, '_blank')}
                             />
                         </div>
