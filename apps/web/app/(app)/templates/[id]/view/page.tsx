@@ -1,12 +1,10 @@
 'use client';
 
 import useSWR from 'swr';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getTemplate } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function TemplateViewPage() {
@@ -36,9 +34,6 @@ export default function TemplateViewPage() {
             />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">{name} (View)</h1>
-                <Link href={`/templates/${params.id}/print`}>
-                    <Button variant="secondary">Print PDF</Button>
-                </Link>
             </div>
 
             <Card>
@@ -56,6 +51,8 @@ export default function TemplateViewPage() {
                                 showSubmitButton={false}
                                 hideStaticRequiredLabelAndInput
                                 onPrint={() => window.open(`/templates/${params.id}/print`, '_blank')}
+                                enableSectionControls
+                                editHref={`/templates/${params.id}/edit`}
                             />
                         </div>
                     )}
