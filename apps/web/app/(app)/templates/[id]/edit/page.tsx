@@ -1,12 +1,12 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import useSWR from "swr";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import {
   createTemplateField,
-  deleteTemplate,
   deleteTemplateField,
   getHospitals,
   getUser,
@@ -187,7 +187,6 @@ function resolveApiAssetUrl(url: string) {
 }
 
 export default function EditTemplatePage() {
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
 
@@ -230,7 +229,6 @@ export default function EditTemplatePage() {
   });
   const [successMessage, setSuccessMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMutatingFields, setIsMutatingFields] = useState(false);
   const [uploadingImageByFieldIndex, setUploadingImageByFieldIndex] = useState<
@@ -547,7 +545,6 @@ export default function EditTemplatePage() {
                 baseOptions.default = f.default_value;
               }
             } else if (f.type === "patient") {
-              baseOptions.values = PATIENT_ATTRIBUTE_OPTIONS;
               if (f.default_value) {
                 baseOptions.default = f.default_value;
               }
@@ -624,19 +621,6 @@ export default function EditTemplatePage() {
     if (!errorName) return;
 
     scrollToField(errorName);
-  }
-
-  async function onDelete() {
-    try {
-      setIsDeleting(true);
-      await deleteTemplate(id);
-      router.push("/templates");
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete");
-    } finally {
-      setIsDeleting(false);
-    }
   }
 
   async function onRefresh() {
@@ -759,7 +743,6 @@ export default function EditTemplatePage() {
   const isProcessing =
     isTemplateLoading ||
     isSaving ||
-    isDeleting ||
     isRefreshing ||
     isMutatingFields;
   const showLoadingDataMessage = isTemplateLoading || isRefreshing;
@@ -839,14 +822,16 @@ export default function EditTemplatePage() {
               >
                 {isSaving ? "Saving..." : "Save"}
               </Button>
-              <Button
-                variant="destructive"
-                onClick={onDelete}
-                type="button"
-                disabled={isProcessing}
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </Button>
+              <Link href={`/templates/${id}/view`}>
+                <Button type="button" variant="ghost" disabled={isProcessing}>
+                  View
+                </Button>
+              </Link>
+              <Link href={`/templates/${id}/print`}>
+                <Button type="button" variant="ghost" disabled={isProcessing}>
+                  Print
+                </Button>
+              </Link>
             </div>
           </div>
         </CardHeader>
@@ -1087,7 +1072,7 @@ export default function EditTemplatePage() {
                           const fieldType = form.watch(`fields.${index}.type`);
                           const userDefinedOptions =
                             form.watch(`fields.${index}.option_values`) ?? [];
-                          const selectOptions =
+                          const defaultValueOptions =
                             fieldType === "patient"
                               ? PATIENT_ATTRIBUTE_OPTIONS
                               : fieldType === "user"
@@ -1099,7 +1084,7 @@ export default function EditTemplatePage() {
                           const isStaticField = form.watch(
                             `fields.${index}.static`,
                           );
-                          const usesOptionValues =
+                          const usesDefaultValueSelect =
                             fieldType === "select" ||
                             fieldType === "checkbox" ||
                             fieldType === "patient" ||
@@ -1215,7 +1200,22 @@ export default function EditTemplatePage() {
                                   >
                                     <FormLabel>Type</FormLabel>
                                     <Select
-                                      onValueChange={field.onChange}
+                                      onValueChange={(value) => {
+                                        field.onChange(value);
+                                        if (
+                                          value !== "select" &&
+                                          value !== "checkbox"
+                                        ) {
+                                          form.setValue(
+                                            `fields.${index}.option_values`,
+                                            [],
+                                            {
+                                              shouldDirty: true,
+                                              shouldTouch: true,
+                                            },
+                                          );
+                                        }
+                                      }}
                                       value={field.value}
                                     >
                                       <FormControl>
@@ -1266,7 +1266,7 @@ export default function EditTemplatePage() {
                                 )}
                               />
 
-                              {usesOptionValues ? (
+                              {usesDefaultValueSelect ? (
                                 <FormField
                                   control={form.control}
                                   name={`fields.${index}.default_value`}
@@ -1294,7 +1294,7 @@ export default function EditTemplatePage() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {selectOptions
+                                          {defaultValueOptions
                                             .filter((option) => option.trim())
                                             .map((option, optionIndex) => (
                                               <SelectItem
@@ -1403,28 +1403,22 @@ export default function EditTemplatePage() {
                                 </Button>
                               </div>
 
-                              {usesOptionValues ? (
+                              {supportsCustomOptions ? (
                                 <div className="space-y-2 md:col-span-10">
                                   <FormLabel>
                                     {fieldType === "checkbox"
                                       ? "Checkbox Options"
-                                      : fieldType === "patient"
-                                        ? "Patient Attribute Options"
-                                        : fieldType === "user"
-                                          ? "User Attribute Options"
-                                          : "Select Options"}
+                                      : "Select Options"}
                                   </FormLabel>
-                                  {selectOptions.map((_, optionIndex) => (
+                                  {userDefinedOptions.map((_, optionIndex) => (
                                     <div
                                       className="flex items-center gap-2"
                                       key={`field-${index}-option-${optionIndex}`}
                                     >
                                       <Input
-                                        value={selectOptions[optionIndex] ?? ""}
-                                        readOnly={!supportsCustomOptions}
+                                        value={userDefinedOptions[optionIndex] ?? ""}
                                         onChange={(e) => {
-                                          if (!supportsCustomOptions) return;
-                                          const updated = [...selectOptions];
+                                          const updated = [...userDefinedOptions];
                                           updated[optionIndex] = e.target.value;
                                           form.setValue(
                                             `fields.${index}.option_values`,
@@ -1452,62 +1446,58 @@ export default function EditTemplatePage() {
                                         }}
                                         placeholder={`Option ${optionIndex + 1}`}
                                       />
-                                      {supportsCustomOptions ? (
-                                        <Button
-                                          type="button"
-                                          variant="secondary"
-                                          onClick={() => {
-                                            const updated = selectOptions.filter(
-                                              (__, i) => i !== optionIndex,
-                                            );
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => {
+                                          const updated = userDefinedOptions.filter(
+                                            (__, i) => i !== optionIndex,
+                                          );
+                                          form.setValue(
+                                            `fields.${index}.option_values`,
+                                            updated,
+                                            {
+                                              shouldDirty: true,
+                                              shouldTouch: true,
+                                            },
+                                          );
+                                          if (
+                                            currentDefaultValue &&
+                                            !updated.includes(
+                                              currentDefaultValue,
+                                            )
+                                          ) {
                                             form.setValue(
-                                              `fields.${index}.option_values`,
-                                              updated,
+                                              `fields.${index}.default_value`,
+                                              "",
                                               {
                                                 shouldDirty: true,
                                                 shouldTouch: true,
                                               },
                                             );
-                                            if (
-                                              currentDefaultValue &&
-                                              !updated.includes(
-                                                currentDefaultValue,
-                                              )
-                                            ) {
-                                              form.setValue(
-                                                `fields.${index}.default_value`,
-                                                "",
-                                                {
-                                                  shouldDirty: true,
-                                                  shouldTouch: true,
-                                                },
-                                              );
-                                            }
-                                          }}
-                                        >
-                                          Remove Option
-                                        </Button>
-                                      ) : null}
+                                          }
+                                        }}
+                                      >
+                                        Remove Option
+                                      </Button>
                                     </div>
                                   ))}
-                                  {supportsCustomOptions ? (
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      onClick={() =>
-                                        form.setValue(
-                                          `fields.${index}.option_values`,
-                                          [...selectOptions, ""],
-                                          {
-                                            shouldDirty: true,
-                                            shouldTouch: true,
-                                          },
-                                        )
-                                      }
-                                    >
-                                      Add Option
-                                    </Button>
-                                  ) : null}
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() =>
+                                      form.setValue(
+                                        `fields.${index}.option_values`,
+                                        [...userDefinedOptions, ""],
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                        },
+                                      )
+                                    }
+                                  >
+                                    Add Option
+                                  </Button>
                                 </div>
                               ) : null}
 
