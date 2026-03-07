@@ -51,7 +51,32 @@ type TemplateFieldForm = {
   option_values: string[];
   title_tag: string;
   image_url: string;
+  measurement_name: string;
+  measurement_unit: string;
+  measurement_category: string;
 };
+
+const PATIENT_ATTRIBUTE_OPTIONS = [
+  "patients.name",
+  "patients.age",
+  "patients.dob",
+  "patients.dos",
+  "patients.gender",
+  "patients.mrn",
+  "patients.height_cm",
+  "patients.weight_kg",
+  "patients.bsa",
+  "patients.blood_pressure",
+  "patients.referring_physician",
+  "patients.diagnosis_brief",
+];
+
+const USER_ATTRIBUTE_OPTIONS = [
+  "users.name",
+  "users.email",
+  "users.phone",
+  "users.position_title",
+];
 
 type EditTemplateFormValues = {
   name: string;
@@ -101,6 +126,9 @@ function normalizeOptions(raw: unknown) {
       static: false,
       title_tag: "h2",
       image_url: "",
+      measurement_name: "",
+      measurement_unit: "",
+      measurement_category: "",
     };
   }
 
@@ -119,6 +147,15 @@ function normalizeOptions(raw: unknown) {
       static: !!obj.static,
       title_tag: obj.title_tag ? String(obj.title_tag) : "h2",
       image_url: obj.image_url ? String(obj.image_url) : "",
+      measurement_name: obj.measurement_name
+        ? String(obj.measurement_name)
+        : "",
+      measurement_unit: obj.measurement_unit
+        ? String(obj.measurement_unit)
+        : "",
+      measurement_category: obj.measurement_category
+        ? String(obj.measurement_category)
+        : "",
     };
   }
 
@@ -129,6 +166,9 @@ function normalizeOptions(raw: unknown) {
     static: false,
     title_tag: "h2",
     image_url: "",
+    measurement_name: "",
+    measurement_unit: "",
+    measurement_category: "",
   };
 }
 
@@ -397,6 +437,9 @@ export default function EditTemplatePage() {
               image_url: resolveApiAssetUrl(
                 options.image_url || options.default,
               ),
+              measurement_name: options.measurement_name,
+              measurement_unit: options.measurement_unit,
+              measurement_category: options.measurement_category,
             };
           }),
         )
@@ -503,6 +546,21 @@ export default function EditTemplatePage() {
               if (f.default_value) {
                 baseOptions.default = f.default_value;
               }
+            } else if (f.type === "patient") {
+              baseOptions.values = PATIENT_ATTRIBUTE_OPTIONS;
+              if (f.default_value) {
+                baseOptions.default = f.default_value;
+              }
+            } else if (f.type === "user") {
+              baseOptions.values = USER_ATTRIBUTE_OPTIONS;
+              if (f.default_value) {
+                baseOptions.default = f.default_value;
+              }
+            } else if (f.type === "measurement") {
+              baseOptions.default = f.default_value;
+              baseOptions.measurement_name = f.measurement_name;
+              baseOptions.measurement_unit = f.measurement_unit;
+              baseOptions.measurement_category = f.measurement_category;
             } else if (f.type === "title") {
               baseOptions.title_tag = f.title_tag || "h2";
               if (f.default_value) {
@@ -1027,8 +1085,14 @@ export default function EditTemplatePage() {
                       <CardContent className="space-y-3">
                         {group.items.map(({ renderKey, index }) => {
                           const fieldType = form.watch(`fields.${index}.type`);
-                          const selectOptions =
+                          const userDefinedOptions =
                             form.watch(`fields.${index}.option_values`) ?? [];
+                          const selectOptions =
+                            fieldType === "patient"
+                              ? PATIENT_ATTRIBUTE_OPTIONS
+                              : fieldType === "user"
+                                ? USER_ATTRIBUTE_OPTIONS
+                                : userDefinedOptions;
                           const currentDefaultValue = form.watch(
                             `fields.${index}.default_value`,
                           );
@@ -1036,6 +1100,11 @@ export default function EditTemplatePage() {
                             `fields.${index}.static`,
                           );
                           const usesOptionValues =
+                            fieldType === "select" ||
+                            fieldType === "checkbox" ||
+                            fieldType === "patient" ||
+                            fieldType === "user";
+                          const supportsCustomOptions =
                             fieldType === "select" || fieldType === "checkbox";
 
                           return (
@@ -1179,6 +1248,15 @@ export default function EditTemplatePage() {
                                         <SelectItem value="date">
                                           Date
                                         </SelectItem>
+                                        <SelectItem value="patient">
+                                          Patient
+                                        </SelectItem>
+                                        <SelectItem value="user">
+                                          User
+                                        </SelectItem>
+                                        <SelectItem value="measurement">
+                                          Measurement
+                                        </SelectItem>
                                         <SelectItem value="bullseye">
                                           Bullseye
                                         </SelectItem>
@@ -1237,6 +1315,11 @@ export default function EditTemplatePage() {
                                   name={`fields.${index}.default_value`}
                                   rules={{
                                     validate: (value) => {
+                                      if (fieldType === "measurement") {
+                                        return value?.toString().trim()
+                                          ? true
+                                          : "Default value is required for measurement fields";
+                                      }
                                       if (!isStaticField) return true;
                                       return value?.toString().trim()
                                         ? true
@@ -1259,6 +1342,7 @@ export default function EditTemplatePage() {
                                           }
                                         />
                                       </FormControl>
+                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
@@ -1324,7 +1408,11 @@ export default function EditTemplatePage() {
                                   <FormLabel>
                                     {fieldType === "checkbox"
                                       ? "Checkbox Options"
-                                      : "Select Options"}
+                                      : fieldType === "patient"
+                                        ? "Patient Attribute Options"
+                                        : fieldType === "user"
+                                          ? "User Attribute Options"
+                                          : "Select Options"}
                                   </FormLabel>
                                   {selectOptions.map((_, optionIndex) => (
                                     <div
@@ -1333,7 +1421,9 @@ export default function EditTemplatePage() {
                                     >
                                       <Input
                                         value={selectOptions[optionIndex] ?? ""}
+                                        readOnly={!supportsCustomOptions}
                                         onChange={(e) => {
+                                          if (!supportsCustomOptions) return;
                                           const updated = [...selectOptions];
                                           updated[optionIndex] = e.target.value;
                                           form.setValue(
@@ -1362,59 +1452,128 @@ export default function EditTemplatePage() {
                                         }}
                                         placeholder={`Option ${optionIndex + 1}`}
                                       />
-                                      <Button
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={() => {
-                                          const updated = selectOptions.filter(
-                                            (__, i) => i !== optionIndex,
-                                          );
-                                          form.setValue(
-                                            `fields.${index}.option_values`,
-                                            updated,
-                                            {
-                                              shouldDirty: true,
-                                              shouldTouch: true,
-                                            },
-                                          );
-                                          if (
-                                            currentDefaultValue &&
-                                            !updated.includes(
-                                              currentDefaultValue,
-                                            )
-                                          ) {
+                                      {supportsCustomOptions ? (
+                                        <Button
+                                          type="button"
+                                          variant="secondary"
+                                          onClick={() => {
+                                            const updated = selectOptions.filter(
+                                              (__, i) => i !== optionIndex,
+                                            );
                                             form.setValue(
-                                              `fields.${index}.default_value`,
-                                              "",
+                                              `fields.${index}.option_values`,
+                                              updated,
                                               {
                                                 shouldDirty: true,
                                                 shouldTouch: true,
                                               },
                                             );
-                                          }
-                                        }}
-                                      >
-                                        Remove Option
-                                      </Button>
+                                            if (
+                                              currentDefaultValue &&
+                                              !updated.includes(
+                                                currentDefaultValue,
+                                              )
+                                            ) {
+                                              form.setValue(
+                                                `fields.${index}.default_value`,
+                                                "",
+                                                {
+                                                  shouldDirty: true,
+                                                  shouldTouch: true,
+                                                },
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          Remove Option
+                                        </Button>
+                                      ) : null}
                                     </div>
                                   ))}
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() =>
-                                      form.setValue(
-                                        `fields.${index}.option_values`,
-                                        [...selectOptions, ""],
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                        },
-                                      )
-                                    }
-                                  >
-                                    Add Option
-                                  </Button>
+                                  {supportsCustomOptions ? (
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        form.setValue(
+                                          `fields.${index}.option_values`,
+                                          [...selectOptions, ""],
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                          },
+                                        )
+                                      }
+                                    >
+                                      Add Option
+                                    </Button>
+                                  ) : null}
                                 </div>
+                              ) : null}
+
+                              {fieldType === "measurement" ? (
+                                <>
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.measurement_name`}
+                                    rules={{
+                                      required:
+                                        "Measurement name is required for measurement fields",
+                                    }}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-3"
+                                        data-field-path={`fields.${index}.measurement_name`}
+                                      >
+                                        <FormLabel>Measurement Name</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.measurement_unit`}
+                                    rules={{
+                                      required:
+                                        "Measurement unit is required for measurement fields",
+                                    }}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2"
+                                        data-field-path={`fields.${index}.measurement_unit`}
+                                      >
+                                        <FormLabel>Measurement Unit</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.measurement_category`}
+                                    rules={{
+                                      required:
+                                        "Measurement category is required for measurement fields",
+                                    }}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2"
+                                        data-field-path={`fields.${index}.measurement_category`}
+                                      >
+                                        <FormLabel>Measurement Category</FormLabel>
+                                        <FormControl>
+                                          <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                </>
                               ) : null}
 
                               {fieldType === "title" ? (
@@ -1493,6 +1652,9 @@ export default function EditTemplatePage() {
                               option_values: [],
                               title_tag: "h2",
                               image_url: "",
+                              measurement_name: "",
+                              measurement_unit: "",
+                              measurement_category: "",
                             })
                           }
                           disabled={isProcessing}
@@ -1526,6 +1688,9 @@ export default function EditTemplatePage() {
                       option_values: [],
                       title_tag: "h2",
                       image_url: "",
+                      measurement_name: "",
+                      measurement_unit: "",
+                      measurement_category: "",
                     })
                   }
                   disabled={isProcessing}

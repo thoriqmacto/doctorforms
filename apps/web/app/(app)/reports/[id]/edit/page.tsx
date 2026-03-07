@@ -22,7 +22,7 @@ export default function EditReportPage() {
 
     const { data: reportRes, isLoading } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields,template' }),
+        () => getReport(id, { include: 'fields,template,measurements' }),
         swrOpts
     );
 
@@ -54,15 +54,29 @@ export default function EditReportPage() {
     useEffect(() => {
         if (!initHydrated.current && report && groupedSections) {
             const reportFields = report?.relationships?.fields?.data ?? [];
-            const byLabel = new Map<string, any>(
-                reportFields.map((f: any) => [f.label, f.value])
+            const reportMeasurements = report?.relationships?.measurements?.data ?? [];
+            const byTemplateFieldId = new Map<string, any>(
+                reportFields.map((f: any) => [String(f.template_field_id), f.value])
+            );
+            const measurementByName = new Map<string, any>(
+                reportMeasurements.map((m: any) => [String(m.attributes?.name ?? ''), m.attributes?.value])
             );
 
             const vals: Record<string, any> = {};
             for (const sec of groupedSections) {
                 for (const f of sec.items ?? []) {
                     const key = `f_${f.id}`;
-                    const val = byLabel.get(f.attributes?.label);
+                    if (f.attributes?.type === 'measurement') {
+                        const options = (f.attributes?.options ?? {}) as any;
+                        const measurementName = options.measurement_name ?? f.attributes?.label;
+                        const measurementValue = measurementByName.get(String(measurementName));
+                        if (measurementValue !== undefined) {
+                            vals[key] = measurementValue;
+                            continue;
+                        }
+                    }
+
+                    const val = byTemplateFieldId.get(String(f.id));
                     if (val !== undefined) vals[key] = val;
                 }
             }
@@ -73,7 +87,46 @@ export default function EditReportPage() {
 
     async function onSubmit(values: Record<string, any>) {
         try {
-            await updateReport(id, { values });
+            const fields: Array<{ template_field_id: number; value: string }> = [];
+            const measurements: Array<{
+                name: string;
+                value: string;
+                unit: string;
+                category: string;
+            }> = [];
+
+            (groupedSections ?? []).forEach((sec: any) => {
+                (sec.items ?? []).forEach((field: any) => {
+                    const rawValue = values[`f_${field.id}`];
+                    const normalizedValue = Array.isArray(rawValue)
+                        ? rawValue.join(', ')
+                        : rawValue && typeof rawValue === 'object'
+                          ? JSON.stringify(rawValue)
+                          : rawValue;
+
+                    if (normalizedValue === undefined || normalizedValue === null || String(normalizedValue).trim() === '') {
+                        return;
+                    }
+
+                    const options = (field.attributes?.options ?? {}) as any;
+                    if (field.attributes?.type === 'measurement') {
+                        measurements.push({
+                            name: options.measurement_name ?? field.attributes?.label ?? 'Measurement',
+                            value: String(normalizedValue),
+                            unit: options.measurement_unit ?? '',
+                            category: options.measurement_category ?? '',
+                        });
+                        return;
+                    }
+
+                    fields.push({
+                        template_field_id: Number(field.id),
+                        value: String(normalizedValue),
+                    });
+                });
+            });
+
+            await updateReport(id, { fields, measurements });
             router.push('/reports');
         } catch (e) {
             console.error(e);

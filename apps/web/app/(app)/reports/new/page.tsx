@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import { getTemplate, createReport, getReport, getHospital } from '@/lib/api';
+import { getTemplate, createReport, getReport, getHospital, getPatient, getUser } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateReportPdf } from '@/lib/pdf';
@@ -28,12 +28,61 @@ export default function NewReportPage() {
         hospitalId ? ['/hospitals', hospitalId] : null,
         () => getHospital(hospitalId!).then((r: any) => r)
     );
+    const { data: patientRes, isLoading: patientLoading } = useSWR(
+        patientId ? ['/patients', patientId] : null,
+        () => getPatient(patientId!).then((r: any) => r)
+    );
+    const { data: userRes, isLoading: userLoading } = useSWR(
+        ['/users', '1'],
+        () => getUser(1).then((r: any) => r)
+    );
 
     const tpl = data?.data;
     const grouped = useMemo(() => tpl?.meta?.grouped_sections ?? [], [tpl]);
     const hospital = hospitalRes?.data;
 
     async function onSubmit(values: Record<string, any>) {
+        const groupedSections = grouped ?? [];
+        const fields: Array<{ template_field_id: number; value: string }> = [];
+        const measurements: Array<{
+            name: string;
+            value: string;
+            unit: string;
+            category: string;
+        }> = [];
+
+        groupedSections.forEach((section: any) => {
+            (section.items ?? []).forEach((field: any) => {
+                const key = `f_${field.id}`;
+                const rawValue = values[key];
+                const normalizedValue = Array.isArray(rawValue)
+                    ? rawValue.join(', ')
+                    : rawValue && typeof rawValue === 'object'
+                      ? JSON.stringify(rawValue)
+                      : rawValue;
+
+                if (normalizedValue === undefined || normalizedValue === null || String(normalizedValue).trim() === '') {
+                    return;
+                }
+
+                const options = (field.attributes?.options ?? {}) as any;
+                if (field.attributes?.type === 'measurement') {
+                    measurements.push({
+                        name: options.measurement_name ?? field.attributes?.label ?? 'Measurement',
+                        value: String(normalizedValue),
+                        unit: options.measurement_unit ?? '',
+                        category: options.measurement_category ?? '',
+                    });
+                    return;
+                }
+
+                fields.push({
+                    template_field_id: Number(field.id),
+                    value: String(normalizedValue),
+                });
+            });
+        });
+
         const payload = {
             template_id: Number(templateId),
             patient_id: Number(patientId),
@@ -41,7 +90,8 @@ export default function NewReportPage() {
             user_id: 1,
             test_id: Number(testId),
             title: name,
-            values,
+            fields,
+            measurements,
         };
 
         try {
@@ -61,25 +111,61 @@ export default function NewReportPage() {
     const templateLabel = templateName ?? `#${templateId}`;
 
     const initialValues = useMemo(() => {
-        if (!hospital || grouped.length === 0) return {};
+        if (grouped.length === 0) return {};
+
+        const patientAttrs = patientRes?.data?.attributes ?? {};
+        const userAttrs = userRes?.data?.attributes ?? {};
+        const hospitalAttrs = hospital?.attributes ?? {};
+        const vals: Record<string, string> = {};
+
+        grouped.forEach((sec: any) => {
+            (sec.items ?? []).forEach((f: any) => {
+                const key = `f_${f.id}`;
+                const options = (f.attributes?.options ?? {}) as any;
+                const defaultValue = options.default ? String(options.default) : '';
+
+                if (f.attributes?.type === 'patient' && defaultValue.startsWith('patients.')) {
+                    const attr = defaultValue.replace('patients.', '');
+                    const value = patientAttrs[attr];
+                    if (value !== undefined && value !== null) {
+                        vals[key] = String(value);
+                    }
+                    return;
+                }
+
+                if (f.attributes?.type === 'user' && defaultValue.startsWith('users.')) {
+                    const attr = defaultValue.replace('users.', '');
+                    const userKey = attr === 'position_title' ? 'positionTitle' : attr;
+                    const value = userAttrs[userKey];
+                    if (value !== undefined && value !== null) {
+                        vals[key] = String(value);
+                    }
+                    return;
+                }
+
+                if (defaultValue) {
+                    vals[key] = defaultValue;
+                }
+            });
+        });
+
         const labelMap = new Map<string, string>();
         grouped.forEach((sec: any) =>
             sec.items.forEach((f: any) =>
                 labelMap.set(f.attributes.label, `f_${f.id}`)
             )
         );
-        const attrs = hospital.attributes ?? {};
-        const vals: Record<string, string> = {};
         const assign = (label: string, value?: string | null) => {
             const key = labelMap.get(label);
             if (key && value) vals[key] = value;
         };
-        assign('Hospital Name', attrs.name);
-        assign('Unit / Department', (attrs as any).unit_department ?? (attrs as any).department);
-        assign('Address', attrs.address);
-        assign('Phone / Fax', (attrs as any).phone_fax ?? attrs.phone);
+        assign('Hospital Name', hospitalAttrs.name);
+        assign('Unit / Department', (hospitalAttrs as any).unit_department ?? (hospitalAttrs as any).department);
+        assign('Address', hospitalAttrs.address);
+        assign('Phone / Fax', (hospitalAttrs as any).phone_fax ?? hospitalAttrs.phone);
+
         return vals;
-    }, [hospital, grouped]);
+    }, [grouped, hospital, patientRes, userRes]);
 
     return (
         <div className="space-y-4">
@@ -97,7 +183,7 @@ export default function NewReportPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isLoading || hospitalLoading ? 'Loading…' : (
+                    {isLoading || hospitalLoading || patientLoading || userLoading ? 'Loading…' : (
                         <div className="page-a4 rounded-xl shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={grouped}

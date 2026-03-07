@@ -10,6 +10,7 @@ class ReportFieldResource extends JsonResource
     {
         return [
             'id' => (string) $this->id,
+            'template_field_id' => (int) $this->template_field_id,
             'label' => optional($this->templateField)->label,
             'type' => optional($this->templateField)->type,
             'section' => optional($this->templateField)->section,
