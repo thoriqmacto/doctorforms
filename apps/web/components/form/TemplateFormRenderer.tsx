@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +23,6 @@ import {
     type BullseyeValue,
 } from "@/components/form/BullseyeWallMotion";
 
-// === Types ===
 export type Field = {
     id: string;
     attributes: {
@@ -55,28 +55,24 @@ type Props = {
     showSubmitButton?: boolean;
     showPrintButton?: boolean;
     onPrint?: () => void;
-    /** Optional hints to override layout heuristics per section or label */
     layoutHints?: {
-        /** Force a section into a specific grid columns template (e.g., "grid-cols-1 md:grid-cols-2 lg:grid-cols-3") */
         sectionCols?: Record<string, string>;
-        /** Render these labels full-width (e.g., long textareas) */
         fullWidthLabels?: string[];
-        /** Pair fields side-by-side: key is left label, value is right label */
         pairFields?: Record<string, string>;
     };
-    /** Prefill values keyed by field name (`f_<id>`) */
     initialValues?: Record<string, unknown>;
-    /** Render required+static fields as plain text without field labels */
     hideStaticRequiredLabelAndInput?: boolean;
+    editHref?: string;
+    enableSectionControls?: boolean;
 };
 
 type FieldOptionMeta = {
     defaultValue: string;
     required: boolean;
     static: boolean;
+    style: Record<string, string>;
 };
 
-// === Helpers ===
 function cx(...xs: (string | false | null | undefined)[]) {
     return xs.filter(Boolean).join(" ");
 }
@@ -85,39 +81,62 @@ function norm(s: string) {
 }
 
 function optionList(value: unknown): string[] {
-    if (Array.isArray(value)) {
-        return value.map((item) => String(item));
-    }
-
+    if (Array.isArray(value)) return value.map((item) => String(item));
     if (value && typeof value === "object") {
         const options = (value as { options?: unknown }).options;
-        if (Array.isArray(options)) {
-            return options.map((item) => String(item));
-        }
-
+        if (Array.isArray(options)) return options.map((item) => String(item));
         const values = (value as { values?: unknown }).values;
-        if (Array.isArray(values)) {
-            return values.map((item) => String(item));
-        }
+        if (Array.isArray(values)) return values.map((item) => String(item));
     }
-
     return [];
 }
 
 function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return { defaultValue: "", required: false, static: false };
+        return { defaultValue: "", required: false, static: false, style: {} };
     }
 
-    const options = value as { default?: unknown; required?: unknown; static?: unknown };
+    const options = value as {
+        default?: unknown;
+        required?: unknown;
+        static?: unknown;
+        style?: unknown;
+    };
+
     return {
         defaultValue: options.default ? String(options.default) : "",
         required: !!options.required,
         static: !!options.static,
+        style:
+            options.style && typeof options.style === "object" && !Array.isArray(options.style)
+                ? Object.fromEntries(
+                    Object.entries(options.style as Record<string, unknown>).map(([k, v]) => [k, String(v)])
+                )
+                : {},
     };
 }
 
-// Well-known labels (only used if present)
+function staticFieldClassName(style: Record<string, string>) {
+    const align = style.align?.toLowerCase();
+    const tone = style.tone?.toLowerCase();
+    const emphasis = style.emphasis?.toLowerCase();
+    const size = style.size?.toLowerCase();
+
+    return cx(
+        "text-sm text-foreground",
+        align === "center" && "text-center",
+        align === "right" && "text-right",
+        tone === "muted" && "text-muted-foreground",
+        tone === "accent" && "text-primary",
+        emphasis === "bold" && "font-semibold",
+        emphasis === "italic" && "italic",
+        emphasis === "underline" && "underline",
+        size === "sm" && "text-xs",
+        size === "lg" && "text-base",
+        size === "xl" && "text-lg"
+    );
+}
+
 const LBL = {
     DOB: "DOB",
     AGE: "Age",
@@ -142,7 +161,6 @@ function calcAgeFromDOB(dobISO?: string) {
     return age >= 0 ? age : undefined;
 }
 
-// Grid heuristics — keyword-driven so it works for other forms too
 function gridColsFor(sectionName?: string | null) {
     const s = (sectionName || "").toLowerCase();
     if (/(header|masthead)/.test(s)) return "grid-cols-1";
@@ -153,7 +171,6 @@ function gridColsFor(sectionName?: string | null) {
     return "grid-cols-1 md:grid-cols-2";
 }
 
-// Sort sections by field_group_order (if provided), else keep server order
 function sortSections(sections: Section[]) {
     return sections
         .map((sec, i) => {
@@ -166,8 +183,26 @@ function sortSections(sections: Section[]) {
         .map((x) => x.sec);
 }
 
-export default function TemplateFormRenderer({ groupedSections, onSubmit, showSubmitButton = true, showPrintButton = true, onPrint, layoutHints, initialValues, hideStaticRequiredLabelAndInput = false }: Props) {
-    // Zod schema from field types
+function sectionDomId(title: string | null | undefined, idx: number) {
+    const base = (title || `section-${idx}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    return `template-section-${idx}-${base}`;
+}
+
+export default function TemplateFormRenderer({
+    groupedSections,
+    onSubmit,
+    showSubmitButton = true,
+    showPrintButton = true,
+    onPrint,
+    layoutHints,
+    initialValues,
+    hideStaticRequiredLabelAndInput = false,
+    editHref,
+    enableSectionControls = false,
+}: Props) {
     const baseShape: Record<string, z.ZodTypeAny> = {};
     groupedSections.forEach((sec) => {
         sec.items.forEach((f) => {
@@ -176,12 +211,14 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             if (t === "number") baseShape[name] = z.coerce.number().optional();
             else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
             else if (t === "bullseye") baseShape[name] = z.any().optional();
-            else baseShape[name] = z.string().optional(); // text | select | textarea | date | title | image | patient | user | measurement
+            else baseShape[name] = z.string().optional();
         });
     });
     const schema = z.object(baseShape);
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
+    const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
+    const [jumpSection, setJumpSection] = useState<string>("");
 
     const { control, handleSubmit, watch, setValue, reset } = useForm({
         resolver: zodResolver(schema),
@@ -189,12 +226,10 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         mode: "onChange",
     });
 
-    // Reset form when initial values change (e.g., after async load)
     useEffect(() => {
         if (initialValues) reset(initialValues);
     }, [initialValues, reset]);
 
-    // Group fields by field_group_order (used for sentence auto-fill)
     const fieldGroups = useMemo(() => {
         const map = new Map<number, Field[]>();
         groupedSections.forEach((sec) => {
@@ -211,7 +246,6 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         );
     }, [groupedSections]);
 
-    // Find fields by label (for helpers, but only if labels exist in the template)
     const byLabel = useMemo(() => {
         const map = new Map<string, string>();
         groupedSections.forEach((sec) =>
@@ -226,7 +260,6 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
     const fWt = byLabel.get(LBL.WEIGHT);
     const fBSA = byLabel.get(LBL.BSA);
 
-    // Auto Age/BSA (doctor can still override)
     const dobVal = watch(fDOB || "");
     const htVal = watch(fHt || "");
     const wtVal = watch(fWt || "");
@@ -245,7 +278,6 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         }
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
 
-    // Auto-fill concluding textarea in field groups
     const lastAutoSentenceByFieldRef = useRef<Record<string, string>>({});
     const allVals = watch();
     useEffect(() => {
@@ -258,7 +290,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             const parts: string[] = [];
             items.slice(0, -1).forEach((f) => {
                 const name = `f_${f.id}`;
-                const val = (allVals as any)[name];
+                const val = (allVals as Record<string, unknown>)[name];
                 if (Array.isArray(val)) {
                     if (val.length) parts.push(`${f.attributes.label}: ${val.join(", ")}`);
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
@@ -266,7 +298,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                 }
             });
             const sentence = parts.join(". ") + (parts.length ? "." : "");
-            const curr = (allVals as any)[textareaName];
+            const curr = (allVals as Record<string, unknown>)[textareaName];
             const lastAutoSentence = lastAutoSentenceByFieldRef.current[textareaName] ?? "";
             const canReplace = curr === undefined || curr === null || String(curr) === "" || String(curr) === lastAutoSentence;
 
@@ -281,12 +313,22 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         });
     }, [allVals, fieldGroups, setValue]);
 
-    // ---- Renderers ----
-    function renderSectionHeader(title?: string | null) {
+    function renderSectionHeader(title: string | null | undefined, idx: number, collapsed: boolean) {
         if (!title) return null;
         return (
-            <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:relative print:top-auto print:-mx-0 print:px-0">
+            <div className="sticky top-0 z-10 -mx-4 mb-2 flex items-center justify-between gap-2 bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:relative print:top-auto print:-mx-0 print:px-0">
                 <h2 className="text-lg font-semibold tracking-wide">{title}</h2>
+                {enableSectionControls && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCollapsedSections((prev) => ({ ...prev, [idx]: !collapsed }))}
+                        className="print:hidden"
+                    >
+                        {collapsed ? "Expand" : "Collapse"}
+                    </Button>
+                )}
             </div>
         );
     }
@@ -306,7 +348,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         if (hideStaticRequiredLabelAndInput && optionMeta.static && optionMeta.required) {
             return (
                 <div key={name} className={fullWidth ? "col-span-full" : undefined}>
-                    <p className="text-sm text-foreground">{optionMeta.defaultValue}</p>
+                    <p className={staticFieldClassName(optionMeta.style)}>{optionMeta.defaultValue}</p>
                 </div>
             );
         }
@@ -320,10 +362,16 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
         }
 
         if (t === "image") {
+            const imageSrc = String(watch(name) ?? optionMeta.defaultValue ?? "").trim();
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label>{label}</Label>
-                    <div className="text-sm text-muted-foreground">Image upload not implemented.</div>
+                    {imageSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={imageSrc} alt={label} className="max-h-80 w-full rounded-md border object-contain" />
+                    ) : (
+                        <div className="text-sm text-muted-foreground">No image available.</div>
+                    )}
                 </div>
             );
         }
@@ -356,7 +404,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                         control={control}
                         name={name}
                         render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value as string}>
+                            <Select onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
                                 <SelectTrigger>
                                     <SelectValue placeholder={t === "patient" || t === "user" ? "Select attribute" : "Select"} />
                                 </SelectTrigger>
@@ -381,7 +429,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                     <Controller
                         control={control}
                         name={name}
-                        render={({ field }) => <Textarea {...field} value={field.value as string | undefined} rows={3} />}
+                        render={({ field }) => <Textarea {...field} value={(field.value as string | undefined) ?? ""} rows={3} />}
                     />
                 </div>
             );
@@ -397,7 +445,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                         name={name}
                         defaultValue={[]}
                         render={({ field }) => (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 {options.map((opt) => {
                                     const checked = Array.isArray(field.value) && field.value.includes(opt);
                                     return (
@@ -450,7 +498,6 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             );
         }
 
-        // text | number
         return (
             <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
                 <Label>{label}</Label>
@@ -458,26 +505,27 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                     control={control}
                     name={name}
                     render={({ field }) => (
-                        <Input type={t === "number" ? "number" : "text"} {...field} value={field.value as string | number | undefined} />
+                        <Input type={t === "number" ? "number" : "text"} {...field} value={(field.value as string | number | undefined) ?? ""} />
                     )}
                 />
             </div>
         );
     }
 
-    function SectionCard({ title, children }: { title?: string | null; children: React.ReactNode }) {
+    function SectionCard({ title, children, idx }: { title?: string | null; children: React.ReactNode; idx: number }) {
         const hintCols = title ? layoutHints?.sectionCols?.[title] : undefined;
         const cols = hintCols ?? gridColsFor(title);
+        const collapsed = !!collapsedSections[idx];
+
         return (
-            <section className="rounded-xl border p-4 shadow-sm print:shadow-none">
-                {renderSectionHeader(title)}
-                <div className={cx("grid gap-3", cols)}>{children}</div>
+            <section id={sectionDomId(title, idx)} className="scroll-mt-24 rounded-xl border p-4 shadow-sm print:shadow-none">
+                {renderSectionHeader(title, idx, collapsed)}
+                {!collapsed && <div className={cx("grid gap-3", cols)}>{children}</div>}
             </section>
         );
     }
 
-    // Patient/Study-like sections: compact, common fields first if present
-    function renderPatientStudy(sec: Section) {
+    function renderPatientStudy(sec: Section, idx: number) {
         const wanted = new Set(
             [
                 "Study Date",
@@ -499,11 +547,10 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             ...sec.items.filter((f) => !wanted.has(norm(f.attributes.label))),
         ];
 
-        return <SectionCard title={sec.section}>{prioritized.map((f) => renderField(f))}</SectionCard>;
+        return <SectionCard title={sec.section} idx={idx}>{prioritized.map((f) => renderField(f))}</SectionCard>;
     }
 
-    // “Procedure-like” sections: support pairing of related fields if found in any template
-    function renderProcedureLike(sec: Section) {
+    function renderProcedureLike(sec: Section, idx: number) {
         const pairs: Array<{ left: string; right: string }> = [];
         if (layoutHints?.pairFields) {
             for (const [left, right] of Object.entries(layoutHints.pairFields)) pairs.push({ left, right });
@@ -532,37 +579,84 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
 
         const rest = sec.items.filter((f) => !used.has(f));
         return (
-            <SectionCard title={sec.section}>
+            <SectionCard title={sec.section} idx={idx}>
                 {rows}
                 {rest.map((f) => renderField(f))}
             </SectionCard>
         );
     }
 
-    // Default section renderer
-    function renderGeneric(sec: Section) {
+    function renderGeneric(sec: Section, idx: number) {
         const items = [...sec.items].sort((a, b) => (a.attributes.order ?? 0) - (b.attributes.order ?? 0));
-        return <SectionCard title={sec.section}>{items.map((f) => renderField(f))}</SectionCard>;
+        return <SectionCard title={sec.section} idx={idx}>{items.map((f) => renderField(f))}</SectionCard>;
     }
 
-    function renderSection(sec: Section) {
+    function renderSection(sec: Section, idx: number) {
         const name = (sec.section || "").toLowerCase();
-        if (/(patient|study|demograph|meta)/.test(name)) return renderPatientStudy(sec);
-        if (/(procedure|protocol|prep)/.test(name)) return renderProcedureLike(sec);
-        return renderGeneric(sec);
+        if (/(patient|study|demograph|meta)/.test(name)) return renderPatientStudy(sec, idx);
+        if (/(procedure|protocol|prep)/.test(name)) return renderProcedureLike(sec, idx);
+        return renderGeneric(sec, idx);
     }
+
+    const visibleSections = sorted.map((sec, idx) => ({
+        idx,
+        title: sec.section || `Section ${idx + 1}`,
+        id: sectionDomId(sec.section, idx),
+    }));
 
     return (
         <form onSubmit={handleSubmit((vals) => onSubmit(vals))} className="space-y-4 print:space-y-2">
-            {/* A4 inner padding to mimic PDF framing */}
             <div className="mx-auto max-w-[210mm] space-y-4 p-2 md:p-4">
+                {enableSectionControls && (
+                    <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
+                        {showPrintButton && (
+                            <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())}>
+                                Print
+                            </Button>
+                        )}
+                        {editHref && (
+                            <Button asChild type="button" variant="outline">
+                                <Link href={editHref}>Edit</Link>
+                            </Button>
+                        )}
+                        <Select
+                            value={jumpSection}
+                            onValueChange={(value) => {
+                                setJumpSection(value);
+                                document.getElementById(value)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                        >
+                            <SelectTrigger className="w-[220px]">
+                                <SelectValue placeholder="Jump to section" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {visibleSections.map((sec) => (
+                                    <SelectItem key={sec.id} value={sec.id}>
+                                        {sec.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setCollapsedSections(Object.fromEntries(visibleSections.map((s) => [s.idx, true])))}
+                        >
+                            Collapse All
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setCollapsedSections({})}>
+                            Expand All
+                        </Button>
+                    </div>
+                )}
+
                 {sorted.map((sec, idx) => (
-                    <div key={idx}>{renderSection(sec)}</div>
+                    <div key={`${sec.section ?? "section"}-${idx}`}>{renderSection(sec, idx)}</div>
                 ))}
 
                 <div className="flex gap-2 pt-2 print:hidden">
                     {showSubmitButton && <Button type="submit">Save</Button>}
-                    {showPrintButton && (
+                    {showPrintButton && !enableSectionControls && (
                         <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())} className="no-print">
                             Print
                         </Button>
