@@ -60,3 +60,58 @@ it('updates unique_name when section or label changes', function () {
     ])->assertStatus(200)
         ->assertJsonPath('data.attributes.unique_name', 'footer.contact_email');
 });
+
+it('requires measurement options for measurement type template fields', function () {
+    $user = User::factory()->create();
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $template = Template::create([
+        'name' => 'Echo Template',
+        'description' => 'desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+    ]);
+
+    $this->postJson('/api/v1/template-fields', [
+        'template_id' => $template->id,
+        'section' => 'Measurements',
+        'label' => 'LVIDd',
+        'type' => 'measurement',
+        'options' => ['default' => '4.2'],
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'options.measurement_name',
+            'options.measurement_unit',
+            'options.measurement_category',
+        ]);
+});
+
+it('creates patient and user binding fields', function () {
+    $user = User::factory()->create();
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $template = Template::create([
+        'name' => 'Echo Template',
+        'description' => 'desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+    ]);
+
+    $this->postJson('/api/v1/template-fields', [
+        'template_id' => $template->id,
+        'section' => 'Patient',
+        'label' => 'Patient Name',
+        'type' => 'patient',
+        'options' => ['default' => 'patients.name'],
+    ])->assertStatus(201);
+
+    $this->postJson('/api/v1/template-fields', [
+        'template_id' => $template->id,
+        'section' => 'User',
+        'label' => 'Doctor Name',
+        'type' => 'user',
+        'options' => ['default' => 'users.name'],
+    ])->assertStatus(201);
+});

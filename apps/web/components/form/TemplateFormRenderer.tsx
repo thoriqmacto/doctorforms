@@ -36,7 +36,10 @@ export type Field = {
             | "image"
             | "checkbox_group"
             | "date"
-            | "bullseye";
+            | "bullseye"
+            | "patient"
+            | "user"
+            | "measurement";
         options: string[] | null;
         order?: number | null;
         field_group_order?: number | null;
@@ -152,7 +155,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             if (t === "number") baseShape[name] = z.coerce.number().optional();
             else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
             else if (t === "bullseye") baseShape[name] = z.any().optional();
-            else baseShape[name] = z.string().optional(); // text | select | textarea | date | title | image
+            else baseShape[name] = z.string().optional(); // text | select | textarea | date | title | image | patient | user | measurement
         });
     });
     const schema = z.object(baseShape);
@@ -305,7 +308,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
             );
         }
 
-        if (t === "select") {
+        if (t === "select" || t === "patient" || t === "user") {
             const selectOptions = optionList(f.attributes.options);
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
@@ -316,7 +319,7 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                         render={({ field }) => (
                             <Select onValueChange={field.onChange} defaultValue={field.value as string}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select" />
+                                    <SelectValue placeholder={t === "patient" || t === "user" ? "Select attribute" : "Select"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {selectOptions.map((opt) => (
@@ -374,6 +377,21 @@ export default function TemplateFormRenderer({ groupedSections, onSubmit, showSu
                                     );
                                 })}
                             </div>
+                        )}
+                    />
+                </div>
+            );
+        }
+
+        if (t === "measurement") {
+            return (
+                <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
+                    <Label>{label}</Label>
+                    <Controller
+                        control={control}
+                        name={name}
+                        render={({ field }) => (
+                            <Input type="text" {...field} value={(field.value as string | undefined) ?? ""} />
                         )}
                     />
                 </div>

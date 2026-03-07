@@ -39,11 +39,25 @@ class TemplateFieldController extends Controller
             'template_id'       => ['required', 'exists:templates,id'],
             'section'           => ['required', 'string', 'max:255'],
             'label'             => ['required', 'string', 'max:255'],
-            'type'              => ['required', 'in:text,number,select,textarea,subtitle,title,image,date,checkbox_group,bullseye'],
+            'type'              => ['required', 'in:text,number,select,textarea,subtitle,title,image,date,checkbox_group,bullseye,patient,user,measurement'],
             'options'           => ['nullable', 'array'],
             'order'             => ['nullable', 'integer'],
             'field_group_order' => ['nullable', 'integer'],
         ]);
+
+        $v->after(function ($validator) use ($request) {
+            if ($request->input('type') !== 'measurement') {
+                return;
+            }
+
+            $options = $request->input('options', []);
+            $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
+            foreach ($requiredKeys as $key) {
+                if (!is_array($options) || blank($options[$key] ?? null)) {
+                    $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+                }
+            }
+        });
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
@@ -64,11 +78,29 @@ class TemplateFieldController extends Controller
             'template_id'       => ['sometimes', 'exists:templates,id'],
             'section'           => ['sometimes', 'string', 'max:255'],
             'label'             => ['sometimes', 'string', 'max:255'],
-            'type'              => ['sometimes', 'in:text,number,select,textarea,subtitle,title,image,date,checkbox_group,bullseye'],
+            'type'              => ['sometimes', 'in:text,number,select,textarea,subtitle,title,image,date,checkbox_group,bullseye,patient,user,measurement'],
             'options'           => ['sometimes', 'nullable', 'array'],
             'order'             => ['sometimes', 'integer'],
             'field_group_order' => ['sometimes', 'integer'],
         ]);
+
+        $v->after(function ($validator) use ($request, $templateField) {
+            $type = $request->input('type', $templateField->type);
+            if ($type !== 'measurement') {
+                return;
+            }
+
+            $options = $request->has('options')
+                ? $request->input('options', [])
+                : ($templateField->options ?? []);
+
+            $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
+            foreach ($requiredKeys as $key) {
+                if (!is_array($options) || blank($options[$key] ?? null)) {
+                    $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+                }
+            }
+        });
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
@@ -90,4 +122,3 @@ class TemplateFieldController extends Controller
         ], 200);
     }
 }
-
