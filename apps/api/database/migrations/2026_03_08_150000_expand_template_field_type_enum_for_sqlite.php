@@ -39,8 +39,6 @@ return new class extends Migration
             $table->integer('order')->default(0);
             $table->integer('field_group_order')->default(0);
             $table->timestamps();
-
-            $table->index(['template_id', 'unique_name']);
         });
 
         DB::table('template_fields')->insertUsing(
@@ -49,6 +47,10 @@ return new class extends Migration
         );
 
         Schema::drop('template_fields_old');
+
+        Schema::table('template_fields', function (Blueprint $table) {
+            $table->index(['template_id', 'unique_name']);
+        });
 
         Schema::enableForeignKeyConstraints();
     }
