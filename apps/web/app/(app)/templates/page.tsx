@@ -18,6 +18,35 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { TemplateResource, TemplatesIndexResponse } from '@/types/api';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
+
+async function getApiErrorMessage(error: unknown, fallbackMessage: string): Promise<string> {
+    if (!(error instanceof Error) || !('response' in error)) {
+        return fallbackMessage;
+    }
+
+    const response = (error as Error & { response?: Response }).response;
+
+    if (!response) {
+        return fallbackMessage;
+    }
+
+    try {
+        const payload = await response.clone().json();
+
+        if (typeof payload?.message === 'string' && payload.message.trim() !== '') {
+            return payload.message;
+        }
+
+        if (typeof payload?.errors?.[0]?.detail === 'string' && payload.errors[0].detail.trim() !== '') {
+            return payload.errors[0].detail;
+        }
+    } catch {
+        // fallback to default message
+    }
+
+    return fallbackMessage;
+}
+
 export default function TemplatesPage() {
     const { data, isLoading, error, mutate } = useSWR<TemplatesIndexResponse>(
         ['/templates'],
@@ -70,7 +99,7 @@ export default function TemplatesPage() {
             await mutate();
         } catch (e) {
             console.error(e);
-            alert('Failed to delete template');
+            alert(await getApiErrorMessage(e, 'Failed to delete template'));
         } finally {
             setIsDeleting(null);
         }
@@ -89,7 +118,7 @@ export default function TemplatesPage() {
             await mutate();
         } catch (e) {
             console.error(e);
-            alert('Failed to delete selected templates');
+            alert(await getApiErrorMessage(e, 'Failed to delete selected templates'));
         } finally {
             setIsMassDeleting(false);
         }

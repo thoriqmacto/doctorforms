@@ -104,6 +104,23 @@ class TemplateController extends Controller
     // DELETE /api/v1/templates/{template}
     public function destroy(Template $template)
     {
+        $relatedReportsCount = $template->reports()->count();
+
+        if ($relatedReportsCount > 0) {
+            return response()->json([
+                'jsonapi' => ['version' => '1.0'],
+                'message' => 'This template cannot be deleted because it is used by existing reports. Please delete all reports associated with this template first, then delete the template.',
+                'errors' => [[
+                    'status' => '409',
+                    'title' => 'Template deletion blocked by associated reports',
+                    'detail' => 'Delete all reports associated with this template first, then delete the template.',
+                    'meta' => [
+                        'related_reports_count' => $relatedReportsCount,
+                    ],
+                ]],
+            ], 409);
+        }
+
         $template->delete();
 
         return response()->json([
