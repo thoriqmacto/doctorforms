@@ -87,6 +87,48 @@ it('requires measurement options for measurement type template fields', function
         ]);
 });
 
+it('updates measurement fields when options payload is JSON string', function () {
+    $user = User::factory()->create();
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $template = Template::create([
+        'name' => 'Echo Template',
+        'description' => 'desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+    ]);
+
+    $created = $this->postJson('/api/v1/template-fields', [
+        'template_id' => $template->id,
+        'section' => 'Measurements',
+        'label' => 'LVIDd',
+        'type' => 'measurement',
+        'options' => [
+            'default' => '4.2',
+            'measurement_name' => 'LVIDd',
+            'measurement_unit' => 'cm',
+            'measurement_category' => 'lv',
+        ],
+        'order' => 1,
+        'field_group_order' => 1,
+    ]);
+
+    $created->assertStatus(201);
+    $fieldId = $created->json('data.id');
+
+    $this->patchJson("/api/v1/template-fields/{$fieldId}", [
+        'type' => 'measurement',
+        'options' => json_encode([
+            'default' => '4.3',
+            'measurement_name' => 'LVIDd',
+            'measurement_unit' => 'cm',
+            'measurement_category' => 'lv',
+        ]),
+    ])->assertStatus(200)
+        ->assertJsonPath('data.attributes.options.default', '4.3');
+});
+
 it('creates patient and user binding fields', function () {
     $user = User::factory()->create();
     $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);

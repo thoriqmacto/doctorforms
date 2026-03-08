@@ -35,7 +35,15 @@ class TemplateFieldController extends Controller
     // POST /api/v1/template-fields
     public function store(Request $request)
     {
-        $v = Validator::make($request->all(), [
+        $payload = $request->all();
+        if (is_string($payload['options'] ?? null)) {
+            $decoded = json_decode($payload['options'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $payload['options'] = $decoded;
+            }
+        }
+
+        $v = Validator::make($payload, [
             'template_id'       => ['required', 'exists:templates,id'],
             'section'           => ['required', 'string', 'max:255'],
             'label'             => ['required', 'string', 'max:255'],
@@ -45,12 +53,12 @@ class TemplateFieldController extends Controller
             'field_group_order' => ['nullable', 'integer'],
         ]);
 
-        $v->after(function ($validator) use ($request) {
-            if ($request->input('type') !== 'measurement') {
+        $v->after(function ($validator) use ($payload) {
+            if (($payload['type'] ?? null) !== 'measurement') {
                 return;
             }
 
-            $options = $request->input('options', []);
+            $options = $payload['options'] ?? [];
             $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
             foreach ($requiredKeys as $key) {
                 if (!is_array($options) || blank($options[$key] ?? null)) {
@@ -74,7 +82,15 @@ class TemplateFieldController extends Controller
     // PUT/PATCH /api/v1/template-fields/{template_field}
     public function update(Request $request, TemplateField $templateField)
     {
-        $v = Validator::make($request->all(), [
+        $payload = $request->all();
+        if (is_string($payload['options'] ?? null)) {
+            $decoded = json_decode($payload['options'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $payload['options'] = $decoded;
+            }
+        }
+
+        $v = Validator::make($payload, [
             'template_id'       => ['sometimes', 'exists:templates,id'],
             'section'           => ['sometimes', 'string', 'max:255'],
             'label'             => ['sometimes', 'string', 'max:255'],
@@ -84,14 +100,14 @@ class TemplateFieldController extends Controller
             'field_group_order' => ['sometimes', 'integer'],
         ]);
 
-        $v->after(function ($validator) use ($request, $templateField) {
-            $type = $request->input('type', $templateField->type);
+        $v->after(function ($validator) use ($payload, $templateField) {
+            $type = $payload['type'] ?? $templateField->type;
             if ($type !== 'measurement') {
                 return;
             }
 
-            $options = $request->has('options')
-                ? $request->input('options', [])
+            $options = array_key_exists('options', $payload)
+                ? ($payload['options'] ?? [])
                 : ($templateField->options ?? []);
 
             $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];

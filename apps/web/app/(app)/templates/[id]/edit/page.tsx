@@ -118,6 +118,24 @@ function buildUniqueName(section: string, label: string) {
 }
 
 function normalizeOptions(raw: unknown) {
+  if (typeof raw === "string") {
+    try {
+      return normalizeOptions(JSON.parse(raw));
+    } catch {
+      return {
+        values: [],
+        default: "",
+        required: false,
+        static: false,
+        title_tag: "h2",
+        image_url: "",
+        measurement_name: "",
+        measurement_unit: "",
+        measurement_category: "",
+      };
+    }
+  }
+
   if (Array.isArray(raw)) {
     return {
       values: raw.map((v) => String(v)),
