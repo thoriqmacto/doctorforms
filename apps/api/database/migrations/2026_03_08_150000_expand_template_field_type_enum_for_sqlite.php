@@ -26,33 +26,39 @@ return new class extends Migration
 
         Schema::disableForeignKeyConstraints();
 
-        Schema::rename('template_fields', 'template_fields_old');
+        try {
+            if (Schema::hasTable('template_fields_old')) {
+                Schema::drop('template_fields_old');
+            }
 
-        Schema::create('template_fields', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('template_id')->constrained()->onDelete('cascade');
-            $table->string('section');
-            $table->string('label');
-            $table->string('unique_name')->nullable();
-            $table->enum('type', ['text', 'number', 'select', 'textarea', 'subtitle', 'title', 'image', 'date', 'checkbox_group', 'bullseye', 'patient', 'user', 'measurement']);
-            $table->json('options')->nullable();
-            $table->integer('order')->default(0);
-            $table->integer('field_group_order')->default(0);
-            $table->timestamps();
-        });
+            Schema::rename('template_fields', 'template_fields_old');
 
-        DB::table('template_fields')->insertUsing(
-            ['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'],
-            DB::table('template_fields_old')->select(['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'])
-        );
+            Schema::create('template_fields', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('template_id')->constrained()->onDelete('cascade');
+                $table->string('section');
+                $table->string('label');
+                $table->string('unique_name')->nullable();
+                $table->enum('type', ['text', 'number', 'select', 'textarea', 'subtitle', 'title', 'image', 'date', 'checkbox_group', 'bullseye', 'patient', 'user', 'measurement']);
+                $table->json('options')->nullable();
+                $table->integer('order')->default(0);
+                $table->integer('field_group_order')->default(0);
+                $table->timestamps();
+            });
 
-        Schema::drop('template_fields_old');
+            DB::table('template_fields')->insertUsing(
+                ['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'],
+                DB::table('template_fields_old')->select(['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'])
+            );
 
-        Schema::table('template_fields', function (Blueprint $table) {
-            $table->index(['template_id', 'unique_name']);
-        });
+            Schema::drop('template_fields_old');
 
-        Schema::enableForeignKeyConstraints();
+            Schema::table('template_fields', function (Blueprint $table) {
+                $table->index(['template_id', 'unique_name']);
+            });
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
     }
 
     /**
