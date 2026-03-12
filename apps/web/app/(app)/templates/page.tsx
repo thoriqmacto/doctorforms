@@ -64,6 +64,7 @@ export default function TemplatesPage() {
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
     const [isMassDeleting, setIsMassDeleting] = useState(false);
+    const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
     const isAllSelected = rows.length > 0 && selectedIds.length === rows.length;
     const hasPartialSelection = selectedIds.length > 0 && selectedIds.length < rows.length;
@@ -94,12 +95,13 @@ export default function TemplatesPage() {
 
         try {
             setIsDeleting(templateId);
+            setDeleteErrorMessage(null);
             await deleteTemplate(templateId);
             setSelectedIds((current) => current.filter((id) => id !== templateId));
             await mutate();
         } catch (e) {
             console.error(e);
-            alert(await getApiErrorMessage(e, 'Failed to delete template'));
+            setDeleteErrorMessage(await getApiErrorMessage(e, 'Failed to delete template'));
         } finally {
             setIsDeleting(null);
         }
@@ -113,12 +115,13 @@ export default function TemplatesPage() {
 
         try {
             setIsMassDeleting(true);
+            setDeleteErrorMessage(null);
             await Promise.all(selectedIds.map((id) => deleteTemplate(id)));
             setSelectedIds([]);
             await mutate();
         } catch (e) {
             console.error(e);
-            alert(await getApiErrorMessage(e, 'Failed to delete selected templates'));
+            setDeleteErrorMessage(await getApiErrorMessage(e, 'Failed to delete selected templates'));
         } finally {
             setIsMassDeleting(false);
         }
@@ -188,6 +191,14 @@ export default function TemplatesPage() {
                     <CardTitle>All Templates</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {deleteErrorMessage ? (
+                        <div
+                            className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                            role="alert"
+                        >
+                            {deleteErrorMessage}
+                        </div>
+                    ) : null}
                     <div className="flex items-center gap-2">
                         <Button
                             variant="secondary"
