@@ -389,6 +389,7 @@ export default function TemplateFormRenderer({
 
     function renderField(f: Field) {
         const name = `f_${f.id}`;
+        const fieldInputId = `template-field-${f.id}`;
         const t = f.attributes.type;
         const label = f.attributes.label;
         const optionMeta = parseFieldOptionMeta(f.attributes.options);
@@ -433,7 +434,7 @@ export default function TemplateFormRenderer({
         if (t === "bullseye") {
             return (
                 <div key={name} className="space-y-1 col-span-full">
-                    <Label>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
@@ -453,13 +454,13 @@ export default function TemplateFormRenderer({
             const selectOptions = optionList(f.attributes.options);
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                    <Label>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
                         render={({ field }) => (
                             <Select onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
-                                <SelectTrigger>
+                                <SelectTrigger id={fieldInputId} aria-label={label}>
                                     <SelectValue placeholder={t === "patient" || t === "user" ? "Select attribute" : "Select"} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -480,12 +481,13 @@ export default function TemplateFormRenderer({
             const isTextareaResult = optionMeta.textareaMode === "result";
             return (
                 <div key={name} className="space-y-1 col-span-full">
-                    <Label>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
                         render={({ field }) => (
                             <Textarea
+                                id={fieldInputId}
                                 {...field}
                                 value={(field.value as string | undefined) ?? ""}
                                 rows={3}
@@ -499,9 +501,10 @@ export default function TemplateFormRenderer({
 
         if (t === "checkbox_group") {
             const options = optionList(f.attributes.options);
+            const groupLabelId = `${fieldInputId}-legend`;
             return (
                 <div key={name} className="space-y-2 col-span-full">
-                    <Label className="font-medium">{label}</Label>
+                    <Label id={groupLabelId} className="font-medium">{label}</Label>
                     <Controller
                         control={control}
                         name={name}
@@ -510,9 +513,16 @@ export default function TemplateFormRenderer({
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 {options.map((opt) => {
                                     const checked = Array.isArray(field.value) && field.value.includes(opt);
+                                    const optionId = `${fieldInputId}-option-${opt
+                                        .toLowerCase()
+                                        .replace(/[^a-z0-9]+/g, "-")
+                                        .replace(/^-|-$/g, "")}`;
                                     return (
-                                        <label key={opt} className="inline-flex items-center gap-2 rounded border p-2 hover:bg-muted/30">
+                                        <label htmlFor={optionId} key={opt} className="inline-flex items-center gap-2 rounded border p-2 hover:bg-muted/30">
                                             <Checkbox
+                                                id={optionId}
+                                                name={`${name}[]`}
+                                                aria-labelledby={groupLabelId}
                                                 checked={checked}
                                                 onCheckedChange={(v) => {
                                                     const curr = new Set<string>(Array.isArray(field.value) ? field.value : []);
@@ -535,12 +545,12 @@ export default function TemplateFormRenderer({
         if (t === "measurement") {
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                    <Label>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
                         render={({ field }) => (
-                            <Input type="text" {...field} value={(field.value as string | undefined) ?? ""} />
+                            <Input id={fieldInputId} type="text" {...field} value={(field.value as string | undefined) ?? ""} />
                         )}
                     />
                 </div>
@@ -550,11 +560,11 @@ export default function TemplateFormRenderer({
         if (t === "date") {
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                    <Label>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
-                        render={({ field }) => <Input type="date" {...field} value={(field.value as string | undefined) ?? ""} />}
+                        render={({ field }) => <Input id={fieldInputId} type="date" {...field} value={(field.value as string | undefined) ?? ""} />}
                     />
                 </div>
             );
@@ -562,12 +572,17 @@ export default function TemplateFormRenderer({
 
         return (
             <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                <Label>{label}</Label>
+                <Label htmlFor={fieldInputId}>{label}</Label>
                 <Controller
                     control={control}
                     name={name}
                     render={({ field }) => (
-                        <Input type={t === "number" ? "number" : "text"} {...field} value={(field.value as string | number | undefined) ?? ""} />
+                        <Input
+                            id={fieldInputId}
+                            type={t === "number" ? "number" : "text"}
+                            {...field}
+                            value={(field.value as string | number | undefined) ?? ""}
+                        />
                     )}
                 />
             </div>
@@ -681,6 +696,9 @@ export default function TemplateFormRenderer({
                                 <Link href={editHref}>Edit</Link>
                             </Button>
                         )}
+                        <Label htmlFor="jump-to-section" className="sr-only">
+                            Jump to section
+                        </Label>
                         <Select
                             value={jumpSection}
                             onValueChange={(value) => {
@@ -688,7 +706,7 @@ export default function TemplateFormRenderer({
                                 document.getElementById(value)?.scrollIntoView({ behavior: "smooth", block: "start" });
                             }}
                         >
-                            <SelectTrigger className="w-[220px]">
+                            <SelectTrigger id="jump-to-section" aria-label="Jump to section" className="w-[220px]">
                                 <SelectValue placeholder="Jump to section" />
                             </SelectTrigger>
                             <SelectContent>
