@@ -74,6 +74,12 @@ type FieldOptionMeta = {
     style: Record<string, string>;
 };
 
+type AutoResultGroup = {
+    textareaName: string;
+    inputFields: Field[];
+    inputFieldNames: string[];
+};
+
 function cx(...xs: (string | false | null | undefined)[]) {
     return xs.filter(Boolean).join(" ");
 }
@@ -288,17 +294,35 @@ export default function TemplateFormRenderer({
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
 
     const autoResultGroups = useMemo(() => {
-        const groups: Array<{ textareaName: string; inputFields: Field[]; inputFieldNames: string[] }> = [];
+        const groups: AutoResultGroup[] = [];
+
+        const priorityByType: Partial<Record<Field["attributes"]["type"], number>> = {
+            checkbox_group: 0,
+            textarea: 1,
+        };
+
         fieldGroups.forEach((items) => {
             if (items.length < 2) return;
-            const last = items[items.length - 1];
-            if (last.attributes.type !== "textarea") return;
-            const lastMeta = parseFieldOptionMeta(last.attributes.options);
-            if (lastMeta.textareaMode !== "result") return;
 
-            const inputFields = items.slice(0, -1);
+            const resultTextarea = items.find((item) => {
+                if (item.attributes.type !== "textarea") return false;
+                const itemMeta = parseFieldOptionMeta(item.attributes.options);
+                return itemMeta.textareaMode === "result";
+            });
+
+            if (!resultTextarea) return;
+
+            const inputFields = items
+                .filter((item) => item.id !== resultTextarea.id)
+                .sort((a, b) => {
+                    const typeA = priorityByType[a.attributes.type] ?? 99;
+                    const typeB = priorityByType[b.attributes.type] ?? 99;
+                    if (typeA !== typeB) return typeA - typeB;
+                    return (a.attributes.order ?? 0) - (b.attributes.order ?? 0);
+                });
+
             groups.push({
-                textareaName: `f_${last.id}`,
+                textareaName: `f_${resultTextarea.id}`,
                 inputFields,
                 inputFieldNames: inputFields.map((field) => `f_${field.id}`),
             });
