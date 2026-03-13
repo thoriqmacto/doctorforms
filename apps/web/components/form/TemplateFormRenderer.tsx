@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
@@ -218,32 +218,39 @@ export default function TemplateFormRenderer({
     editHref,
     enableSectionControls = false,
 }: Props) {
-    const baseShape: Record<string, z.ZodTypeAny> = {};
-    groupedSections.forEach((sec) => {
-        sec.items.forEach((f) => {
-            const name = `f_${f.id}`;
-            const t = f.attributes.type;
-            if (t === "number") baseShape[name] = z.coerce.number().optional();
-            else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
-            else if (t === "bullseye") baseShape[name] = z.any().optional();
-            else baseShape[name] = z.string().optional();
+    const schema = useMemo(() => {
+        const baseShape: Record<string, z.ZodTypeAny> = {};
+        groupedSections.forEach((sec) => {
+            sec.items.forEach((f) => {
+                const name = `f_${f.id}`;
+                const t = f.attributes.type;
+                if (t === "number") baseShape[name] = z.coerce.number().optional();
+                else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
+                else if (t === "bullseye") baseShape[name] = z.any().optional();
+                else baseShape[name] = z.string().optional();
+            });
         });
-    });
-    const schema = z.object(baseShape);
+        return z.object(baseShape);
+    }, [groupedSections]);
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [jumpSection, setJumpSection] = useState<string>("");
 
-    const { control, handleSubmit, watch, setValue, reset, getValues } = useForm({
+    const { control, handleSubmit, setValue, reset, getValues } = useForm({
         resolver: zodResolver(schema),
         defaultValues: initialValues || {},
         mode: "onChange",
     });
 
+    const initialValuesHash = useMemo(() => JSON.stringify(initialValues ?? {}), [initialValues]);
+    const lastInitialValuesHashRef = useRef<string>(initialValuesHash);
+
     useEffect(() => {
-        if (initialValues) reset(initialValues);
-    }, [initialValues, reset]);
+        if (initialValuesHash === lastInitialValuesHashRef.current) return;
+        lastInitialValuesHashRef.current = initialValuesHash;
+        reset(initialValues ?? {});
+    }, [initialValues, initialValuesHash, reset]);
 
     const fieldGroups = useMemo(() => {
         const map = new Map<number, Field[]>();
@@ -275,9 +282,9 @@ export default function TemplateFormRenderer({
     const fWt = byLabel.get(LBL.WEIGHT);
     const fBSA = byLabel.get(LBL.BSA);
 
-    const dobVal = watch(fDOB || "");
-    const htVal = watch(fHt || "");
-    const wtVal = watch(fWt || "");
+    const dobVal = useWatch({ control, name: fDOB || "" });
+    const htVal = useWatch({ control, name: fHt || "" });
+    const wtVal = useWatch({ control, name: fWt || "" });
 
     useEffect(() => {
         if (fAge && fDOB) {
@@ -330,7 +337,19 @@ export default function TemplateFormRenderer({
         return groups;
     }, [fieldGroups]);
 
-    const autoResultSourceValsByGroup = autoResultGroups.map((group) => watch(group.inputFieldNames));
+    const autoResultWatchFieldNames = useMemo(
+        () => autoResultGroups.flatMap((group) => group.inputFieldNames),
+        [autoResultGroups]
+    );
+    const autoResultWatchValues = useWatch({ control, name: autoResultWatchFieldNames });
+    const autoResultSourceValsByGroup = useMemo(() => {
+        let offset = 0;
+        return autoResultGroups.map((group) => {
+            const nextValues = autoResultWatchValues.slice(offset, offset + group.inputFieldNames.length);
+            offset += group.inputFieldNames.length;
+            return nextValues;
+        });
+    }, [autoResultGroups, autoResultWatchValues]);
     const lastAutoSentenceByFieldRef = useRef<Record<string, string>>({});
     useEffect(() => {
         autoResultGroups.forEach((group, groupIndex) => {
@@ -417,7 +436,7 @@ export default function TemplateFormRenderer({
         }
 
         if (t === "image") {
-            const imageSrc = String(watch(name) ?? optionMeta.defaultValue ?? "").trim();
+            const imageSrc = String(getValues(name) ?? optionMeta.defaultValue ?? "").trim();
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label>{label}</Label>
