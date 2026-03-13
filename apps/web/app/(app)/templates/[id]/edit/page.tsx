@@ -132,6 +132,7 @@ function normalizeOptions(raw: unknown) {
         measurement_name: "",
         measurement_unit: "",
         measurement_category: "",
+        textarea_mode: "free",
       };
     }
   }
@@ -147,6 +148,7 @@ function normalizeOptions(raw: unknown) {
       measurement_name: "",
       measurement_unit: "",
       measurement_category: "",
+      textarea_mode: "free",
     };
   }
 
@@ -174,6 +176,8 @@ function normalizeOptions(raw: unknown) {
       measurement_category: obj.measurement_category
         ? String(obj.measurement_category)
         : "",
+      textarea_mode:
+        obj.textarea_mode === "result" ? "result" : "free",
     };
   }
 
@@ -187,6 +191,7 @@ function normalizeOptions(raw: unknown) {
     measurement_name: "",
     measurement_unit: "",
     measurement_category: "",
+    textarea_mode: "free",
   };
 }
 
@@ -439,6 +444,11 @@ export default function EditTemplatePage() {
               type:
                 f.attributes?.type === "checkbox_group"
                   ? "checkbox"
+                  : f.attributes?.type === "textarea" &&
+                      options.textarea_mode === "result"
+                    ? "textarea_result"
+                    : f.attributes?.type === "textarea"
+                      ? "textarea_free"
                   : (f.attributes?.type ?? "text"),
               default_value:
                 f.attributes?.type === "image"
@@ -576,6 +586,15 @@ export default function EditTemplatePage() {
               baseOptions.measurement_name = f.measurement_name;
               baseOptions.measurement_unit = f.measurement_unit;
               baseOptions.measurement_category = f.measurement_category;
+            } else if (
+              f.type === "textarea_free" ||
+              f.type === "textarea_result"
+            ) {
+              baseOptions.textarea_mode =
+                f.type === "textarea_result" ? "result" : "free";
+              if (f.default_value) {
+                baseOptions.default = f.default_value;
+              }
             } else if (f.type === "title") {
               baseOptions.title_tag = f.title_tag || "h2";
               if (f.default_value) {
@@ -595,7 +614,12 @@ export default function EditTemplatePage() {
               template_id: Number(id),
               section: f.section || "General",
               label: f.label,
-              type: f.type === "checkbox" ? "checkbox_group" : f.type,
+              type:
+                f.type === "checkbox"
+                  ? "checkbox_group"
+                  : f.type === "textarea_free" || f.type === "textarea_result"
+                    ? "textarea"
+                    : f.type,
               order: f.order ?? idx + 1,
               field_group_order: f.field_group_order ?? 0,
               options: baseOptions,
@@ -1254,8 +1278,11 @@ export default function EditTemplatePage() {
                                         <SelectItem value="checkbox">
                                           Checkbox
                                         </SelectItem>
-                                        <SelectItem value="textarea">
-                                          Textarea
+                                        <SelectItem value="textarea_free">
+                                          Textarea-free
+                                        </SelectItem>
+                                        <SelectItem value="textarea_result">
+                                          Textarea-result
                                         </SelectItem>
                                         <SelectItem value="title">
                                           Title
@@ -1290,6 +1317,7 @@ export default function EditTemplatePage() {
                                   name={`fields.${index}.default_value`}
                                   rules={{
                                     validate: (value) => {
+                                      if (fieldType === "checkbox") return true;
                                       if (!isStaticField) return true;
                                       return value?.toString().trim()
                                         ? true
@@ -1303,7 +1331,11 @@ export default function EditTemplatePage() {
                                     >
                                       <FormLabel>Default Value</FormLabel>
                                       <Select
-                                        onValueChange={field.onChange}
+                                        onValueChange={(value) =>
+                                          field.onChange(
+                                            value === "__none__" ? "" : value,
+                                          )
+                                        }
                                         value={field.value || ""}
                                       >
                                         <FormControl>
@@ -1312,6 +1344,11 @@ export default function EditTemplatePage() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                          {fieldType === "checkbox" ? (
+                                            <SelectItem value="__none__">
+                                              No default option
+                                            </SelectItem>
+                                          ) : null}
                                           {defaultValueOptions
                                             .filter((option) => option.trim())
                                             .map((option, optionIndex) => (

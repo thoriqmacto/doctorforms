@@ -70,6 +70,7 @@ type FieldOptionMeta = {
     defaultValue: string;
     required: boolean;
     static: boolean;
+    textareaMode: "free" | "result";
     style: Record<string, string>;
 };
 
@@ -93,13 +94,20 @@ function optionList(value: unknown): string[] {
 
 function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return { defaultValue: "", required: false, static: false, style: {} };
+        return {
+            defaultValue: "",
+            required: false,
+            static: false,
+            textareaMode: "free",
+            style: {},
+        };
     }
 
     const options = value as {
         default?: unknown;
         required?: unknown;
         static?: unknown;
+        textarea_mode?: unknown;
         style?: unknown;
     };
 
@@ -107,6 +115,7 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
         defaultValue: options.default ? String(options.default) : "",
         required: !!options.required,
         static: !!options.static,
+        textareaMode: options.textarea_mode === "result" ? "result" : "free",
         style:
             options.style && typeof options.style === "object" && !Array.isArray(options.style)
                 ? Object.fromEntries(
@@ -285,6 +294,8 @@ export default function TemplateFormRenderer({
             if (items.length < 2) return;
             const last = items[items.length - 1];
             if (last.attributes.type !== "textarea") return;
+            const lastMeta = parseFieldOptionMeta(last.attributes.options);
+            if (lastMeta.textareaMode !== "result") return;
 
             const textareaName = `f_${last.id}`;
             const parts: string[] = [];
@@ -423,13 +434,21 @@ export default function TemplateFormRenderer({
         }
 
         if (t === "textarea") {
+            const isTextareaResult = optionMeta.textareaMode === "result";
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label>{label}</Label>
                     <Controller
                         control={control}
                         name={name}
-                        render={({ field }) => <Textarea {...field} value={(field.value as string | undefined) ?? ""} rows={3} />}
+                        render={({ field }) => (
+                            <Textarea
+                                {...field}
+                                value={(field.value as string | undefined) ?? ""}
+                                rows={3}
+                                disabled={isTextareaResult}
+                            />
+                        )}
                     />
                 </div>
             );
