@@ -317,7 +317,7 @@ export default function TemplateFormRenderer({
                 if (Array.isArray(val)) {
                     if (val.length) parts.push(`${field.attributes.label}: ${val.join(", ")}`);
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
-                    parts.push(`${field.attributes.label}: ${val}`);
+                    parts.push(`${val}`);
                 }
             });
             const sentence = parts.join(". ") + (parts.length ? "." : "");
