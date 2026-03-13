@@ -234,7 +234,7 @@ export default function TemplateFormRenderer({
     }, [groupedSections]);
     const renderCountRef = useRef(0);
     renderCountRef.current += 1;
-    console.log("TemplateFormRenderer render:", renderCountRef.current);
+    // console.log("TemplateFormRenderer render:", renderCountRef.current);
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
@@ -505,7 +505,7 @@ export default function TemplateFormRenderer({
                 <div
                     key={name}
                     className="space-y-1 col-span-full"
-                    onFocus={() => console.log("focus:", name)}
+                    // onFocus={() => console.log("focus:", name)}
                 >
                     <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller

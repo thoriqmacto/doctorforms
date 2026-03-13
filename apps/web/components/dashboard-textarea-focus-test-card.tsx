@@ -15,7 +15,7 @@ export function DashboardTextareaFocusTestCard() {
   const mirroredValue = [inputValue.trim(), selectedOptions.join(", ")]
     .filter(Boolean)
     .join(". ")
-    .concat(inputValue.trim() || selectedOptions.length ? "." : "")
+    .concat(selectedOptions.length || inputValue.trim() ? "." : "")
 
   const toggleOption = (option: string, checked: boolean) => {
     setSelectedOptions((current) => {
@@ -36,16 +36,6 @@ export function DashboardTextareaFocusTestCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="enabled-textarea">Enabled textarea</Label>
-          <Textarea
-            id="enabled-textarea"
-            placeholder="Type here to test focus behavior..."
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label>Checkbox inputs</Label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {checkboxOptions.map((option) => {
@@ -58,6 +48,16 @@ export function DashboardTextareaFocusTestCard() {
               )
             })}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="enabled-textarea">Enabled textarea</Label>
+          <Textarea
+              id="enabled-textarea"
+              placeholder="Type here to test focus behavior..."
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+          />
         </div>
 
         <div className="space-y-2">
