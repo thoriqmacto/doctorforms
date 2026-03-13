@@ -311,14 +311,21 @@ export default function TemplateFormRenderer({
             const sentence = parts.join(". ") + (parts.length ? "." : "");
             const curr = (allVals as Record<string, unknown>)[textareaName];
             const lastAutoSentence = lastAutoSentenceByFieldRef.current[textareaName] ?? "";
-            const canReplace = curr === undefined || curr === null || String(curr) === "" || String(curr) === lastAutoSentence;
+            const userHasEdited =
+                curr !== undefined &&
+                curr !== null &&
+                String(curr) !== "" &&
+                String(curr) !== lastAutoSentence;
+            const canReplace = !userHasEdited;
 
             if (canReplace && curr !== sentence) {
                 setValue(textareaName, sentence, { shouldDirty: false, shouldValidate: false });
                 lastAutoSentenceByFieldRef.current[textareaName] = sentence;
             }
 
-            if (curr === sentence) {
+            if (!canReplace && curr !== sentence) {
+                lastAutoSentenceByFieldRef.current[textareaName] = String(curr ?? "");
+            } else if (curr === sentence) {
                 lastAutoSentenceByFieldRef.current[textareaName] = sentence;
             }
         });
