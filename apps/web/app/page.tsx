@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardTextareaFocusTestCard } from "@/components/dashboard-textarea-focus-test-card"
 
 export default function Home() {
   return (
@@ -13,6 +14,8 @@ export default function Home() {
           <Button className="mt-4">Create Form</Button>
         </CardContent>
       </Card>
+
+      <DashboardTextareaFocusTestCard />
     </div>
   )
 }
