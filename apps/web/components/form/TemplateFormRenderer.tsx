@@ -287,43 +287,42 @@ export default function TemplateFormRenderer({
         }
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
 
-    const autoResultSourceFieldNames = useMemo(() => {
-        const names = new Set<string>();
+    const autoResultGroups = useMemo(() => {
+        const groups: Array<{ textareaName: string; inputFields: Field[]; inputFieldNames: string[] }> = [];
         fieldGroups.forEach((items) => {
             if (items.length < 2) return;
             const last = items[items.length - 1];
             if (last.attributes.type !== "textarea") return;
             const lastMeta = parseFieldOptionMeta(last.attributes.options);
             if (lastMeta.textareaMode !== "result") return;
-            items.slice(0, -1).forEach((field) => names.add(`f_${field.id}`));
+
+            const inputFields = items.slice(0, -1);
+            groups.push({
+                textareaName: `f_${last.id}`,
+                inputFields,
+                inputFieldNames: inputFields.map((field) => `f_${field.id}`),
+            });
         });
-        return Array.from(names);
+        return groups;
     }, [fieldGroups]);
 
-    const autoResultSourceVals = watch(autoResultSourceFieldNames);
+    const autoResultSourceValsByGroup = autoResultGroups.map((group) => watch(group.inputFieldNames));
     const lastAutoSentenceByFieldRef = useRef<Record<string, string>>({});
     useEffect(() => {
-        fieldGroups.forEach((items) => {
-            if (items.length < 2) return;
-            const last = items[items.length - 1];
-            if (last.attributes.type !== "textarea") return;
-            const lastMeta = parseFieldOptionMeta(last.attributes.options);
-            if (lastMeta.textareaMode !== "result") return;
-
-            const textareaName = `f_${last.id}`;
+        autoResultGroups.forEach((group, groupIndex) => {
+            const watchedValues = autoResultSourceValsByGroup[groupIndex];
             const parts: string[] = [];
-            items.slice(0, -1).forEach((f) => {
-                const name = `f_${f.id}`;
-                const val = getValues(name);
+            group.inputFields.forEach((field, inputIndex) => {
+                const val = Array.isArray(watchedValues) ? watchedValues[inputIndex] : undefined;
                 if (Array.isArray(val)) {
-                    if (val.length) parts.push(`${f.attributes.label}: ${val.join(", ")}`);
+                    if (val.length) parts.push(`${field.attributes.label}: ${val.join(", ")}`);
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
-                    parts.push(`${f.attributes.label}: ${val}`);
+                    parts.push(`${field.attributes.label}: ${val}`);
                 }
             });
             const sentence = parts.join(". ") + (parts.length ? "." : "");
-            const curr = getValues(textareaName);
-            const lastAutoSentence = lastAutoSentenceByFieldRef.current[textareaName] ?? "";
+            const curr = getValues(group.textareaName);
+            const lastAutoSentence = lastAutoSentenceByFieldRef.current[group.textareaName] ?? "";
             const userHasEdited =
                 curr !== undefined &&
                 curr !== null &&
@@ -332,17 +331,17 @@ export default function TemplateFormRenderer({
             const canReplace = !userHasEdited;
 
             if (canReplace && curr !== sentence) {
-                setValue(textareaName, sentence, { shouldDirty: false, shouldValidate: false });
-                lastAutoSentenceByFieldRef.current[textareaName] = sentence;
+                setValue(group.textareaName, sentence, { shouldDirty: false, shouldValidate: false });
+                lastAutoSentenceByFieldRef.current[group.textareaName] = sentence;
             }
 
             if (!canReplace && curr !== sentence) {
-                lastAutoSentenceByFieldRef.current[textareaName] = String(curr ?? "");
+                lastAutoSentenceByFieldRef.current[group.textareaName] = String(curr ?? "");
             } else if (curr === sentence) {
-                lastAutoSentenceByFieldRef.current[textareaName] = sentence;
+                lastAutoSentenceByFieldRef.current[group.textareaName] = sentence;
             }
         });
-    }, [autoResultSourceVals, fieldGroups, getValues, setValue]);
+    }, [autoResultGroups, autoResultSourceValsByGroup, getValues, setValue]);
 
     function renderSectionHeader(title: string | null | undefined, idx: number, collapsed: boolean) {
         if (!title) return null;
