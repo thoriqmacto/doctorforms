@@ -232,6 +232,9 @@ export default function TemplateFormRenderer({
         });
         return z.object(baseShape);
     }, [groupedSections]);
+    const renderCountRef = useRef(0);
+    renderCountRef.current += 1;
+    console.log("TemplateFormRenderer render:", renderCountRef.current);
 
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
@@ -499,7 +502,11 @@ export default function TemplateFormRenderer({
         if (t === "textarea") {
             const isTextareaResult = optionMeta.textareaMode === "result";
             return (
-                <div key={name} className="space-y-1 col-span-full">
+                <div
+                    key={name}
+                    className="space-y-1 col-span-full"
+                    onFocus={() => console.log("focus:", name)}
+                >
                     <Label htmlFor={fieldInputId}>{label}</Label>
                     <Controller
                         control={control}
@@ -608,13 +615,20 @@ export default function TemplateFormRenderer({
         );
     }
 
-    function SectionCard({ title, children, idx }: { title?: string | null; children: React.ReactNode; idx: number }) {
+    function renderSectionCard(
+        title: string | null | undefined,
+        idx: number,
+        children: React.ReactNode
+    ) {
         const hintCols = title ? layoutHints?.sectionCols?.[title] : undefined;
         const cols = hintCols ?? gridColsFor(title);
         const collapsed = !!collapsedSections[idx];
 
         return (
-            <section id={sectionDomId(title, idx)} className="scroll-mt-24 rounded-xl border p-4 shadow-sm print:shadow-none">
+            <section
+                id={sectionDomId(title, idx)}
+                className="scroll-mt-24 rounded-xl border p-4 shadow-sm print:shadow-none"
+            >
                 {renderSectionHeader(title, idx, collapsed)}
                 {!collapsed && <div className={cx("grid gap-3", cols)}>{children}</div>}
             </section>
@@ -643,7 +657,11 @@ export default function TemplateFormRenderer({
             ...sec.items.filter((f) => !wanted.has(norm(f.attributes.label))),
         ];
 
-        return <SectionCard title={sec.section} idx={idx}>{prioritized.map((f) => renderField(f))}</SectionCard>;
+        return renderSectionCard(
+            sec.section,
+            idx,
+            prioritized.map((f) => renderField(f))
+        );
     }
 
     function renderProcedureLike(sec: Section, idx: number) {
@@ -674,17 +692,23 @@ export default function TemplateFormRenderer({
         });
 
         const rest = sec.items.filter((f) => !used.has(f));
-        return (
-            <SectionCard title={sec.section} idx={idx}>
+        return renderSectionCard(
+            sec.section,
+            idx,
+            <>
                 {rows}
                 {rest.map((f) => renderField(f))}
-            </SectionCard>
+            </>
         );
     }
 
     function renderGeneric(sec: Section, idx: number) {
         const items = [...sec.items].sort((a, b) => (a.attributes.order ?? 0) - (b.attributes.order ?? 0));
-        return <SectionCard title={sec.section} idx={idx}>{items.map((f) => renderField(f))}</SectionCard>;
+        return renderSectionCard(
+            sec.section,
+            idx,
+            items.map((f) => renderField(f))
+        );
     }
 
     function renderSection(sec: Section, idx: number) {
