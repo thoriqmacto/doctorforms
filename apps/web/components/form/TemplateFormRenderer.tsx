@@ -229,7 +229,7 @@ export default function TemplateFormRenderer({
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [jumpSection, setJumpSection] = useState<string>("");
 
-    const { control, handleSubmit, watch, setValue, reset } = useForm({
+    const { control, handleSubmit, watch, setValue, reset, getValues } = useForm({
         resolver: zodResolver(schema),
         defaultValues: initialValues || {},
         mode: "onChange",
@@ -287,8 +287,21 @@ export default function TemplateFormRenderer({
         }
     }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
 
+    const autoResultSourceFieldNames = useMemo(() => {
+        const names = new Set<string>();
+        fieldGroups.forEach((items) => {
+            if (items.length < 2) return;
+            const last = items[items.length - 1];
+            if (last.attributes.type !== "textarea") return;
+            const lastMeta = parseFieldOptionMeta(last.attributes.options);
+            if (lastMeta.textareaMode !== "result") return;
+            items.slice(0, -1).forEach((field) => names.add(`f_${field.id}`));
+        });
+        return Array.from(names);
+    }, [fieldGroups]);
+
+    const autoResultSourceVals = watch(autoResultSourceFieldNames);
     const lastAutoSentenceByFieldRef = useRef<Record<string, string>>({});
-    const allVals = watch();
     useEffect(() => {
         fieldGroups.forEach((items) => {
             if (items.length < 2) return;
@@ -301,7 +314,7 @@ export default function TemplateFormRenderer({
             const parts: string[] = [];
             items.slice(0, -1).forEach((f) => {
                 const name = `f_${f.id}`;
-                const val = (allVals as Record<string, unknown>)[name];
+                const val = getValues(name);
                 if (Array.isArray(val)) {
                     if (val.length) parts.push(`${f.attributes.label}: ${val.join(", ")}`);
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
@@ -309,7 +322,7 @@ export default function TemplateFormRenderer({
                 }
             });
             const sentence = parts.join(". ") + (parts.length ? "." : "");
-            const curr = (allVals as Record<string, unknown>)[textareaName];
+            const curr = getValues(textareaName);
             const lastAutoSentence = lastAutoSentenceByFieldRef.current[textareaName] ?? "";
             const userHasEdited =
                 curr !== undefined &&
@@ -329,7 +342,7 @@ export default function TemplateFormRenderer({
                 lastAutoSentenceByFieldRef.current[textareaName] = sentence;
             }
         });
-    }, [allVals, fieldGroups, setValue]);
+    }, [autoResultSourceVals, fieldGroups, getValues, setValue]);
 
     function renderSectionHeader(title: string | null | undefined, idx: number, collapsed: boolean) {
         if (!title) return null;
