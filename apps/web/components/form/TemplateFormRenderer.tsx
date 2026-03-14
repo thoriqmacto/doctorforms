@@ -361,12 +361,13 @@ export default function TemplateFormRenderer({
             group.inputFields.forEach((field, inputIndex) => {
                 const val = Array.isArray(watchedValues) ? watchedValues[inputIndex] : undefined;
                 if (Array.isArray(val)) {
-                    if (val.length) parts.push(`${field.attributes.label}: ${val.join(", ")}`);
+                    if (val.length) parts.push(`${val.join(", ")}`);
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
                     parts.push(`${val}`);
                 }
             });
-            const sentence = parts.join(". ") + (parts.length ? "." : "");
+            // const sentence = parts.join(" ") + (parts.length ? "." : "");
+            const sentence = parts.join(" ");
             const curr = getValues(group.textareaName);
             const lastAutoSentence = lastAutoSentenceByFieldRef.current[group.textareaName] ?? "";
             const userHasEdited =
