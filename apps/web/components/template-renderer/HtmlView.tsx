@@ -4,14 +4,18 @@ type Props = {
     viewModel: TemplateViewModel;
 };
 
+const SECTION_HEADER_NAME = 'header';
+
 export default function HtmlView({ viewModel }: Props) {
-    const PAGE_FIELD_BUDGET = 18;
+    const PAGE_FIELD_BUDGET = 42;
 
     const estimateFieldWeight = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
-        if (field.type === 'textarea' || field.type === 'image' || field.type === 'bullseye') return 2;
-        if (field.type === 'title') return 1;
+        if (field.type === 'textarea') return 2;
         return 1;
     };
+
+    const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === SECTION_HEADER_NAME);
+    const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== SECTION_HEADER_NAME);
 
     const splitSectionsIntoPages = (sections: TemplateViewModel['sections']) => {
         const pages: TemplateViewModel['sections'][] = [];
@@ -35,88 +39,88 @@ export default function HtmlView({ viewModel }: Props) {
             pages.push(currentPage);
         }
 
+        if (pages.length === 0) {
+            return [[]] as TemplateViewModel['sections'][];
+        }
+
         return pages;
     };
 
-    const paginatedSections = splitSectionsIntoPages(viewModel.sections);
+    const paginatedSections = splitSectionsIntoPages(bodySections);
 
     const renderFieldValue = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
-        if (field.type === 'checkbox_group') {
+        if (field.type === 'image' || field.type === 'bullseye') {
             return (
-                <ul className="space-y-1 text-sm">
-                    {field.options.length > 0 ? (
-                        field.options.map((option) => (
-                            <li key={`${field.id}-${option}`} className="flex items-center gap-2">
-                                <span className="inline-flex h-4 w-4 rounded border border-slate-400" aria-hidden />
-                                <span>{option}</span>
-                            </li>
-                        ))
-                    ) : (
-                        <li>{field.value}</li>
-                    )}
-                </ul>
+                <span className="font-mono text-[10px] leading-tight text-slate-700">
+                    {`<img src="${field.value}" alt="${field.label || 'image'}" />`}
+                </span>
             );
         }
 
-        if (field.type === 'image' || field.type === 'bullseye') {
-            return (
-                <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">
-                    {field.value}
-                </div>
-            );
+        if (field.type === 'checkbox_group') {
+            return <span className="text-[11px] leading-tight text-slate-900">{field.value || 'Mocked checkbox selection'}</span>;
         }
 
         if (field.type === 'textarea') {
-            return (
-                <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-900">
-                    {field.value}
-                </p>
-            );
+            return <p className="text-[11px] leading-snug text-slate-900">{field.value}</p>;
         }
 
-        return <p className="text-sm leading-relaxed text-slate-900">{field.value}</p>;
+        return <span className="text-[11px] leading-tight text-slate-900">{field.value}</span>;
     };
 
+    const renderFieldRow = (field: TemplateViewModel['sections'][number]['fields'][number]) => (
+        <tr key={field.id} className="align-top">
+            {field.isStatic ? null : (
+                <td className="w-[38%] border border-slate-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                    {field.label || 'Field'}
+                </td>
+            )}
+            <td className="border border-slate-400 px-1.5 py-0.5">{renderFieldValue(field)}</td>
+        </tr>
+    );
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {paginatedSections.map((pageSections, pageIndex) => (
-                <article key={`page-${pageIndex}`} className="page-a4 mx-auto rounded-xl border bg-white p-[20mm] text-slate-900 shadow-sm">
-                    <header className="mb-8 border-b border-slate-300 pb-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Medical Report Preview</p>
-                        <h2 className="mt-2 text-2xl font-semibold">{viewModel.title}</h2>
-                        <div className="mt-1 flex items-center justify-between text-sm text-slate-500">
-                            <span>A4 print-ready preview · source of truth for PDF</span>
-                            <span>
-                                Page {pageIndex + 1} / {paginatedSections.length}
-                            </span>
+                <article
+                    key={`page-${pageIndex}`}
+                    className="page-a4 mx-auto overflow-hidden rounded-sm border border-slate-400 bg-white p-[9mm] text-slate-900 shadow-sm"
+                >
+                    <header className="mb-2 border border-slate-500">
+                        <div className="border-b border-slate-500 px-2 py-1 text-center">
+                            <h2 className="text-base font-bold uppercase leading-tight tracking-wide">{viewModel.title}</h2>
+                            <p className="text-[10px] leading-tight text-slate-600">A4 compact report preview</p>
+                        </div>
+
+                        <div className="px-2 py-1">
+                            {headerSection ? (
+                                <table className="w-full border-collapse">
+                                    <tbody>{headerSection.fields.map((field) => renderFieldRow(field))}</tbody>
+                                </table>
+                            ) : (
+                                <p className="text-[11px] leading-tight text-slate-600">
+                                    Header section is required and will repeat on each printed page.
+                                </p>
+                            )}
                         </div>
                     </header>
 
-                    <div className="space-y-6">
+                    <div className="space-y-2">
                         {pageSections.map((section) => (
-                            <section key={`${section.section}-${pageIndex}`} className="break-inside-avoid space-y-3">
-                                <h3 className="border-b border-slate-200 pb-2 text-sm font-semibold uppercase tracking-wide text-slate-700">
+                            <section key={`${section.section}-${pageIndex}`} className="break-inside-avoid">
+                                <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
                                     {section.section}
                                 </h3>
-                                <dl className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
-                                    {section.fields.map((field) => (
-                                        <div
-                                            key={field.id}
-                                            className={field.type === 'title' || field.type === 'textarea' ? 'space-y-1 md:col-span-2' : 'space-y-1'}
-                                        >
-                                            {field.isStatic ? null : (
-                                                <dt className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                                                    <span>{field.label || 'Untitled field'}</span>
-                                                    {field.required ? <span className="text-[10px] text-red-500">*</span> : null}
-                                                </dt>
-                                            )}
-                                            <dd className="min-h-5">{renderFieldValue(field)}</dd>
-                                        </div>
-                                    ))}
-                                </dl>
+                                <table className="w-full border-collapse">
+                                    <tbody>{section.fields.map((field) => renderFieldRow(field))}</tbody>
+                                </table>
                             </section>
                         ))}
                     </div>
+
+                    <footer className="mt-2 border-t border-slate-300 pt-1 text-right text-[10px] text-slate-500">
+                        Page {pageIndex + 1} / {paginatedSections.length}
+                    </footer>
                 </article>
             ))}
         </div>
