@@ -146,12 +146,7 @@ export default function HtmlView({ viewModel }: Props) {
                     key={`page-${pageIndex}`}
                     className="page-a4 mx-auto overflow-hidden rounded-sm border border-slate-400 bg-white p-[9mm] text-slate-900 shadow-sm"
                 >
-                    <header className="mb-2 border border-slate-500">
-                        <div className="border-b border-slate-500 px-2 py-1 text-center">
-                            <h2 className="text-base font-bold uppercase leading-tight tracking-wide">{viewModel.title}</h2>
-                            <p className="text-[10px] leading-tight text-slate-600">A4 compact report preview</p>
-                        </div>
-
+                    <header className="mb-2">
                         <div className="px-2 py-1">
                             {headerSection ? (
                                 <table className="w-full border-collapse">
