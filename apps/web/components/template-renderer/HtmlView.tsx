@@ -15,6 +15,14 @@ function isGeneralSection(sectionName: string) {
     return sectionName.trim().toLowerCase() === 'general';
 }
 
+function isFindingsSection(sectionName: string) {
+    return sectionName.trim().toLowerCase().startsWith('findings_');
+}
+
+function findingsSuffix(sectionName: string) {
+    return sectionName.replace(/^findings_/i, '').trim();
+}
+
 function isAbsoluteUrl(value: string) {
     try {
         const url = new URL(value);
@@ -34,6 +42,29 @@ export default function HtmlView({ viewModel }: Props) {
 
     const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === SECTION_HEADER_NAME);
     const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== SECTION_HEADER_NAME);
+    const mergedBodySections = (() => {
+        const findings = bodySections.filter((section) => isFindingsSection(section.section));
+        if (findings.length === 0) return bodySections;
+
+        const firstFindingsIndex = bodySections.findIndex((section) => isFindingsSection(section.section));
+        const insertAt = bodySections.slice(0, firstFindingsIndex).filter((section) => !isFindingsSection(section.section)).length;
+        const mergedFindingsSection = {
+            section: 'Findings',
+            fields: findings.flatMap((section) =>
+                section.fields.map((field) => ({
+                    ...field,
+                    label: findingsSuffix(section.section) || field.label,
+                }))
+            ),
+        };
+
+        const nonFindings = bodySections.filter((section) => !isFindingsSection(section.section));
+        return [
+            ...nonFindings.slice(0, insertAt),
+            mergedFindingsSection,
+            ...nonFindings.slice(insertAt),
+        ];
+    })();
     const splitSectionsIntoPages = (sections: TemplateViewModel['sections']) => {
         const pages: TemplateViewModel['sections'][] = [];
         let currentPage: TemplateViewModel['sections'] = [];
@@ -63,7 +94,7 @@ export default function HtmlView({ viewModel }: Props) {
         return pages;
     };
 
-    const paginatedSections = splitSectionsIntoPages(bodySections);
+    const paginatedSections = splitSectionsIntoPages(mergedBodySections);
 
     const renderFieldValue = (
         field: TemplateViewModel['sections'][number]['fields'][number],
@@ -124,6 +155,49 @@ export default function HtmlView({ viewModel }: Props) {
         </tr>
     );
 
+    const renderTitleField = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
+        const size = field.style.size?.toLowerCase();
+        const value = field.defaultValue || field.value || field.label;
+        const className = 'leading-tight text-slate-900';
+
+        if (size === 'sm') return <h6 key={field.id} className={`text-xs ${className}`}>{value}</h6>;
+        if (size === 'lg') return <h4 key={field.id} className={`text-lg font-semibold ${className}`}>{value}</h4>;
+        if (size === 'xl') return <h3 key={field.id} className={`text-xl font-semibold ${className}`}>{value}</h3>;
+        return <h5 key={field.id} className={`text-sm font-semibold ${className}`}>{value}</h5>;
+    };
+
+    const renderHeaderSection = (section: TemplateViewModel['sections'][number]) => {
+        const leftImages = section.fields.filter((field) => field.type === 'image' && field.style.align?.toLowerCase() === 'left');
+        const rightImages = section.fields.filter((field) => field.type === 'image' && field.style.align?.toLowerCase() === 'right');
+        const centerContent = section.fields.filter(
+            (field) => field.type !== 'image' || !['left', 'right'].includes(field.style.align?.toLowerCase())
+        );
+
+        return (
+            <div className="grid grid-cols-[120px_1fr_120px] items-start gap-2 px-2 py-1">
+                <div className="flex min-h-10 flex-col items-start gap-1">
+                    {leftImages.map((field) => (
+                        <div key={field.id}>{renderFieldValue(field, section.section, true)}</div>
+                    ))}
+                </div>
+                <div className="space-y-1 text-center">
+                    {centerContent.map((field) =>
+                        field.type === 'title' ? (
+                            renderTitleField(field)
+                        ) : (
+                            <div key={field.id}>{renderFieldValue(field, section.section, true)}</div>
+                        )
+                    )}
+                </div>
+                <div className="flex min-h-10 flex-col items-end gap-1">
+                    {rightImages.map((field) => (
+                        <div key={field.id}>{renderFieldValue(field, section.section, true)}</div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const renderMeasurementSection = (section: TemplateViewModel['sections'][number]) => (
         <section key={section.section} className="break-inside-avoid">
             <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
@@ -144,6 +218,26 @@ export default function HtmlView({ viewModel }: Props) {
                     </div>
                 ))}
             </div>
+        </section>
+    );
+
+    const renderFindingsSection = (section: TemplateViewModel['sections'][number]) => (
+        <section key={section.section} className="break-inside-avoid">
+            <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
+                {section.section}
+            </h3>
+            <table className="w-full border-collapse">
+                <tbody>
+                    {section.fields.map((field) => (
+                        <tr key={field.id} className="align-top">
+                            <td className="w-[32%] border border-slate-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                                {field.label}
+                            </td>
+                            <td className="border border-slate-400 px-1.5 py-0.5">{renderFieldValue(field, section.section)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </section>
     );
 
@@ -177,9 +271,7 @@ export default function HtmlView({ viewModel }: Props) {
                     <header className="mb-2">
                         <div className="px-2 py-1">
                             {headerSection ? (
-                                <table className="w-full border-collapse">
-                                    <tbody>{headerSection.fields.map((field) => renderFieldRow(field, headerSection.section, true))}</tbody>
-                                </table>
+                                renderHeaderSection(headerSection)
                             ) : (
                                 <p className="text-[11px] leading-tight text-slate-600">
                                     Header section is required and will repeat on each printed page.
@@ -190,7 +282,9 @@ export default function HtmlView({ viewModel }: Props) {
 
                     <div className="space-y-2">
                         {pageSections.map((section) =>
-                            isMeasurementSection(section.section) ? (
+                            section.section.trim().toLowerCase() === 'findings' ? (
+                                renderFindingsSection(section)
+                            ) : isMeasurementSection(section.section) ? (
                                 renderMeasurementSection(section)
                             ) : isGeneralSection(section.section) ? (
                                 renderGeneralSection(section)
