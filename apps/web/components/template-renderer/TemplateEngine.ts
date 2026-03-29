@@ -10,6 +10,7 @@ export type TemplateField = {
     label: string;
     type: Field['attributes']['type'];
     value: string;
+    defaultValue: string;
     options: string[];
     required: boolean;
     isStatic: boolean;
@@ -74,6 +75,15 @@ function isStaticField(field: Field): boolean {
     return !!raw && typeof raw === 'object' && !Array.isArray(raw) && !!(raw as { static?: unknown }).static;
 }
 
+function getDefaultValue(field: Field): string {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '';
+
+    const meta = raw as { default?: unknown };
+    if (meta.default === null || meta.default === undefined) return '';
+    return String(meta.default);
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -88,10 +98,11 @@ export function createTemplateViewModel(
                     const fieldKey = `f_${field.id}`;
                     const value = values?.[fieldKey];
                     const options = extractOptions(field);
+                    const defaultValue = getDefaultValue(field);
                     const normalizedValue = Array.isArray(value)
                         ? value.join(', ')
                         : value === null || value === undefined || value === ''
-                            ? buildSampleValue(field)
+                            ? defaultValue || buildSampleValue(field)
                             : String(value);
 
                     return {
@@ -99,6 +110,7 @@ export function createTemplateViewModel(
                         label: field.attributes.label,
                         type: field.attributes.type,
                         value: normalizedValue,
+                        defaultValue,
                         options,
                         required: isFieldRequired(field),
                         isStatic: isStaticField(field),
