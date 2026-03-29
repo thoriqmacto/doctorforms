@@ -9,6 +9,7 @@ export type TemplateField = {
     id: string;
     label: string;
     type: Field['attributes']['type'];
+    titleTag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
     value: string;
     defaultValue: string;
     measurementUnit: string;
@@ -123,6 +124,21 @@ function getTextareaMode(field: Field): 'free' | 'result' {
     return (raw as { textarea_mode?: unknown }).textarea_mode === 'result' ? 'result' : 'free';
 }
 
+function getTitleTag(field: Field): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'h2';
+
+    const titleTag = (raw as { title_tag?: unknown }).title_tag;
+    if (typeof titleTag !== 'string') return 'h2';
+
+    const normalized = titleTag.toLowerCase();
+    if (normalized === 'h1' || normalized === 'h2' || normalized === 'h3' || normalized === 'h4' || normalized === 'h5' || normalized === 'h6') {
+        return normalized;
+    }
+
+    return 'h2';
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -156,6 +172,7 @@ export function createTemplateViewModel(
                         id: field.id,
                         label: field.attributes.label,
                         type: field.attributes.type,
+                        titleTag: getTitleTag(field),
                         value: normalizedValue,
                         defaultValue,
                         measurementUnit: getMeasurementUnit(field),

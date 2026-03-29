@@ -1669,6 +1669,7 @@ export default function EditTemplatePage() {
                                           <SelectItem value="h2">h2</SelectItem>
                                           <SelectItem value="h3">h3</SelectItem>
                                           <SelectItem value="h4">h4</SelectItem>
+                                          <SelectItem value="h5">h5</SelectItem>
                                           <SelectItem value="h6">h6</SelectItem>
                                         </SelectContent>
                                       </Select>
