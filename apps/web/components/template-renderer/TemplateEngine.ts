@@ -31,8 +31,8 @@ const SAMPLE_BY_TYPE: Partial<Record<Field['attributes']['type'], string>> = {
     patient: 'John Doe',
     user: 'Dr. Smith',
     measurement: '3.4 cm',
-    bullseye: 'Bullseye wall-motion map captured',
-    image: 'Reference image attached',
+    bullseye: 'https://example.com/mock-bullseye.png',
+    image: 'https://example.com/mock-image.png',
     title: '',
 };
 
