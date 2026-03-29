@@ -163,14 +163,16 @@ export default function HtmlView({ viewModel }: Props) {
     );
 
     const renderTitleField = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
-        const size = field.style.size?.toLowerCase();
         const value = field.defaultValue || field.value || field.label;
+        const titleTag = field.titleTag || 'h2';
         const className = 'leading-tight text-slate-900';
 
-        if (size === 'sm') return <h6 key={field.id} className={`text-xs ${className}`}>{value}</h6>;
-        if (size === 'lg') return <h4 key={field.id} className={`text-lg font-semibold ${className}`}>{value}</h4>;
-        if (size === 'xl') return <h3 key={field.id} className={`text-xl font-semibold ${className}`}>{value}</h3>;
-        return <h5 key={field.id} className={`text-sm font-semibold ${className}`}>{value}</h5>;
+        if (titleTag === 'h1') return <h1 key={field.id} className={className}>{value}</h1>;
+        if (titleTag === 'h2') return <h2 key={field.id} className={className}>{value}</h2>;
+        if (titleTag === 'h3') return <h3 key={field.id} className={className}>{value}</h3>;
+        if (titleTag === 'h4') return <h4 key={field.id} className={className}>{value}</h4>;
+        if (titleTag === 'h5') return <h5 key={field.id} className={className}>{value}</h5>;
+        return <h6 key={field.id} className={className}>{value}</h6>;
     };
 
     const renderHeaderSection = (section: TemplateViewModel['sections'][number]) => {
