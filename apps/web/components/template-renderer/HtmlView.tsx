@@ -50,12 +50,19 @@ export default function HtmlView({ viewModel }: Props) {
         const insertAt = bodySections.slice(0, firstFindingsIndex).filter((section) => !isFindingsSection(section.section)).length;
         const mergedFindingsSection = {
             section: 'Findings',
-            fields: findings.flatMap((section) =>
-                section.fields.map((field) => ({
-                    ...field,
-                    label: findingsSuffix(section.section) || field.label,
-                }))
-            ),
+            fields: findings.flatMap((section) => {
+                const resultField =
+                    section.fields.find((field) => field.type === 'textarea' && field.textareaMode === 'result') ??
+                    section.fields.find((field) => field.type === 'textarea') ??
+                    section.fields[0];
+                if (!resultField) return [];
+
+                return {
+                    ...resultField,
+                    id: `${resultField.id}-findings-row`,
+                    label: findingsSuffix(section.section) || resultField.label,
+                };
+            }),
         };
 
         const nonFindings = bodySections.filter((section) => !isFindingsSection(section.section));
@@ -233,7 +240,15 @@ export default function HtmlView({ viewModel }: Props) {
                             <td className="w-[32%] border border-slate-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                                 {field.label}
                             </td>
-                            <td className="border border-slate-400 px-1.5 py-0.5">{renderFieldValue(field, section.section)}</td>
+                            <td className="border border-slate-400 px-1.5 py-0.5">
+                                {renderFieldValue(
+                                    {
+                                        ...field,
+                                        type: 'textarea',
+                                    },
+                                    section.section
+                                )}
+                            </td>
                         </tr>
                     ))}
                 </tbody>

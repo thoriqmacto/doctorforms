@@ -16,6 +16,7 @@ export type TemplateField = {
     required: boolean;
     isStatic: boolean;
     style: Record<string, string>;
+    textareaMode: 'free' | 'result';
 };
 
 export type TemplateViewModel = {
@@ -101,10 +102,25 @@ function getStyle(field: Field): Record<string, string> {
     const raw = field.attributes.options;
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
 
-    const meta = raw as { style?: unknown };
-    if (!meta.style || typeof meta.style !== 'object' || Array.isArray(meta.style)) return {};
+    const meta = raw as { style?: unknown; image_align?: unknown; align?: unknown };
+    const styleFromOptions =
+        meta.style && typeof meta.style === 'object' && !Array.isArray(meta.style)
+            ? Object.fromEntries(Object.entries(meta.style as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
+            : {};
 
-    return Object.fromEntries(Object.entries(meta.style as Record<string, unknown>).map(([k, v]) => [k, String(v)]));
+    const alignFallback = meta.image_align ?? meta.align;
+    if (!alignFallback) return styleFromOptions;
+
+    return {
+        ...styleFromOptions,
+        align: String(alignFallback).toLowerCase(),
+    };
+}
+
+function getTextareaMode(field: Field): 'free' | 'result' {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'free';
+    return (raw as { textarea_mode?: unknown }).textarea_mode === 'result' ? 'result' : 'free';
 }
 
 export function createTemplateViewModel(
@@ -147,6 +163,7 @@ export function createTemplateViewModel(
                         required: isFieldRequired(field),
                         isStatic: isStaticField(field),
                         style: getStyle(field),
+                        textareaMode: getTextareaMode(field),
                     };
                 });
 
