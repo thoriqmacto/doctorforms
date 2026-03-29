@@ -51,6 +51,7 @@ type TemplateFieldForm = {
   option_values: string[];
   title_tag: string;
   image_url: string;
+  image_align: "left" | "center" | "right";
   measurement_name: string;
   measurement_unit: string;
   measurement_category: string;
@@ -129,6 +130,7 @@ function normalizeOptions(raw: unknown) {
         static: false,
         title_tag: "h2",
         image_url: "",
+        image_align: "center",
         measurement_name: "",
         measurement_unit: "",
         measurement_category: "",
@@ -145,6 +147,7 @@ function normalizeOptions(raw: unknown) {
       static: false,
       title_tag: "h2",
       image_url: "",
+      image_align: "center",
       measurement_name: "",
       measurement_unit: "",
       measurement_category: "",
@@ -167,6 +170,23 @@ function normalizeOptions(raw: unknown) {
       static: !!obj.static,
       title_tag: obj.title_tag ? String(obj.title_tag) : "h2",
       image_url: obj.image_url ? String(obj.image_url) : "",
+      image_align:
+        obj.style &&
+        typeof obj.style === "object" &&
+        !Array.isArray(obj.style) &&
+        (obj.style as Record<string, unknown>).align
+          ? String((obj.style as Record<string, unknown>).align).toLowerCase() ===
+            "left"
+            ? "left"
+            : String((obj.style as Record<string, unknown>).align).toLowerCase() ===
+                "right"
+              ? "right"
+              : "center"
+          : obj.image_align &&
+              (String(obj.image_align).toLowerCase() === "left" ||
+                String(obj.image_align).toLowerCase() === "right")
+            ? (String(obj.image_align).toLowerCase() as "left" | "right")
+            : "center",
       measurement_name: obj.measurement_name
         ? String(obj.measurement_name)
         : "",
@@ -188,6 +208,7 @@ function normalizeOptions(raw: unknown) {
     static: false,
     title_tag: "h2",
     image_url: "",
+    image_align: "center",
     measurement_name: "",
     measurement_unit: "",
     measurement_category: "",
@@ -463,6 +484,7 @@ export default function EditTemplatePage() {
               image_url: resolveApiAssetUrl(
                 options.image_url || options.default,
               ),
+              image_align: options.image_align,
               measurement_name: options.measurement_name,
               measurement_unit: options.measurement_unit,
               measurement_category: options.measurement_category,
@@ -606,6 +628,9 @@ export default function EditTemplatePage() {
                 baseOptions.default = imageUrl;
                 baseOptions.image_url = imageUrl;
               }
+              baseOptions.style = {
+                align: f.image_align || "center",
+              };
             } else if (f.default_value) {
               baseOptions.default = f.default_value;
             }
@@ -1171,6 +1196,10 @@ export default function EditTemplatePage() {
                                 type="hidden"
                                 {...form.register(`fields.${index}.image_url`)}
                               />
+                              <input
+                                type="hidden"
+                                {...form.register(`fields.${index}.image_align`)}
+                              />
 
                               <FormField
                                 control={form.control}
@@ -1671,6 +1700,32 @@ export default function EditTemplatePage() {
                                       className="h-48 w-48 rounded-md border object-cover"
                                     />
                                   ) : null}
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.image_align`}
+                                    render={({ field }) => (
+                                      <FormItem className="max-w-[220px]">
+                                        <FormLabel>Image Align</FormLabel>
+                                        <Select
+                                          onValueChange={(value) =>
+                                            field.onChange(value as "left" | "center" | "right")
+                                          }
+                                          value={field.value || "center"}
+                                        >
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select alignment" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            <SelectItem value="left">Left</SelectItem>
+                                            <SelectItem value="center">Center</SelectItem>
+                                            <SelectItem value="right">Right</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </FormItem>
+                                    )}
+                                  />
                                 </div>
                               ) : null}
                             </div>
@@ -1692,6 +1747,7 @@ export default function EditTemplatePage() {
                               option_values: [],
                               title_tag: "h2",
                               image_url: "",
+                              image_align: "center",
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
@@ -1728,6 +1784,7 @@ export default function EditTemplatePage() {
                       option_values: [],
                       title_tag: "h2",
                       image_url: "",
+                      image_align: "center",
                       measurement_name: "",
                       measurement_unit: "",
                       measurement_category: "",
