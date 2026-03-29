@@ -259,9 +259,19 @@ export default function TemplatesPage() {
                                             <TableCell>{t.attributes.description}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Link href={`/templates/${t.id}/view`}>
+                                                    <Link href={`/templates/${t.id}/view?mode=html`}>
                                                         <Button variant="ghost" size="sm">
-                                                            View
+                                                            View HTML
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/templates/${t.id}/view?mode=form`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            Form
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/templates/${t.id}/view?mode=pdf`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            PDF
                                                         </Button>
                                                     </Link>
                                                     <Link href={`/templates/${t.id}/print`}>

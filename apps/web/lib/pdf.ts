@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { pdfConfig } from '@/config/pdf';
+import type { TemplateViewModel } from '@/components/template-renderer/TemplateEngine';
 
 export async function generateReportPdf(report: any) {
     const doc = await PDFDocument.create();
@@ -42,6 +43,125 @@ export async function generateReportPdf(report: any) {
     const blob = new Blob([bytes as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `report_${data.id ?? ''}.pdf`; a.click();
+    a.href = url;
+    a.download = `report_${data.id ?? ''}.pdf`;
+    a.click();
     URL.revokeObjectURL(url);
+}
+
+const A4_WIDTH = 595.28;
+const A4_HEIGHT = 841.89;
+const MARGIN = 56;
+
+export async function generateTemplatePdf(viewModel: TemplateViewModel) {
+    const doc = await PDFDocument.create();
+    const helvetica = await doc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    let page = doc.addPage([A4_WIDTH, A4_HEIGHT]);
+    let cursorY = A4_HEIGHT - MARGIN;
+
+    const nextLine = (size: number, gap = 6) => {
+        cursorY -= size + gap;
+    };
+
+    const ensureSpace = (requiredHeight: number) => {
+        if (cursorY - requiredHeight < MARGIN) {
+            page = doc.addPage([A4_WIDTH, A4_HEIGHT]);
+            cursorY = A4_HEIGHT - MARGIN;
+        }
+    };
+
+    page.drawText('Medical Report Preview', {
+        x: MARGIN,
+        y: cursorY,
+        size: 9,
+        font: helvetica,
+        color: rgb(0.42, 0.42, 0.42),
+    });
+    nextLine(9, 10);
+
+    page.drawText(viewModel.title, {
+        x: MARGIN,
+        y: cursorY,
+        size: 18,
+        font: helveticaBold,
+        color: rgb(0.1, 0.1, 0.1),
+    });
+    nextLine(18, 16);
+
+    for (const section of viewModel.sections) {
+        ensureSpace(40);
+        page.drawText(section.section.toUpperCase(), {
+            x: MARGIN,
+            y: cursorY,
+            size: 10,
+            font: helveticaBold,
+            color: rgb(0.2, 0.2, 0.2),
+        });
+        nextLine(10, 8);
+
+        for (const field of section.fields) {
+            ensureSpace(30);
+            page.drawText(field.label, {
+                x: MARGIN,
+                y: cursorY,
+                size: 8,
+                font: helveticaBold,
+                color: rgb(0.45, 0.45, 0.45),
+            });
+            nextLine(8, 4);
+
+            const wrapped = wrapLine(field.value || '—', 86);
+            for (const line of wrapped) {
+                ensureSpace(16);
+                page.drawText(line, {
+                    x: MARGIN,
+                    y: cursorY,
+                    size: 10,
+                    font: helvetica,
+                    color: rgb(0.1, 0.1, 0.1),
+                });
+                nextLine(10, 2);
+            }
+
+            nextLine(0, 8);
+        }
+
+        nextLine(0, 4);
+    }
+
+    const bytes = await doc.save();
+    const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${viewModel.title.replace(/\s+/g, '_').toLowerCase()}_preview.pdf`;
+    anchor.click();
+
+    URL.revokeObjectURL(url);
+}
+
+function wrapLine(text: string, maxChars = 86) {
+    if (text.length <= maxChars) return [text];
+
+    const words = text.split(/\s+/);
+    const lines: string[] = [];
+    let current = '';
+
+    words.forEach((word) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= maxChars) {
+            current = candidate;
+            return;
+        }
+
+        if (current) lines.push(current);
+        current = word;
+    });
+
+    if (current) lines.push(current);
+
+    return lines;
 }
