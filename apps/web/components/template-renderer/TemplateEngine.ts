@@ -91,7 +91,9 @@ function getMeasurementUnit(field: Field): string {
 
     const meta = raw as { measurement_unit?: unknown };
     if (meta.measurement_unit === null || meta.measurement_unit === undefined) return '';
-    return String(meta.measurement_unit);
+    const measurementUnit = String(meta.measurement_unit).trim();
+    if (measurementUnit === '[NO_UOM]') return '';
+    return measurementUnit;
 }
 
 export function createTemplateViewModel(
@@ -100,6 +102,14 @@ export function createTemplateViewModel(
     values?: Record<string, unknown>
 ): TemplateViewModel {
     const sections = groupedSections
+        .slice()
+        .sort((a, b) => {
+            const aOrder = Math.min(...a.items.map((item) => item.attributes.field_group_order ?? Number.POSITIVE_INFINITY));
+            const bOrder = Math.min(...b.items.map((item) => item.attributes.field_group_order ?? Number.POSITIVE_INFINITY));
+            if (aOrder !== bOrder) return aOrder - bOrder;
+
+            return (a.section ?? '').localeCompare(b.section ?? '');
+        })
         .map((section, sectionIndex) => {
             const sectionName = section.section?.trim() || `Section ${sectionIndex + 1}`;
             const fields = section.items

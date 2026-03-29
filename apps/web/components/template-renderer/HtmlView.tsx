@@ -11,10 +11,8 @@ function isMeasurementSection(sectionName: string) {
     return /(measurement|calculation|2d|m-mode|doppler|hemodynamic|indices)/i.test(sectionName);
 }
 
-function getFindingsSuffix(sectionName: string) {
-    const match = sectionName.match(/^findings_(.+)$/i);
-    if (!match) return null;
-    return match[1].replace(/_/g, ' ').trim();
+function isGeneralSection(sectionName: string) {
+    return sectionName.trim().toLowerCase() === 'general';
 }
 
 function isAbsoluteUrl(value: string) {
@@ -36,9 +34,6 @@ export default function HtmlView({ viewModel }: Props) {
 
     const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === SECTION_HEADER_NAME);
     const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== SECTION_HEADER_NAME);
-    const findingsSections = bodySections.filter((section) => getFindingsSuffix(section.section));
-    const nonFindingsSections = bodySections.filter((section) => !getFindingsSuffix(section.section));
-
     const splitSectionsIntoPages = (sections: TemplateViewModel['sections']) => {
         const pages: TemplateViewModel['sections'][] = [];
         let currentPage: TemplateViewModel['sections'] = [];
@@ -68,7 +63,7 @@ export default function HtmlView({ viewModel }: Props) {
         return pages;
     };
 
-    const paginatedSections = splitSectionsIntoPages(nonFindingsSections);
+    const paginatedSections = splitSectionsIntoPages(bodySections);
 
     const renderFieldValue = (
         field: TemplateViewModel['sections'][number]['fields'][number],
@@ -143,7 +138,7 @@ export default function HtmlView({ viewModel }: Props) {
                         <div className="mt-0.5 flex items-center gap-1">
                             {renderFieldValue(field, section.section)}
                             {field.measurementUnit ? (
-                                <span className="text-[9px] font-medium uppercase tracking-wide text-slate-600">{field.measurementUnit}</span>
+                                <span className="text-[9px] font-medium tracking-wide text-slate-600">{field.measurementUnit}</span>
                             ) : null}
                         </div>
                     </div>
@@ -152,32 +147,22 @@ export default function HtmlView({ viewModel }: Props) {
         </section>
     );
 
-    const renderFindingsSection = () => {
-        if (!findingsSections.length) return null;
-
+    const renderGeneralSection = (section: TemplateViewModel['sections'][number]) => {
         return (
-            <section className="break-inside-avoid">
+            <section key={section.section} className="break-inside-avoid">
                 <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
-                    Findings
+                    {section.section}
                 </h3>
-                <table className="w-full border-collapse">
-                    <tbody>
-                        {findingsSections.map((section) => {
-                            const suffix = getFindingsSuffix(section.section) || section.section;
-                            const resultField = section.fields.find((field) => !field.isStatic) || section.fields[0];
-                            if (!resultField) return null;
-
-                            return (
-                                <tr key={section.section} className="align-top">
-                                    <td className="w-[38%] border border-slate-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                                        {suffix}
-                                    </td>
-                                    <td className="border border-slate-400 px-1.5 py-0.5">{renderFieldValue(resultField, section.section)}</td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                <div className="grid grid-cols-4 gap-1.5 border border-t-0 border-slate-400 p-1.5">
+                    {section.fields.map((field) => (
+                        <div key={field.id} className="border border-slate-300 bg-slate-50 px-1 py-1">
+                            {!field.isStatic && (
+                                <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-600">{field.label}</p>
+                            )}
+                            <div className="mt-0.5">{renderFieldValue(field, section.section)}</div>
+                        </div>
+                    ))}
+                </div>
             </section>
         );
     };
@@ -204,10 +189,11 @@ export default function HtmlView({ viewModel }: Props) {
                     </header>
 
                     <div className="space-y-2">
-                        {renderFindingsSection()}
                         {pageSections.map((section) =>
                             isMeasurementSection(section.section) ? (
                                 renderMeasurementSection(section)
+                            ) : isGeneralSection(section.section) ? (
+                                renderGeneralSection(section)
                             ) : (
                                 <section key={`${section.section}-${pageIndex}`} className="break-inside-avoid">
                                     <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
