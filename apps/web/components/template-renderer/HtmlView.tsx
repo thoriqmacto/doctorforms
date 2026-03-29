@@ -11,6 +11,12 @@ function isMeasurementSection(sectionName: string) {
     return /(measurement|calculation|2d|m-mode|doppler|hemodynamic|indices)/i.test(sectionName);
 }
 
+function getFindingsSuffix(sectionName: string) {
+    const match = sectionName.match(/^findings_(.+)$/i);
+    if (!match) return null;
+    return match[1].replace(/_/g, ' ').trim();
+}
+
 function isAbsoluteUrl(value: string) {
     try {
         const url = new URL(value);
@@ -30,6 +36,8 @@ export default function HtmlView({ viewModel }: Props) {
 
     const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === SECTION_HEADER_NAME);
     const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== SECTION_HEADER_NAME);
+    const findingsSections = bodySections.filter((section) => getFindingsSuffix(section.section));
+    const nonFindingsSections = bodySections.filter((section) => !getFindingsSuffix(section.section));
 
     const splitSectionsIntoPages = (sections: TemplateViewModel['sections']) => {
         const pages: TemplateViewModel['sections'][] = [];
@@ -60,7 +68,7 @@ export default function HtmlView({ viewModel }: Props) {
         return pages;
     };
 
-    const paginatedSections = splitSectionsIntoPages(bodySections);
+    const paginatedSections = splitSectionsIntoPages(nonFindingsSections);
 
     const renderFieldValue = (
         field: TemplateViewModel['sections'][number]['fields'][number],
@@ -132,12 +140,47 @@ export default function HtmlView({ viewModel }: Props) {
                         {!field.isStatic && (
                             <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-600">{field.label}</p>
                         )}
-                        <div className="mt-0.5">{renderFieldValue(field, section.section)}</div>
+                        <div className="mt-0.5 flex items-center gap-1">
+                            {renderFieldValue(field, section.section)}
+                            {field.measurementUnit ? (
+                                <span className="text-[9px] font-medium uppercase tracking-wide text-slate-600">{field.measurementUnit}</span>
+                            ) : null}
+                        </div>
                     </div>
                 ))}
             </div>
         </section>
     );
+
+    const renderFindingsSection = () => {
+        if (!findingsSections.length) return null;
+
+        return (
+            <section className="break-inside-avoid">
+                <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
+                    Findings
+                </h3>
+                <table className="w-full border-collapse">
+                    <tbody>
+                        {findingsSections.map((section) => {
+                            const suffix = getFindingsSuffix(section.section) || section.section;
+                            const resultField = section.fields.find((field) => !field.isStatic) || section.fields[0];
+                            if (!resultField) return null;
+
+                            return (
+                                <tr key={section.section} className="align-top">
+                                    <td className="w-[38%] border border-slate-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                                        {suffix}
+                                    </td>
+                                    <td className="border border-slate-400 px-1.5 py-0.5">{renderFieldValue(resultField, section.section)}</td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </section>
+        );
+    };
 
     return (
         <div className="space-y-5">
@@ -161,6 +204,7 @@ export default function HtmlView({ viewModel }: Props) {
                     </header>
 
                     <div className="space-y-2">
+                        {renderFindingsSection()}
                         {pageSections.map((section) =>
                             isMeasurementSection(section.section) ? (
                                 renderMeasurementSection(section)

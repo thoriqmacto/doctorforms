@@ -67,20 +67,25 @@ export default function TemplateViewPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-2xl font-semibold">{name} (View)</h1>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            {currentModeLabel}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {modeLinks.map((item) => (
-                            <DropdownMenuItem key={item.mode} asChild>
-                                <Link href={`/templates/${params.id}/view?mode=${item.mode}`}>{item.label}</Link>
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={`/templates/${params.id}/edit`}>Edit</Link>
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                {currentModeLabel}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {modeLinks.map((item) => (
+                                <DropdownMenuItem key={item.mode} asChild>
+                                    <Link href={`/templates/${params.id}/view?mode=${item.mode}`}>{item.label}</Link>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             <Card>

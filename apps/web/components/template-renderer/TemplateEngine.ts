@@ -11,6 +11,7 @@ export type TemplateField = {
     type: Field['attributes']['type'];
     value: string;
     defaultValue: string;
+    measurementUnit: string;
     options: string[];
     required: boolean;
     isStatic: boolean;
@@ -84,6 +85,15 @@ function getDefaultValue(field: Field): string {
     return String(meta.default);
 }
 
+function getMeasurementUnit(field: Field): string {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '';
+
+    const meta = raw as { measurement_unit?: unknown };
+    if (meta.measurement_unit === null || meta.measurement_unit === undefined) return '';
+    return String(meta.measurement_unit);
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -111,6 +121,7 @@ export function createTemplateViewModel(
                         type: field.attributes.type,
                         value: normalizedValue,
                         defaultValue,
+                        measurementUnit: getMeasurementUnit(field),
                         options,
                         required: isFieldRequired(field),
                         isStatic: isStaticField(field),
