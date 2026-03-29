@@ -10,6 +10,8 @@ export type TemplateField = {
     label: string;
     type: Field['attributes']['type'];
     value: string;
+    options: string[];
+    required: boolean;
 };
 
 export type TemplateViewModel = {
@@ -61,6 +63,11 @@ function buildSampleValue(field: Field): string {
     return SAMPLE_BY_TYPE[field.attributes.type] ?? '—';
 }
 
+function isFieldRequired(field: Field): boolean {
+    const raw = field.attributes.options;
+    return !!raw && typeof raw === 'object' && !Array.isArray(raw) && !!(raw as { required?: unknown }).required;
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -71,10 +78,10 @@ export function createTemplateViewModel(
             const sectionName = section.section?.trim() || `Section ${sectionIndex + 1}`;
             const fields = section.items
                 .sort((a, b) => (a.attributes.order ?? 0) - (b.attributes.order ?? 0))
-                .filter((field) => field.attributes.type !== 'title')
                 .map((field) => {
                     const fieldKey = `f_${field.id}`;
                     const value = values?.[fieldKey];
+                    const options = extractOptions(field);
                     const normalizedValue = Array.isArray(value)
                         ? value.join(', ')
                         : value === null || value === undefined || value === ''
@@ -86,6 +93,8 @@ export function createTemplateViewModel(
                         label: field.attributes.label,
                         type: field.attributes.type,
                         value: normalizedValue,
+                        options,
+                        required: isFieldRequired(field),
                     };
                 });
 

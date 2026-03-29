@@ -7,6 +7,12 @@ import { getTemplate } from '@/lib/api';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import HtmlView from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
@@ -46,6 +52,7 @@ export default function TemplateViewPage() {
         { label: 'PDF View', mode: 'pdf' },
         { label: 'Form View', mode: 'form' },
     ];
+    const currentModeLabel = modeLinks.find((item) => item.mode === mode)?.label ?? 'Select View';
 
     return (
         <div className="space-y-4">
@@ -60,13 +67,20 @@ export default function TemplateViewPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-2xl font-semibold">{name} (View)</h1>
-                <div className="flex items-center gap-2">
-                    {modeLinks.map((item) => (
-                        <Button key={item.mode} asChild variant={mode === item.mode ? 'default' : 'outline'} size="sm">
-                            <Link href={`/templates/${params.id}/view?mode=${item.mode}`}>{item.label}</Link>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                            {currentModeLabel}
                         </Button>
-                    ))}
-                </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {modeLinks.map((item) => (
+                            <DropdownMenuItem key={item.mode} asChild>
+                                <Link href={`/templates/${params.id}/view?mode=${item.mode}`}>{item.label}</Link>
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             <Card>

@@ -869,11 +869,6 @@ export default function EditTemplatePage() {
                   View
                 </Button>
               </Link>
-              <Link href={`/templates/${id}/print`}>
-                <Button type="button" variant="ghost" disabled={isProcessing}>
-                  Print
-                </Button>
-              </Link>
             </div>
           </div>
         </CardHeader>

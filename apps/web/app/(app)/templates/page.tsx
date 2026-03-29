@@ -15,6 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { TemplateResource, TemplatesIndexResponse } from '@/types/api';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
@@ -201,14 +207,6 @@ export default function TemplatesPage() {
                     ) : null}
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => selectedIds.forEach((id) => window.open(`/templates/${id}/print`, '_blank'))}
-                            disabled={selectedIds.length === 0}
-                        >
-                            Print Selected
-                        </Button>
-                        <Button
                             variant="destructive"
                             size="sm"
                             onClick={handleMassDelete}
@@ -259,26 +257,24 @@ export default function TemplatesPage() {
                                             <TableCell>{t.attributes.description}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <Link href={`/templates/${t.id}/view?mode=html`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            View HTML
-                                                        </Button>
-                                                    </Link>
-                                                    <Link href={`/templates/${t.id}/view?mode=form`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            Form
-                                                        </Button>
-                                                    </Link>
-                                                    <Link href={`/templates/${t.id}/view?mode=pdf`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            PDF
-                                                        </Button>
-                                                    </Link>
-                                                    <Link href={`/templates/${t.id}/print`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            Print
-                                                        </Button>
-                                                    </Link>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm">
+                                                                View
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/templates/${t.id}/view?mode=html`}>HTML View</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/templates/${t.id}/view?mode=form`}>Form View</Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/templates/${t.id}/view?mode=pdf`}>PDF View</Link>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                     <Link href={`/templates/${t.id}/edit`}>
                                                         <Button variant="secondary" size="sm">
                                                             Edit
