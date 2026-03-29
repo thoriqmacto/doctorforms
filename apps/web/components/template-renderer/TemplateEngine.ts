@@ -15,6 +15,7 @@ export type TemplateField = {
     options: string[];
     required: boolean;
     isStatic: boolean;
+    style: Record<string, string>;
 };
 
 export type TemplateViewModel = {
@@ -92,8 +93,18 @@ function getMeasurementUnit(field: Field): string {
     const meta = raw as { measurement_unit?: unknown };
     if (meta.measurement_unit === null || meta.measurement_unit === undefined) return '';
     const measurementUnit = String(meta.measurement_unit).trim();
-    if (measurementUnit === '[NO_UOM]') return '';
+    if (measurementUnit.toLowerCase() === '[no_uom]') return '';
     return measurementUnit;
+}
+
+function getStyle(field: Field): Record<string, string> {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+
+    const meta = raw as { style?: unknown };
+    if (!meta.style || typeof meta.style !== 'object' || Array.isArray(meta.style)) return {};
+
+    return Object.fromEntries(Object.entries(meta.style as Record<string, unknown>).map(([k, v]) => [k, String(v)]));
 }
 
 export function createTemplateViewModel(
@@ -135,6 +146,7 @@ export function createTemplateViewModel(
                         options,
                         required: isFieldRequired(field),
                         isStatic: isStaticField(field),
+                        style: getStyle(field),
                     };
                 });
 
