@@ -12,6 +12,7 @@ export type TemplateField = {
     value: string;
     options: string[];
     required: boolean;
+    isStatic: boolean;
 };
 
 export type TemplateViewModel = {
@@ -68,6 +69,11 @@ function isFieldRequired(field: Field): boolean {
     return !!raw && typeof raw === 'object' && !Array.isArray(raw) && !!(raw as { required?: unknown }).required;
 }
 
+function isStaticField(field: Field): boolean {
+    const raw = field.attributes.options;
+    return !!raw && typeof raw === 'object' && !Array.isArray(raw) && !!(raw as { static?: unknown }).static;
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -95,6 +101,7 @@ export function createTemplateViewModel(
                         value: normalizedValue,
                         options,
                         required: isFieldRequired(field),
+                        isStatic: isStaticField(field),
                     };
                 });
 

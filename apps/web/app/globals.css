@@ -139,5 +139,10 @@
   }
   .page-a4 {
     box-shadow: none !important;
+    border: none !important;
+    break-after: page;
+  }
+  .page-a4:last-child {
+    break-after: auto;
   }
 }
