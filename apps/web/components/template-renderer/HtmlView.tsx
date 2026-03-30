@@ -33,7 +33,7 @@ function isAbsoluteUrl(value: string) {
 }
 
 export default function HtmlView({ viewModel }: Props) {
-    const PAGE_FIELD_BUDGET = 42;
+    const PAGE_FIELD_BUDGET = 80;
 
     const estimateFieldWeight = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
         if (field.type === 'textarea') return 2;
@@ -120,7 +120,7 @@ export default function HtmlView({ viewModel }: Props) {
                         width={160}
                         height={64}
                         unoptimized
-                        className="h-16 w-auto max-w-full rounded border border-slate-300 object-contain"
+                        className="h-24 w-auto max-w-full border border-black object-contain"
                     />
                 );
             }
@@ -168,15 +168,15 @@ export default function HtmlView({ viewModel }: Props) {
 
 
         const headingSizeMap: Record<string, string> = {
-            h1: "text-[2em] font-bold uppercase",
-            h2: "text-[1.75em] font-bold uppercase",
-            h3: "text-[1.5em] font-bold",
-            h4: "text-[1.25em] font-semibold",
-            h5: "text-[1.1em] font-medium",
-            h6: "text-[1em] font-medium",
+            h1: "text-[1.2em] font-bold uppercase",
+            h2: "text-[1.1em] font-bold uppercase",
+            h3: "text-[1em] font-bold uppercase",
+            h4: "text-[0.9em] font-bold",
+            h5: "text-[0.8em] font-bold",
+            h6: "text-[0.7em] font-bold",
         };
 
-        const baseClass = 'font-["Times_New_Roman"] !font-["Times_New_Roman"] leading-tight text-slate-900';
+        const baseClass = 'font-["Times_New_Roman"] !font-["Times_New_Roman"] leading-none text-slate-900';
         const sizeClass = headingSizeMap[titleTag] || headingSizeMap.h6;
         const className = `${baseClass} ${sizeClass}`;
 
@@ -196,7 +196,7 @@ export default function HtmlView({ viewModel }: Props) {
         );
 
         return (
-            <div className="grid grid-cols-[120px_1fr_120px] items-start gap-2 px-2 py-1">
+            <div className="grid grid-cols-[80px_1fr_80px] items-start gap-2 px-2 py-1">
                 <div className="flex min-h-10 flex-col items-start gap-1">
                     {leftImages.map((field) => (
                         <div key={field.id}>{renderFieldValue(field, section.section, true)}</div>
@@ -296,7 +296,7 @@ export default function HtmlView({ viewModel }: Props) {
             {paginatedSections.map((pageSections, pageIndex) => (
                 <article
                     key={`page-${pageIndex}`}
-                    className="page-a4 mx-auto overflow-hidden rounded-sm border border-slate-400 bg-white p-[9mm] text-slate-900 shadow-sm"
+                    className="page-a4 mx-auto overflow-hidden border border-slate-400 bg-white !pt-[8mm] !pl-[4mm] !pr-[4mm] text-slate-900 shadow-sm"
                 >
                     <header className="mb-2">
                         <div className="px-2 py-1">
