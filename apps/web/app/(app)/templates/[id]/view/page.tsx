@@ -33,13 +33,26 @@ export default function TemplateViewPage() {
     const mode = normalizeMode(searchParams.get('mode'));
 
     const { data, isLoading } = useSWR(['/templates', params.id, 'view'], () =>
-        getTemplate(params.id, { include: 'fields' }).then((r: any) => r)
+        getTemplate(params.id, { include: 'fields,user,test,hospital' }).then((r: any) => r)
     );
 
     const tpl = data?.data;
+    const included = data?.included ?? [];
     const name = tpl?.attributes?.name ?? 'Template';
     const grouped = tpl?.meta?.grouped_sections ?? [];
     const page = tpl?.meta?.page;
+    const description = tpl?.attributes?.description ?? '';
+
+    const userId = tpl?.relationships?.user?.data?.id;
+    const testId = tpl?.relationships?.test?.data?.id;
+    const hospitalId = tpl?.relationships?.hospital?.data?.id;
+
+    const userName =
+        included.find((item: any) => item.type === 'users' && String(item.id) === String(userId))?.attributes?.name ?? '';
+    const testTypeName =
+        included.find((item: any) => item.type === 'tests' && String(item.id) === String(testId))?.attributes?.name ?? '';
+    const hospitalName =
+        included.find((item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId))?.attributes?.name ?? '';
 
     const viewModel = createTemplateViewModel(grouped, name);
 
@@ -97,7 +110,18 @@ export default function TemplateViewPage() {
                         'Loading…'
                     ) : (
                         <div className="space-y-4">
-                            {mode === 'html' && <HtmlView viewModel={viewModel} />}
+                            {mode === 'html' && (
+                                <HtmlView
+                                    viewModel={viewModel}
+                                    templateMeta={{
+                                        title: name,
+                                        description,
+                                        userName,
+                                        testTypeName,
+                                        hospitalName,
+                                    }}
+                                />
+                            )}
                             {mode === 'pdf' && <PdfView viewModel={viewModel} />}
                             {mode === 'form' && <FormView groupedSections={grouped} />}
                         </div>
