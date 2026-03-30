@@ -18,6 +18,7 @@ export type TemplateField = {
     isStatic: boolean;
     style: Record<string, string>;
     textareaMode: 'free' | 'result';
+    showSectionName: boolean;
 };
 
 export type TemplateViewModel = {
@@ -139,6 +140,15 @@ function getTitleTag(field: Field): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
     return 'h2';
 }
 
+function getShowSectionName(field: Field): boolean {
+    const raw = field.attributes.options;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return true;
+
+    const meta = raw as { show_section_name?: unknown; showSectionName?: unknown };
+    if (meta.show_section_name === false || meta.showSectionName === false) return false;
+    return true;
+}
+
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
@@ -181,6 +191,7 @@ export function createTemplateViewModel(
                         isStatic: isStaticField(field),
                         style: getStyle(field),
                         textareaMode: getTextareaMode(field),
+                        showSectionName: getShowSectionName(field),
                     };
                 });
 
