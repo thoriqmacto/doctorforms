@@ -3,6 +3,13 @@ import type { TemplateViewModel } from '@/components/template-renderer/TemplateE
 
 type Props = {
     viewModel: TemplateViewModel;
+    templateMeta?: {
+        title?: string;
+        description?: string;
+        userName?: string;
+        testTypeName?: string;
+        hospitalName?: string;
+    };
 };
 
 const SECTION_HEADER_NAME = 'header';
@@ -36,7 +43,7 @@ function shouldShowSectionName(section: TemplateViewModel['sections'][number]) {
     return section.fields.some((field) => field.showSectionName);
 }
 
-export default function HtmlView({ viewModel }: Props) {
+export default function HtmlView({ viewModel, templateMeta }: Props) {
     const PAGE_FIELD_BUDGET = 80;
 
     const estimateFieldWeight = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
@@ -348,6 +355,28 @@ export default function HtmlView({ viewModel }: Props) {
                             )
                         )}
                     </div>
+
+                    <section className="mt-3 border border-slate-300 bg-slate-50 px-2 py-1.5 text-[10px] text-slate-700">
+                        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-800">
+                            Template Information
+                        </h4>
+                        <dl className="grid grid-cols-[130px_1fr] gap-x-2 gap-y-1">
+                            <dt className="font-semibold text-slate-600">Template Title</dt>
+                            <dd>{templateMeta?.title || viewModel.title || '—'}</dd>
+
+                            <dt className="font-semibold text-slate-600">Description</dt>
+                            <dd>{templateMeta?.description || '—'}</dd>
+
+                            <dt className="font-semibold text-slate-600">Associated User</dt>
+                            <dd>{templateMeta?.userName || '—'}</dd>
+
+                            <dt className="font-semibold text-slate-600">Test Type</dt>
+                            <dd>{templateMeta?.testTypeName || '—'}</dd>
+
+                            <dt className="font-semibold text-slate-600">Hospital</dt>
+                            <dd>{templateMeta?.hospitalName || '—'}</dd>
+                        </dl>
+                    </section>
 
                     <footer className="mt-2 border-t border-slate-300 pt-1 text-right text-[10px] text-slate-500">
                         Page {pageIndex + 1} / {paginatedSections.length}
