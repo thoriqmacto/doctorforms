@@ -13,7 +13,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import HtmlView from '@/components/template-renderer/HtmlView';
+import HtmlView, { type TemplateMeta } from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
@@ -55,6 +55,13 @@ export default function TemplateViewPage() {
         included.find((item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId))?.attributes?.name ?? '';
 
     const viewModel = createTemplateViewModel(grouped, name);
+    const templateMeta: TemplateMeta = {
+        title: name,
+        description,
+        userName,
+        testTypeName,
+        hospitalName,
+    };
 
     const pageInfo = page
         ? `${page.size} · ${Number(page.width_mm / 10).toFixed(1)}cm × ${Number(page.height_mm / 10).toFixed(1)}cm`
@@ -111,16 +118,7 @@ export default function TemplateViewPage() {
                     ) : (
                         <div className="space-y-4">
                             {mode === 'html' && (
-                                <HtmlView
-                                    viewModel={viewModel}
-                                    templateMeta={{
-                                        title: name,
-                                        description,
-                                        userName,
-                                        testTypeName,
-                                        hospitalName,
-                                    }}
-                                />
+                                <HtmlView viewModel={viewModel} templateMeta={templateMeta} />
                             )}
                             {mode === 'pdf' && <PdfView viewModel={viewModel} />}
                             {mode === 'form' && <FormView groupedSections={grouped} />}

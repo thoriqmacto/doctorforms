@@ -1,15 +1,17 @@
 import Image from 'next/image';
 import type { TemplateViewModel } from '@/components/template-renderer/TemplateEngine';
 
+export type TemplateMeta = {
+    title?: string;
+    description?: string;
+    userName?: string;
+    testTypeName?: string;
+    hospitalName?: string;
+};
+
 type Props = {
     viewModel: TemplateViewModel;
-    templateMeta?: {
-        title?: string;
-        description?: string;
-        userName?: string;
-        testTypeName?: string;
-        hospitalName?: string;
-    };
+    templateMeta?: TemplateMeta;
 };
 
 const SECTION_HEADER_NAME = 'header';
