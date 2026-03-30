@@ -145,8 +145,7 @@ function getShowSectionName(field: Field): boolean {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return true;
 
     const meta = raw as { show_section_name?: unknown; showSectionName?: unknown };
-    if (meta.show_section_name === false || meta.showSectionName === false) return false;
-    return true;
+    return !(meta.show_section_name === false || meta.showSectionName === false);
 }
 
 export function createTemplateViewModel(
