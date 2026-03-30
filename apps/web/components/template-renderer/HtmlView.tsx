@@ -165,7 +165,20 @@ export default function HtmlView({ viewModel }: Props) {
     const renderTitleField = (field: TemplateViewModel['sections'][number]['fields'][number]) => {
         const value = field.defaultValue || field.value || field.label;
         const titleTag = field.titleTag || 'h2';
-        const className = 'leading-tight text-slate-900';
+
+
+        const headingSizeMap: Record<string, string> = {
+            h1: "text-[2em] font-bold uppercase",
+            h2: "text-[1.75em] font-bold uppercase",
+            h3: "text-[1.5em] font-bold",
+            h4: "text-[1.25em] font-semibold",
+            h5: "text-[1.1em] font-medium",
+            h6: "text-[1em] font-medium",
+        };
+
+        const baseClass = 'font-["Times_New_Roman"] !font-["Times_New_Roman"] leading-tight text-slate-900';
+        const sizeClass = headingSizeMap[titleTag] || headingSizeMap.h6;
+        const className = `${baseClass} ${sizeClass}`;
 
         if (titleTag === 'h1') return <h1 key={field.id} className={className}>{value}</h1>;
         if (titleTag === 'h2') return <h2 key={field.id} className={className}>{value}</h2>;
