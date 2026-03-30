@@ -32,6 +32,10 @@ function isAbsoluteUrl(value: string) {
     }
 }
 
+function shouldShowSectionName(section: TemplateViewModel['sections'][number]) {
+    return section.fields.some((field) => field.showSectionName);
+}
+
 export default function HtmlView({ viewModel }: Props) {
     const PAGE_FIELD_BUDGET = 80;
 
@@ -102,6 +106,12 @@ export default function HtmlView({ viewModel }: Props) {
     };
 
     const paginatedSections = splitSectionsIntoPages(mergedBodySections);
+    const alignClassName = (align?: string) => {
+        const normalized = align?.toLowerCase();
+        if (normalized === 'left') return 'text-left';
+        if (normalized === 'right') return 'text-right';
+        return 'text-center';
+    };
 
     const renderFieldValue = (
         field: TemplateViewModel['sections'][number]['fields'][number],
@@ -114,37 +124,39 @@ export default function HtmlView({ viewModel }: Props) {
         if (field.type === 'image' || field.type === 'bullseye') {
             if (isAbsoluteUrl(displayValue)) {
                 return (
-                    <Image
-                        src={displayValue}
-                        alt={field.label || 'image'}
-                        width={160}
-                        height={64}
-                        unoptimized
-                        className="h-24 w-auto max-w-full border border-black object-contain"
-                    />
+                    <div className={alignClassName(field.style.align)}>
+                        <Image
+                            src={displayValue}
+                            alt={field.label || 'image'}
+                            width={160}
+                            height={64}
+                            unoptimized
+                            className="inline-block h-24 w-auto max-w-full border border-black object-contain"
+                        />
+                    </div>
                 );
             }
 
             return (
-                <span className="font-mono text-[10px] leading-tight text-slate-700">
+                <span className={`font-mono text-[10px] leading-tight text-slate-700 ${alignClassName(field.style.align)}`}>
                     {`<img src="${displayValue}" alt="${field.label || 'image'}" />`}
                 </span>
             );
         }
 
         if (field.type === 'checkbox_group') {
-            return <span className="text-[11px] leading-tight text-slate-900">{displayValue || 'Mocked checkbox selection'}</span>;
+            return <span className={`text-[11px] leading-tight text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue || 'Mocked checkbox selection'}</span>;
         }
 
         if (field.type === 'textarea') {
-            return <p className="text-[11px] leading-snug text-slate-900">{displayValue}</p>;
+            return <p className={`text-[11px] leading-snug text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue}</p>;
         }
 
         if (isMeasurementSection(sectionName)) {
-            return <span className="text-[10px] font-semibold leading-tight text-slate-900">{displayValue}</span>;
+            return <span className={`text-[10px] font-semibold leading-tight text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue}</span>;
         }
 
-        return <span className="text-[11px] leading-tight text-slate-900">{displayValue}</span>;
+        return <span className={`text-[11px] leading-tight text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue}</span>;
     };
 
     const renderFieldRow = (
@@ -178,7 +190,7 @@ export default function HtmlView({ viewModel }: Props) {
 
         const baseClass = 'font-["Times_New_Roman"] !font-["Times_New_Roman"] leading-none text-slate-900';
         const sizeClass = headingSizeMap[titleTag] || headingSizeMap.h6;
-        const className = `${baseClass} ${sizeClass}`;
+        const className = `${baseClass} ${sizeClass} ${alignClassName(field.style.align)}`;
 
         if (titleTag === 'h1') return <h1 key={field.id} className={className}>{value}</h1>;
         if (titleTag === 'h2') return <h2 key={field.id} className={className}>{value}</h2>;
@@ -222,10 +234,12 @@ export default function HtmlView({ viewModel }: Props) {
 
     const renderMeasurementSection = (section: TemplateViewModel['sections'][number]) => (
         <section key={section.section} className="break-inside-avoid">
-            <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
-                {section.section}
-            </h3>
-            <div className="grid grid-cols-4 gap-1.5 border border-t-0 border-slate-400 p-1.5 xl:grid-cols-6">
+            {shouldShowSectionName(section) ? (
+                <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
+                    {section.section}
+                </h3>
+            ) : null}
+            <div className={`grid grid-cols-4 gap-1.5 border border-slate-400 p-1.5 xl:grid-cols-6 ${shouldShowSectionName(section) ? 'border-t-0' : ''}`}>
                 {section.fields.map((field) => (
                     <div key={field.id} className="border border-slate-300 bg-slate-50 px-1 py-1">
                         {!field.isStatic && (
@@ -245,9 +259,11 @@ export default function HtmlView({ viewModel }: Props) {
 
     const renderFindingsSection = (section: TemplateViewModel['sections'][number]) => (
         <section key={section.section} className="break-inside-avoid">
-            <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
-                {section.section}
-            </h3>
+            {shouldShowSectionName(section) ? (
+                <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
+                    {section.section}
+                </h3>
+            ) : null}
             <table className="w-full border-collapse">
                 <tbody>
                     {section.fields.map((field) => (
@@ -274,10 +290,12 @@ export default function HtmlView({ viewModel }: Props) {
     const renderGeneralSection = (section: TemplateViewModel['sections'][number]) => {
         return (
             <section key={section.section} className="break-inside-avoid">
-                <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
-                    {section.section}
-                </h3>
-                <div className="grid grid-cols-4 gap-1.5 border border-t-0 border-slate-400 p-1.5">
+                {shouldShowSectionName(section) ? (
+                    <h3 className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-xs font-bold uppercase tracking-wide">
+                        {section.section}
+                    </h3>
+                ) : null}
+                <div className={`grid grid-cols-4 gap-1.5 border border-slate-400 p-1.5 ${shouldShowSectionName(section) ? 'border-t-0' : ''}`}>
                     {section.fields.map((field) => (
                         <div key={field.id} className="border border-slate-300 bg-slate-50 px-1 py-1">
                             {!field.isStatic && (

@@ -52,6 +52,7 @@ type TemplateFieldForm = {
   title_tag: string;
   image_url: string;
   image_align: "left" | "center" | "right";
+  show_section_name: boolean;
   measurement_name: string;
   measurement_unit: string;
   measurement_category: string;
@@ -131,6 +132,7 @@ function normalizeOptions(raw: unknown) {
         title_tag: "h2",
         image_url: "",
         image_align: "center",
+        show_section_name: true,
         measurement_name: "",
         measurement_unit: "",
         measurement_category: "",
@@ -148,6 +150,7 @@ function normalizeOptions(raw: unknown) {
       title_tag: "h2",
       image_url: "",
       image_align: "center",
+      show_section_name: true,
       measurement_name: "",
       measurement_unit: "",
       measurement_category: "",
@@ -187,6 +190,12 @@ function normalizeOptions(raw: unknown) {
                 String(obj.image_align).toLowerCase() === "right")
             ? (String(obj.image_align).toLowerCase() as "left" | "right")
             : "center",
+      show_section_name:
+        obj.show_section_name === false
+          ? false
+          : obj.showSectionName === false
+            ? false
+            : true,
       measurement_name: obj.measurement_name
         ? String(obj.measurement_name)
         : "",
@@ -209,6 +218,7 @@ function normalizeOptions(raw: unknown) {
     title_tag: "h2",
     image_url: "",
     image_align: "center",
+    show_section_name: true,
     measurement_name: "",
     measurement_unit: "",
     measurement_category: "",
@@ -485,6 +495,7 @@ export default function EditTemplatePage() {
                 options.image_url || options.default,
               ),
               image_align: options.image_align,
+              show_section_name: options.show_section_name,
               measurement_name: options.measurement_name,
               measurement_unit: options.measurement_unit,
               measurement_category: options.measurement_category,
@@ -585,6 +596,10 @@ export default function EditTemplatePage() {
             const baseOptions: Record<string, any> = {
               required: !!f.required,
               static: !!f.static,
+              style: {
+                align: f.image_align || "center",
+              },
+              show_section_name: !!f.show_section_name,
             };
 
             if (f.type === "select" || f.type === "checkbox") {
@@ -628,9 +643,6 @@ export default function EditTemplatePage() {
                 baseOptions.default = imageUrl;
                 baseOptions.image_url = imageUrl;
               }
-              baseOptions.style = {
-                align: f.image_align || "center",
-              };
             } else if (f.default_value) {
               baseOptions.default = f.default_value;
             }
@@ -1472,6 +1484,23 @@ export default function EditTemplatePage() {
                                     </FormItem>
                                   )}
                                 />
+                                <FormField
+                                  control={form.control}
+                                  name={`fields.${index}.show_section_name`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-2">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={(checked) =>
+                                            field.onChange(checked === true)
+                                          }
+                                        />
+                                      </FormControl>
+                                      <FormLabel>Show Section Name</FormLabel>
+                                    </FormItem>
+                                  )}
+                                />
                                 <Button
                                   type="button"
                                   variant="secondary"
@@ -1579,6 +1608,38 @@ export default function EditTemplatePage() {
                                   </Button>
                                 </div>
                               ) : null}
+
+                              <FormField
+                                control={form.control}
+                                name={`fields.${index}.image_align`}
+                                render={({ field }) => (
+                                  <FormItem
+                                    className="md:col-span-3"
+                                    data-field-path={`fields.${index}.image_align`}
+                                  >
+                                    <FormLabel>Alignment</FormLabel>
+                                    <Select
+                                      onValueChange={(value) =>
+                                        field.onChange(
+                                          value as "left" | "center" | "right",
+                                        )
+                                      }
+                                      value={field.value || "center"}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select alignment" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="left">Left</SelectItem>
+                                        <SelectItem value="center">Center</SelectItem>
+                                        <SelectItem value="right">Right</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormItem>
+                                )}
+                              />
 
                               {fieldType === "measurement" ? (
                                 <>
@@ -1701,32 +1762,6 @@ export default function EditTemplatePage() {
                                       className="h-48 w-48 rounded-md border object-cover"
                                     />
                                   ) : null}
-                                  <FormField
-                                    control={form.control}
-                                    name={`fields.${index}.image_align`}
-                                    render={({ field }) => (
-                                      <FormItem className="max-w-[220px]">
-                                        <FormLabel>Image Align</FormLabel>
-                                        <Select
-                                          onValueChange={(value) =>
-                                            field.onChange(value as "left" | "center" | "right")
-                                          }
-                                          value={field.value || "center"}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select alignment" />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="left">Left</SelectItem>
-                                            <SelectItem value="center">Center</SelectItem>
-                                            <SelectItem value="right">Right</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </FormItem>
-                                    )}
-                                  />
                                 </div>
                               ) : null}
                             </div>
@@ -1749,6 +1784,7 @@ export default function EditTemplatePage() {
                               title_tag: "h2",
                               image_url: "",
                               image_align: "center",
+                              show_section_name: true,
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
@@ -1786,6 +1822,7 @@ export default function EditTemplatePage() {
                       title_tag: "h2",
                       image_url: "",
                       image_align: "center",
+                      show_section_name: true,
                       measurement_name: "",
                       measurement_unit: "",
                       measurement_category: "",
