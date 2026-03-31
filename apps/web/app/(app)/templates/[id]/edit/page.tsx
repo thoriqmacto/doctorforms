@@ -358,6 +358,15 @@ export default function EditTemplatePage() {
     });
   }
 
+  function updateShowSectionName(groupIndices: number[], shouldShow: boolean) {
+    groupIndices.forEach((fieldIndex) => {
+      form.setValue(`fields.${fieldIndex}.show_section_name`, shouldShow, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  }
+
   function reorderSectionGroups(sourceGroupOrder: number, targetPosition: number) {
     const orderedGroups = [...groupedFields].sort(
       (a, b) => a.groupOrder - b.groupOrder,
@@ -1039,11 +1048,16 @@ export default function EditTemplatePage() {
               </Card>
 
               <div className="space-y-4">
-                {groupedFields.map((group) => (
-                  <Card
-                    key={group.groupOrder}
-                    data-section-group-order={group.groupOrder}
-                  >
+                {groupedFields.map((group) => {
+                  const shouldShowSectionName = group.items.every((item) =>
+                    Boolean(form.watch(`fields.${item.index}.show_section_name`)),
+                  );
+
+                  return (
+                    <Card
+                      key={group.groupOrder}
+                      data-section-group-order={group.groupOrder}
+                    >
                     <CardHeader>
                       <div
                         className="flex items-end justify-between gap-3"
@@ -1116,6 +1130,20 @@ export default function EditTemplatePage() {
                               disabled={isProcessing}
                             />
                           </div>
+                          <FormItem className="flex flex-row items-center space-x-2 pb-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={shouldShowSectionName}
+                                onCheckedChange={(checked) =>
+                                  updateShowSectionName(
+                                    group.items.map((item) => item.index),
+                                    checked === true,
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormLabel>Show Section Name</FormLabel>
+                          </FormItem>
                           <Button
                             type="button"
                             variant="secondary"
@@ -1484,23 +1512,6 @@ export default function EditTemplatePage() {
                                     </FormItem>
                                   )}
                                 />
-                                <FormField
-                                  control={form.control}
-                                  name={`fields.${index}.show_section_name`}
-                                  render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-2">
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value}
-                                          onCheckedChange={(checked) =>
-                                            field.onChange(checked === true)
-                                          }
-                                        />
-                                      </FormControl>
-                                      <FormLabel>Show Section Name</FormLabel>
-                                    </FormItem>
-                                  )}
-                                />
                                 <Button
                                   type="button"
                                   variant="secondary"
@@ -1784,7 +1795,7 @@ export default function EditTemplatePage() {
                               title_tag: "h2",
                               image_url: "",
                               image_align: "center",
-                              show_section_name: true,
+                              show_section_name: shouldShowSectionName,
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
@@ -1796,8 +1807,9 @@ export default function EditTemplatePage() {
                         </Button>
                       </CardContent>
                     ) : null}
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
 
                 <Button
                   type="button"
