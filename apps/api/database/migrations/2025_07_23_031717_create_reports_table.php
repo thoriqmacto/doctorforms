@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('reports', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // owner doctor
-            $table->foreignId('hospital_id')->constrained();
+            $table->foreignId('hospital_id');
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
             $table->foreignId('template_id')->constrained();
             $table->string('title');
