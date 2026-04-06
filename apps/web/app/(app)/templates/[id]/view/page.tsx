@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -27,7 +28,7 @@ function normalizeMode(input: string | null): ViewMode {
     return 'html';
 }
 
-export default function TemplateViewPage() {
+function TemplateViewPageContent() {
     const params = useParams<{ id: string }>();
     const searchParams = useSearchParams();
     const mode = normalizeMode(searchParams.get('mode'));
@@ -127,5 +128,14 @@ export default function TemplateViewPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+
+export default function TemplateViewPage() {
+    return (
+        <Suspense fallback={<div className="space-y-4">Loading…</div>}>
+            <TemplateViewPageContent />
+        </Suspense>
     );
 }
