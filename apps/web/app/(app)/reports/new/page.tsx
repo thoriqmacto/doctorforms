@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import useSWR from 'swr';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateReportPdf } from '@/lib/pdf';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
-export default function NewReportPage() {
+function NewReportPageContent() {
     const sp = useSearchParams();
     const router = useRouter();
     const templateId = sp.get('templateId');
@@ -195,5 +196,14 @@ export default function NewReportPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+
+export default function NewReportPage() {
+    return (
+        <Suspense fallback={<div className="space-y-4">Loading…</div>}>
+            <NewReportPageContent />
+        </Suspense>
     );
 }

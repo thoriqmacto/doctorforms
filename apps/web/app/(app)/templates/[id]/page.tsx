@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import useSWR from 'swr';
 import { getTemplate } from '@/lib/api';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -8,7 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
-export default function TemplateDetailPage() {
+function TemplateDetailPageContent() {
     const params = useParams<{ id: string }>();
     const sp = useSearchParams();
     const patientId = sp.get('patientId');
@@ -67,5 +68,14 @@ export default function TemplateDetailPage() {
                 </Card>
             )}
         </div>
+    );
+}
+
+
+export default function TemplateDetailPage() {
+    return (
+        <Suspense fallback={<div className="space-y-4">Loading…</div>}>
+            <TemplateDetailPageContent />
+        </Suspense>
     );
 }
