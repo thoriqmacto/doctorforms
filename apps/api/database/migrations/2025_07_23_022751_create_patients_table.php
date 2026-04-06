@@ -14,7 +14,10 @@ return new class extends Migration
         Schema::create('patients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('hospital_id')->constrained()->onDelete('cascade');
+            // NOTE: hospitals table is created in a later migration timestamp.
+            // Keep this as a plain foreign key column here, then add the FK
+            // constraint in a dedicated follow-up migration after hospitals exists.
+            $table->foreignId('hospital_id');
             $table->string('name');
             $table->integer('age');
             $table->date('dob')->nullable(); // date-of-birth
