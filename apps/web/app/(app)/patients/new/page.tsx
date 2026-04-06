@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { getTemplate, createPatient } from '@/lib/api';
@@ -7,19 +8,19 @@ import TemplateFormRenderer, { type Field } from '@/components/form/TemplateForm
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
-export default function NewPatientPage() {
+interface TemplateResponse {
+    data?: {
+        meta?: {
+            grouped_sections?: { section: string | null; items: Field[] }[];
+        };
+    };
+}
+
+function NewPatientPageContent() {
     const sp = useSearchParams();
     const router = useRouter();
     const templateId = sp.get('templateId');
     const testId = sp.get('testId');
-
-    interface TemplateResponse {
-        data?: {
-            meta?: {
-                grouped_sections?: { section: string | null; items: Field[] }[];
-            };
-        };
-    }
 
     const { data, isLoading } = useSWR<TemplateResponse>(
         templateId ? ['/templates', templateId] : null,
@@ -70,5 +71,13 @@ export default function NewPatientPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function NewPatientPage() {
+    return (
+        <Suspense fallback={<div className="space-y-4">Loading…</div>}>
+            <NewPatientPageContent />
+        </Suspense>
     );
 }
