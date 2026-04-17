@@ -83,33 +83,3 @@ jobs:
 
             sudo systemctl reload php8.3-fpm
             sudo systemctl reload nginx
-
-  deploy-staging:
-    if: github.ref == 'refs/heads/develop'
-    needs: test-api
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy staging via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script:|
-          cd /var/www/doctorforms
-          git fetch origin
-          git checkout develop
-          git pull origin develop
-          
-          cd apps/api
-          composer install --no-dev --optimize-autoloader --no-interaction
-          
-          php artisan migrate --force
-          php artisan storage:link || true
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-          
-          sudo systemctl reload php8.3-fpm
-          sudo systemctl reload nginx
