@@ -167,7 +167,7 @@ Create from example and set app/database values:
 
 ```bash
 cd apps/api
-cp .env.example .env
+cp env.example .env
 php artisan key:generate
 ```
 
