@@ -1,6 +1,6 @@
 <?php
 
-namespace database\seeders;
+namespace Database\Seeders;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;

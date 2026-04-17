@@ -1,445 +1,164 @@
 <?php
 
-namespace database\seeders;
+namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class TemplateFieldsTableSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     *
-     * template_id → which template this belongs to
-     * section → group name (e.g., "TEE Procedure")
-     * label → human-readable label (e.g., "Anesthesia")
-     * type → field type (select, number, text, textarea, checkbox_group, etc.)
-     * options → JSON array if applicable, otherwise null
-     * order → sorts within the section
-     * field_group_order → ordering of the section itself
-     * timestamps
-     *
      */
     public function run(): void
     {
-        $templateId = DB::table('templates')->where('name', 'TEE Default v1')->value('id');
-        if (!$templateId) {
-            throw new RuntimeException('Template "TEE Default v1" not found. Seed templates first.');
-        }
+        $csv = <<<'CSV'
+id,template_id,section,label,unique_name,type,options,order,field_group_order,created_at,updated_at
+2,5,Header,Left Logo,header.left_logo,image,"{""required"":true,""static"":true,""style"":{""align"":""left""},""show_section_name"":true,""default"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/qte4ChnY2SsirUQCM6qrmky30EPmCX6nOA4vlj8v.png"",""image_url"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/qte4ChnY2SsirUQCM6qrmky30EPmCX6nOA4vlj8v.png""}",1,1,2026-03-08 21:23:59,2026-03-30 05:30:08
+3,5,Header,Right Logo,header.right_logo,image,"{""required"":true,""static"":true,""style"":{""align"":""right""},""show_section_name"":true,""default"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/CDpjclauSz2lbiVq7jzKvom0lWa05wn1x2T8lJOJ.png"",""image_url"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/CDpjclauSz2lbiVq7jzKvom0lWa05wn1x2T8lJOJ.png""}",2,1,2026-03-08 21:24:54,2026-03-30 05:30:08
+4,5,Header,Info Line 2,header.info_line_2,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h6"",""default"":""Email: rsud@kalbarprov.go.id \/ tu.rsdrsoedarso@gmail.com, Website: http:\/\/rsuddrsoedarso.kabarprov.go.id""}",6,1,2026-03-08 21:27:54,2026-03-30 05:30:08
+5,5,Header,Provinsi Kalbar,header.provinsi_kalbar,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h2"",""default"":""Pemerintah Provinsi Kalimantan Barat""}",3,1,2026-03-08 21:27:54,2026-03-30 05:30:08
+6,5,Header,Hospital Name,header.hospital_name,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h1"",""default"":""Rumah Sakit Umum Daerah Dokter Soedarso""}",4,1,2026-03-08 21:27:54,2026-03-30 05:30:09
+8,5,Header,Kota,header.kota,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h1"",""default"":""Pontianak""}",8,1,2026-03-08 21:27:54,2026-03-30 05:30:08
+9,5,Header,Info Line 1,header.info_line_1,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h6"",""default"":""Jalan dr. Soedarso No. 1, Telp: (0561) 737701, (0561) 746152, Faks: (0561) 736528, WA\/Telegram: 085294445252""}",5,1,2026-03-08 21:27:54,2026-03-30 05:30:08
+10,5,Header,Report Title,header.report_title,title,"{""required"":true,""static"":true,""style"":{""align"":""center""},""show_section_name"":true,""title_tag"":""h4"",""default"":""Transthoracic Echocardiography Report""}",9,1,2026-03-08 21:27:54,2026-03-30 05:30:09
+11,5,General,Name,general.name,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",1,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+12,5,General,MRN,general.mrn,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",2,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+13,5,General,Age,general.age,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",4,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+14,5,General,Operator,general.operator,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",6,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+15,5,General,Gender,general.gender,select,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Male"",""Female""]}",5,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+16,5,General,DOB,general.dob,date,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",3,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+17,5,General,Study Date,general.study_date,date,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",7,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+18,5,General,Referring Physician,general.referring_physician,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",9,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+19,5,General,Diagnosis,general.diagnosis,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",8,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+20,5,General,Medical Device,general.medical_device,text,"{""required"":true,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",10,2,2026-03-08 21:33:16,2026-03-30 05:30:09
+21,5,Measurements & Calculations,AO Diameter,measurements_calculations.ao_diameter,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""AO Diameter"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",3,3,2026-03-13 03:26:56,2026-03-30 05:30:09
+23,5,Measurements & Calculations,BSA,measurements_calculations.bsa,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""BSA"",""measurement_unit"":""m\u00b2"",""measurement_category"":""basic""}",2,3,2026-03-13 03:26:57,2026-03-30 05:30:09
+24,5,Measurements & Calculations,LA diameter,measurements_calculations.la_diameter,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LA diameter"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",4,3,2026-03-13 03:26:57,2026-03-30 05:30:09
+25,5,Measurements & Calculations,LVOT diameter,measurements_calculations.lvot_diameter,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVOT diameter"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",5,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+26,5,Measurements & Calculations,IVSd,measurements_calculations.ivsd,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""IVSd"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",10,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+27,5,Measurements & Calculations,LVOT VTI,measurements_calculations.lvot_vti,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVOT VTI"",""measurement_unit"":""cm"",""measurement_category"":""mmode""}",6,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+28,5,Measurements & Calculations,LVIDd,measurements_calculations.lvidd,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVIDd"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",11,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+29,5,Measurements & Calculations,TAPSE,measurements_calculations.tapse,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""TAPSE"",""measurement_unit"":""cmp"",""measurement_category"":""mmode""}",9,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+30,5,Measurements & Calculations,IVSs,measurements_calculations.ivss,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""IVSs"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",13,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+31,5,Measurements & Calculations,LVPWd,measurements_calculations.lvpwd,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVPWd"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",12,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+32,5,Measurements & Calculations,LVIDs,measurements_calculations.lvids,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVIDs"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",14,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+33,5,Measurements & Calculations,LVPWs,measurements_calculations.lvpws,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVPWs"",""measurement_unit"":""mm"",""measurement_category"":""mmode""}",15,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+34,5,Measurements & Calculations,LVMI,measurements_calculations.lvmi,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LVMI"",""measurement_unit"":""gr\/m\u00b2"",""measurement_category"":""mmode""}",16,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+35,5,Measurements & Calculations,RWT,measurements_calculations.rwt,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""RWT"",""measurement_unit"":""[no_uom]"",""measurement_category"":""mmode""}",17,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+36,5,Measurements & Calculations,MV E Vel,measurements_calculations.mv_e_vel,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""MV E Vel"",""measurement_unit"":""m\/s"",""measurement_category"":""doppler""}",19,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+37,5,Measurements & Calculations,EF (teich),measurements_calculations.ef_teich,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""EF (teich)"",""measurement_unit"":""%"",""measurement_category"":""mmode""}",7,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+38,5,Measurements & Calculations,MV E/A Ratio,measurements_calculations.mv_ea_ratio,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""MV E\/A Ratio"",""measurement_unit"":""[no_uom]"",""measurement_category"":""doppler""}",18,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+39,5,Measurements & Calculations,MV e' septal,measurements_calculations.mv_e_septal,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""MV e' septal"",""measurement_unit"":""cm\/s"",""measurement_category"":""doppler""}",21,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+40,5,Measurements & Calculations,MV e' lateral,measurements_calculations.mv_e_lateral,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""MV e' lateral"",""measurement_unit"":""cm\/s"",""measurement_category"":""doppler""}",22,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+41,5,Measurements & Calculations,EF (biplane),measurements_calculations.ef_biplane,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""EF (biplane)"",""measurement_unit"":""%"",""measurement_category"":""mmode""}",8,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+42,5,Measurements & Calculations,LAVI,measurements_calculations.lavi,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""LAVI"",""measurement_unit"":""gr\/m\u00b2"",""measurement_category"":""doppler""}",25,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+43,5,Measurements & Calculations,PV AccT,measurements_calculations.pv_acct,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""PV AccT"",""measurement_unit"":""ms"",""measurement_category"":""doppler""}",24,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+44,5,Measurements & Calculations,MV A Vel,measurements_calculations.mv_a_vel,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""MV A Vel"",""measurement_unit"":""m\/s"",""measurement_category"":""doppler""}",20,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+45,5,Measurements & Calculations,E/e' average,measurements_calculations.ee_average,measurement,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""default"":""0.0"",""measurement_name"":""E\/e' average"",""measurement_unit"":""[no_uom]"",""measurement_category"":""doppler""}",23,3,2026-03-13 03:48:55,2026-03-30 05:30:09
+46,5,Findings_01_ECG,ECG is,findings_01_ecg.ecg_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""sinus rhythm"",""atrial fibrillation"",""pacing rhythm""]}",1,4,2026-03-13 04:00:26,2026-03-30 05:30:09
+47,5,Findings_01_ECG,Additional,findings_01_ecg.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,4,2026-03-13 04:01:23,2026-03-30 05:30:09
+48,5,Findings_01_ECG,Result,findings_01_ecg.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,4,2026-03-13 04:29:04,2026-03-30 05:30:09
+49,5,Findings_02_Study Quality,The study quality is,findings_02_study_quality.the_study_quality_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""good"",""adequate"",""poor""]}",1,5,2026-03-13 13:58:51,2026-03-30 05:30:09
+50,5,Findings_02_Study Quality,Additional,findings_02_study_quality.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,5,2026-03-13 13:58:51,2026-03-30 05:30:09
+51,5,Findings_02_Study Quality,Result,findings_02_study_quality.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,5,2026-03-13 13:58:51,2026-03-30 05:30:09
+52,5,Findings_03_Left Ventricle,LV size is,findings_03_left_ventricle.lv_size_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""dilated"",""smallish"",""D-shaped""]}",1,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+53,5,Findings_03_Left Ventricle,LV systolic function is,findings_03_left_ventricle.lv_systolic_function_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""reduced""]}",3,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+54,5,Findings_03_Left Ventricle,LV diastolic function is,findings_03_left_ventricle.lv_diastolic_function_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""abnormal"",""indeterminate""]}",4,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+55,5,Findings_03_Left Ventricle,Wall thickness is,findings_03_left_ventricle.wall_thickness_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""remodeling of LV"",""concentric left ventricular hypertrophy"",""eccentric left ventricular hypertrophy""]}",2,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+56,5,Findings_03_Left Ventricle,Additional,findings_03_left_ventricle.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",5,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+57,5,Findings_03_Left Ventricle,Result,findings_03_left_ventricle.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",6,6,2026-03-13 14:12:13,2026-03-30 05:30:09
+58,5,Findings_04_Right Ventricle,Wall thickness is,findings_04_right_ventricle.wall_thickness_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""ventricular hypertrophy""]}",2,7,2026-03-13 14:19:06,2026-03-30 05:30:09
+59,5,Findings_04_Right Ventricle,RV size is,findings_04_right_ventricle.rv_size_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""dilated""]}",1,7,2026-03-13 14:19:06,2026-03-30 05:30:09
+60,5,Findings_04_Right Ventricle,Systolic function is,findings_04_right_ventricle.systolic_function_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""decreased""]}",3,7,2026-03-13 14:19:06,2026-03-30 05:30:09
+61,5,Findings_04_Right Ventricle,Result,findings_04_right_ventricle.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",5,7,2026-03-13 14:19:06,2026-03-30 05:30:09
+62,5,Findings_04_Right Ventricle,Additional,findings_04_right_ventricle.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",4,7,2026-03-13 14:19:06,2026-03-30 05:30:09
+63,5,Findings_05_Left Atrium,Additional,findings_05_left_atrium.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,8,2026-03-13 14:23:42,2026-03-30 05:30:09
+64,5,Findings_05_Left Atrium,Result,findings_05_left_atrium.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,8,2026-03-13 14:23:42,2026-03-30 05:30:09
+65,5,Findings_05_Left Atrium,LA size is,findings_05_left_atrium.la_size_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""normal"",""dilated""]}",1,8,2026-03-13 14:23:42,2026-03-30 05:30:09
+66,5,Findings_06_Right Atrium,Result,findings_06_right_atrium.result,text,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",3,9,2026-03-13 14:23:42,2026-03-30 05:30:09
+67,5,Findings_06_Right Atrium,RA size is,findings_06_right_atrium.ra_size_is,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Normal"",""dilated""]}",1,9,2026-03-13 14:23:42,2026-03-30 05:30:10
+68,5,Findings_06_Right Atrium,Additional,findings_06_right_atrium.additional,text,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true}",2,9,2026-03-13 14:23:42,2026-03-30 05:30:09
+69,5,Findings_07_Interatrial Septum,Additional,findings_07_interatrial_septum.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,10,2026-03-13 14:29:50,2026-03-30 05:30:10
+70,5,Findings_07_Interatrial Septum,Result,findings_07_interatrial_septum.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,10,2026-03-13 14:29:50,2026-03-30 05:30:10
+71,5,Findings_07_Interatrial Septum,*,findings_07_interatrial_septum.field,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Intact interatrial septum."",""There is atrial septal aneurysm."",""Hyperkinetic interatrial septum."",""There is gap at interatrial septum with diameter of"",""There is stretched PFO L to R shunt."",""There is iatrogenic ASD with diameter of"",""Post ASD closure."",""Post device closure.""]}",1,10,2026-03-13 14:33:25,2026-03-30 05:30:09
+72,5,Findings_08_Interventricular Septum,*,findings_08_interventricular_septum.field,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Intact interventricular septum."",""There is gap at IVS, with diameter of"",""There is ventricular septal rupture.""]}",1,11,2026-03-13 14:38:55,2026-03-30 05:30:10
+73,5,Findings_08_Interventricular Septum,Additional,findings_08_interventricular_septum.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,11,2026-03-13 14:38:55,2026-03-30 05:30:10
+74,5,Findings_08_Interventricular Septum,Result,findings_08_interventricular_septum.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,11,2026-03-13 14:38:55,2026-03-30 05:30:10
+75,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""The aortic valve is not well visualized, number cusp could not identified."",""The aortic valve is trileaflet"",""The aortic valve is"",""The aortic valve leaflets appear to be thickened."",""The aortic valve appears rheumatic."",""There is no aortic valve calcification."",""The cusp is heavily calcified."",""There is calcification at"",""There is nodular thickening of""]}",1,12,2026-03-13 14:44:14,2026-03-30 05:30:10
+76,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field_4,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""The aortic valve opens well."",""The aortic valve is not heavily calcified."",""There is systolic doming of aortic valve."",""There is prolapse of"",""There is flail of""]}",2,12,2026-03-14 13:39:52,2026-03-30 05:30:10
+77,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field_2,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No aortic regurgitation is seen."",""There is trace aortic regurgitation."",""There is mild aortic regurgitation."",""There is mild-moderate aortic regurgitation."",""There is moderate aortic regurgitation."",""There is moderate-severe aortic regurgitation."",""There is severe aortic regurgitation."",""Regurgitation jet is central."",""Regurgitation jet is eccentric.""]}",3,12,2026-03-14 13:39:52,2026-03-30 05:30:10
+78,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field_3,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no valvular aortic stenosis."",""There is mild valvular aortic stenosis."",""There is mild-moderate valvular aortic stenosis."",""There is moderate valvular aortic stenosis."",""There is moderate-severe valvular aortic stenosis."",""There is severe valvular aortic stenosis."",""There is subaortic stenosis."",""There is supravalvar aortic stenosis."",""There is paradoxical aortic stenosis."",""There is low flow low gradient aortic stenosis.""]}",4,12,2026-03-14 13:42:41,2026-03-30 05:30:10
+79,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field_4,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No vegetation is seen."",""We cannot exclude vegetation in the aortic valve."",""There is vegetation at"",""There is mobile vegetation at"",""There is abcess at""]}",5,12,2026-03-14 13:51:30,2026-03-30 05:30:10
+80,5,Findings_09_Aortic Valve,Additional,findings_09_aortic_valve.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",7,12,2026-03-14 13:51:30,2026-03-30 05:30:10
+81,5,Findings_09_Aortic Valve,Results,findings_09_aortic_valve.results,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",8,12,2026-03-14 13:51:30,2026-03-30 05:30:10
+82,5,Findings_09_Aortic Valve,*,findings_09_aortic_valve.field_5,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Aortic valve post repair."",""Aortic valve post replace with biopresthetic."",""Aortic valve post replace with mechanical valve."",""A homograft in aortic valve is in present."",""The opening prosthetic valve is not well visualized."",""The prosthetic valve is well-seated."",""The prosthetic valve opens well."",""There is limited prosthetic valve opening."",""There is thrombus see on prosthetic valve."",""There is possible thrombus on prosthetic valve."",""No leakage is seen."",""There is ... central leakage."",""There is ... paravalvar leakage."",""Doppler evaluation showed normal prosthetic aortic valve gradient."",""Doppler evaluation showed increased prosthetic aortic valve gradient."",""The prosthetic vegetations are suspected."",""The prosthetic vegetations are present."",""The rocking suggests dehiscence in the aortic valve.""]}",6,12,2026-03-14 13:51:30,2026-03-30 05:30:10
+83,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field_4,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Mitral valve opens well."",""There is doming of the mitral valve with minimal stenosis."",""There is doming of the mitral valve with restricted opening."",""Opening of mitral valve is restricted."",""There is billowing of mitral valve closure, with no prolapse."",""There is prolapse of"",""There is flail of"",""Chordal rupture is seen."",""There is perforation of"",""There is no SAM is seen."",""There is chordal SAM."",""Systolic anterior motion is present.""]}",2,13,2026-03-14 14:04:37,2026-03-30 05:30:10
+84,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field_2,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No mitral regurgitation is seen."",""There is trace mitral regurgitation."",""There is mild mitral regurgitation."",""There is mild-moderate mitral regurgitation."",""There is moderate mitral regurgitation."",""There is moderate-severe mitral regurgitation."",""There is severe mitral regurgitation."",""Regurgitation jet is central."",""Regurgitation jet is eccentric."",""Pulmonary vein systolic reversal flow is present.""]}",3,13,2026-03-14 14:04:37,2026-03-30 05:30:10
+85,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""The mitral valve is normal."",""The mitral valve is not well visualized."",""The mitral valve structure is normal."",""The mitral valve leaflets appear to be thickened."",""The mitral valve appears rheumatic."",""Mitral valve leaflets appear myxomatous."",""There is redundant elongated chordae."",""Thre is no annular calcification."",""There is mitral annular calcification."",""Mitral cleft is present."",""Valve chordae is thickened and calcified."",""Papillary muscle is thickened and calcified.""]}",1,13,2026-03-14 14:04:37,2026-03-30 05:30:10
+86,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field_3,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no mitral stenosis."",""There is mild mitral stenosis."",""There is mild-moderate mitral stenosis."",""There is moderate mitral stenosis."",""There is moderate-severe mitral stenosis."",""There is severe mitral stenosis."",""Wilkin's score""]}",4,13,2026-03-14 14:31:08,2026-03-30 05:30:10
+87,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field_5,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No vegetation is seen."",""We cannot exclude vegetation at the mitral valve."",""There is vegetation at"",""There is mobile vegetation at"",""There is abcess at""]}",5,13,2026-03-14 14:31:08,2026-03-30 05:30:10
+88,5,Findings_10_Mitral Valve,Additional,findings_10_mitral_valve.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",7,13,2026-03-14 14:31:08,2026-03-30 05:30:10
+89,5,Findings_10_Mitral Valve,*,findings_10_mitral_valve.field_5,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Mitral valve post repair."",""Mitral valve post repair with ring annuloplasty."",""Mitral valve post replace with bioprosthetic."",""Mitral valve post replace with mechanical valve."",""There is no residual mitral regurgitation."",""There is ... residual mitral regurgitation."",""There is ... residual mitral stenosis."",""Prosthetic valve is abnormal."",""The opening prosthetic valve is not well visualized."",""The prosthetic valve is well-seated."",""The prosthetic valve opens well."",""There is limited prosthetic valve opening."",""There is no thrombus see on prosthetic valve."",""There is possible thrombus on prosthetic valve."",""No leakage is seen."",""There is ... cnetral leakage."",""There is ... paravalvar leakage."",""Doppler evaluation showed normal prosthetic mitral valve gradient."",""There is abnormal prosthetic MV gradient."",""The prosthetic vegetations are suspected."",""The prosthetic vegetations are present."",""The rocking suggests dehiscence in the mitral valve""]}",6,13,2026-03-14 14:31:08,2026-03-30 05:30:10
+90,5,Findings_10_Mitral Valve,Result,findings_10_mitral_valve.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",8,13,2026-03-14 14:31:08,2026-03-30 05:30:10
+91,5,Findings_11_Tricuspid Valve,*,findings_11_tricuspid_valve.field,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""The tricuspid valve is not well visualized."",""The tricuspid valve structure is normal."",""The tricuspid valve appeared rheumatic."",""Tricuspid leaflets are thickened"",""The valvular appearance is consistent with carcinoid heart disease."",""There is no tricuspid annular calcification."",""There is tricuspid annular calcification.""]}",1,14,2026-03-14 14:38:23,2026-03-30 05:30:10
+92,5,Findings_11_Tricuspid Valve,*Regurgitation_List,findings_11_tricuspid_valve.regurgitation_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no tricuspid regurgitation."",""There is trace tricuspid regurgitation."",""There is mild tricuspid regurgitation."",""There is mild-moderate tricuspid regurgitation."",""There is moderate tricuspid regurgitation."",""There is moderate-severe tricuspid regurgitation."",""There is severe tricuspid regurgitation."",""Regurgitation jet is central."",""Regurgitation jet is eccentric."",""Hepatic vein systolic reversal flow is seen.""]}",3,14,2026-03-14 14:38:23,2026-03-30 05:30:10
+93,5,Findings_11_Tricuspid Valve,*,findings_11_tricuspid_valve.field_2,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Tricuspid valve opens well."",""There is doming of tricuspid valve with minimal stenosis."",""There is doming of the tricuspid valve with restricted opening."",""Tenting tricuspid leaflet."",""Uncoaptation of tricuspid closure is seen."",""There is prolapse of"",""There is flail of""]}",2,14,2026-03-14 14:38:23,2026-03-30 05:30:10
+94,5,Findings_11_Tricuspid Valve,*Stenosis_List,findings_11_tricuspid_valve.stenosis_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no tricuspid stenosis."",""There is non significant tricuspid stenosis."",""There is significant tricuspid stenosis.""]}",4,14,2026-03-29 07:27:55,2026-03-30 05:30:10
+95,5,Findings_11_Tricuspid Valve,*Vegetation_Abscess_List,findings_11_tricuspid_valve.vegetation_abscess_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No vegetation is seen."",""We cannot exclude vegetation at the tricuspid valve."",""There is vegetation at"",""There is mobile vegetation at"",""There is abscess at""]}",5,14,2026-03-29 07:27:55,2026-03-30 05:30:10
+96,5,Findings_11_Tricuspid Valve,*Repair_Prosthetic_List,findings_11_tricuspid_valve.repair_prosthetic_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Tricuspid valve post repair"",""Tricuspid valve post repair with ring annuloplasty."",""Tricuspid valve post replace with bioprosthetic."",""Tricuspid valve post replace with mechanical valve."",""There is no residual tricuspid regurgitation."",""There is .... residual tricuspid regurgitation."",""There is .... residual tricuspid stenosis."",""Prosthetic valve is well-seated."",""Prosthetic valve opens well."",""Limited prosthetic valve is opening."",""Prosthetic valve is abnormal."",""The opening prosthetic valve is not well visualized."",""There is no thrombus seen on prosthetic valve."",""There is possible thrombus on prosthetic valve."",""No leakage is seen."",""There is .... central leakage."",""There is .... paravalvar leakage."",""Doppler evaluation showed normal prosthetic tricuspid valve gradient."",""Doppler evaluation showed increased prosthetic tricuspid valve gradient."",""There is abnormal increase of prosthetic tricuspid gradient."",""The prosthetic vegetations are suspected."",""The prosthetic vegetations are present."",""The rocking suggests dehiscence in the tricuspid valve.""]}",6,14,2026-03-29 07:27:55,2026-03-30 05:30:10
+97,5,Findings_11_Tricuspid Valve,Result,findings_11_tricuspid_valve.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",8,14,2026-03-29 07:30:31,2026-03-30 05:30:10
+98,5,Findings_11_Tricuspid Valve,Additional,findings_11_tricuspid_valve.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",7,14,2026-03-29 07:30:31,2026-03-30 05:30:10
+99,5,Findings_12_Pulmonic Valve,*Structure_List,findings_12_pulmonic_valve.structure_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""The pulmonic valve is not well visualized."",""The pulmonic valve is grossly normal."",""The pulmonic valve is thickened."",""There is notching of PV Doppler flow consistent with increased pulmonary vascular resistance."",""Absent pulmonary valve.""]}",1,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+100,5,Findings_12_Pulmonic Valve,*Function_List,findings_12_pulmonic_valve.function_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Pulmonic valve opens well."",""There is doming of pulmonic valve with minimal stenosis."",""There is doming of the pulmonic valve with restricted opening."",""There is prolapse of"",""There is flail of""]}",2,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+101,5,Findings_12_Pulmonic Valve,*Regurgitation_List,findings_12_pulmonic_valve.regurgitation_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no pulmonary regurgitation."",""There is trace pulmonary regurgitation."",""There is mild pulmonary regurgitation."",""There is mild-moderate pulmonary regurgitation."",""There is moderate pulmonary regurgitation."",""There is moderate-severe pulmonary regurgitation."",""There is severe pulmonary regurgitation.""]}",3,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+102,5,Findings_12_Pulmonic Valve,*Stenosis_List,findings_12_pulmonic_valve.stenosis_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no pulmonary stenosis."",""There is non significant pulmonary stenosis."",""There is significant pulmonary stenosis with gradient of"",""There is pulmonary stenosis."",""There is supravalvar pulmonary stenosis.""]}",4,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+103,5,Findings_12_Pulmonic Valve,*Vegetation_Abscess_List,findings_12_pulmonic_valve.vegetation_abscess_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""No vegetation is seen."",""We cannot exclude vegetation at the pulmonic valve."",""There is vegetation at"",""There is mobile vegetation at""]}",5,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+104,5,Findings_12_Pulmonic Valve,*Repair_Prosthetic_List,findings_12_pulmonic_valve.repair_prosthetic_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Pulmonic valve post repair."",""Pulmonic valve post replace with bioprosthetic."",""There is no residual pulmonary regurgitation."",""There is .... residual pulmonary regurgitation."",""There is .... residual pulmonary stenosis."",""The prosthetic PV opens well."",""The prosthetic PV is opening limited."",""There is normal prosthetic PV gradient."",""There is abnormal prosthetic PV gradient.""]}",6,15,2026-03-29 07:40:45,2026-03-30 05:30:10
+105,5,Findings_12_Pulmonic Valve,Additional,findings_12_pulmonic_valve.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",7,15,2026-03-29 07:41:19,2026-03-30 05:30:10
+106,5,Findings_12_Pulmonic Valve,Result,findings_12_pulmonic_valve.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",8,15,2026-03-29 07:41:19,2026-03-30 05:30:10
+107,5,Findings_13_Mass / Thrombus,*Mass_Thrombus_List,findings_13_mass_thrombus.mass_thrombus_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no abnormal mass or thrombus."",""Mass or thrombus is cannot clearly visualized."",""Spontaneous echo contrast is seen at"",""There is thrombus at"",""There is mass at"",""Myxoma is present at""]}",1,16,2026-03-29 07:44:24,2026-03-30 05:30:10
+108,5,Findings_14_Pericardium,*Pericardium_List,findings_14_pericardium.pericardium_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""Pericardium is normal."",""There is no pericardial effusion."",""There is pericardial effusion at"",""No sign of tamponade is seen."",""Findings consistent with sign of tamponade."",""Pericardium is thickened."",""Pericardium is calcified."",""Findings consistent with constrictive pericarditis.""]}",1,17,2026-03-29 07:44:24,2026-03-30 05:30:10
+109,5,Findings_15_Aorta,*Aorta_List,findings_15_aorta.aorta_list,checkbox_group,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""values"":[""There is no atherome plaque seen at decending aorta."",""There is atherome plaque at"",""There is aortic dissection at"",""Aortic diameter.""]}",1,18,2026-03-29 07:44:24,2026-03-30 05:30:10
+110,5,Findings_13_Mass / Thrombus,Result,findings_13_mass_thrombus.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,16,2026-03-29 07:46:24,2026-03-30 05:30:10
+111,5,Findings_14_Pericardium,Additional,findings_14_pericardium.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,17,2026-03-29 07:46:24,2026-03-30 05:30:10
+112,5,Findings_13_Mass / Thrombus,Additional,findings_13_mass_thrombus.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,16,2026-03-29 07:46:24,2026-03-30 05:30:10
+113,5,Findings_14_Pericardium,Result,findings_14_pericardium.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,17,2026-03-29 07:46:24,2026-03-30 05:30:10
+114,5,Findings_15_Aorta,Result,findings_15_aorta.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""result""}",3,18,2026-03-29 07:46:24,2026-03-30 05:30:10
+115,5,Findings_15_Aorta,Additional,findings_15_aorta.additional,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",2,18,2026-03-29 07:46:24,2026-03-30 05:30:10
+232,5,Conclusion,Result,conclusion.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",115,20,2026-03-29 09:49:50,2026-03-30 05:30:10
+233,5,Findings_16_2DWallMotion,Result,findings_16_2dwallmotion.result,textarea,"{""required"":false,""static"":false,""style"":{""align"":""center""},""show_section_name"":true,""textarea_mode"":""free""}",114,19,2026-03-29 09:49:50,2026-03-30 05:30:10
+352,5,Signature,Scanned Image,signature.scanned_image,image,"{""required"":true,""static"":true,""style"":{""align"":""right""},""show_section_name"":false,""default"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/dNvZPrpGqhJzTEPr4WT1LqAftPcOUpLRbATlKUxI.png"",""image_url"":""http:\/\/api.doctorforms.test\/storage\/template-fields\/images\/dNvZPrpGqhJzTEPr4WT1LqAftPcOUpLRbATlKUxI.png""}",1,21,2026-03-30 05:30:10,2026-03-31 02:31:23
+CSV;
 
-        // Helpers
-        $g = fn($n) => $n * 1000;         // section ordering
-        $add = function (array &$fields, string $section, string $label, string $type, ?array $options, int $order, int $group) {
-            $fields[] = [
-                'template_id' => $GLOBALS['templateId'],
-                'section' => $section,
-                'label' => $label,
-                'type' => $type,
-                'options' => $options ? json_encode($options) : null,
-                'order' => $order,
-                'field_group_order' => $group,
-                'created_at' => now(),
-                'updated_at' => now(),
+        $lines = preg_split('/\r\n|\r|\n/', trim($csv));
+        array_shift($lines);
+
+        $rows = [];
+
+        foreach ($lines as $line) {
+            $columns = str_getcsv($line);
+
+            $rows[] = [
+                'id' => (int) $columns[0],
+                'template_id' => (int) $columns[1],
+                'section' => $columns[2],
+                'label' => $columns[3],
+                'unique_name' => $columns[4],
+                'type' => $columns[5],
+                'options' => $columns[6],
+                'order' => (int) $columns[7],
+                'field_group_order' => (int) $columns[8],
+                'created_at' => $columns[9],
+                'updated_at' => $columns[10],
             ];
-        };
-
-        // Make $templateId available in closure above
-        $GLOBALS['templateId'] = $templateId;
-
-        $fields = [];
-
-        // ===================== 1) HEADER =====================
-        $i = 0;
-        $section = 'Header';
-        $group = $g(1);
-        $add($fields, $section, 'Logo URL', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Report Title', 'text', null, ++$i, $group); // e.g., "Transesophageal Echocardiography Report"
-        $add($fields, $section, 'Hospital Name', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Unit / Department', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Address', 'textarea', null, ++$i, $group);
-        $add($fields, $section, 'Phone / Fax', 'text', null, ++$i, $group);
-
-        // ===================== 2) TEE PROCEDURE =====================
-        $i = 0;
-        $section = 'TEE Procedure';
-        $group = $g(2);
-        $add($fields, $section, 'Anesthesia', 'select', ['None', 'Topical spray (Xylocaine 10%)', 'General anesthesia'], ++$i, $group);
-        $add($fields, $section, 'Sedation', 'select', ['Yes', 'No'], ++$i, $group);
-        $add($fields, $section, 'Duration (min)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Complication', 'select', ['None', 'Minor', 'Major', 'Bleeding', 'Hypoxia', 'Arrhythmia', 'Esophageal injury', 'Other'], ++$i, $group);
-        $add($fields, $section, 'Complication (details)', 'text', null, ++$i, $group);
-
-        // ===================== 3) PATIENT & STUDY =====================
-        $i = 0;
-        $section = 'Patient & Study';
-        $group = $g(3);
-        $add($fields, $section, 'Study Date', 'date', null, ++$i, $group);
-        $add($fields, $section, 'MRN', 'text', null, ++$i, $group);
-        $add($fields, $section, 'DOB', 'date', null, ++$i, $group);
-        $add($fields, $section, 'Age', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Gender', 'select', ['Male', 'Female', 'Other'], ++$i, $group);
-        $add($fields, $section, 'First Write Time', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Last Write Time', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Height (cm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Weight (kg)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'BSA (m²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Blood Pressure (mmHg)', 'text', null, ++$i, $group);
-
-        // ===================== 4) M‑MODE / 2D =====================
-        $i = 0;
-        $section = 'M‑mode / 2D';
-        $group = $g(4);
-        $add($fields, $section, 'IVSd (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'IVSs (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVIDd (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVIDs (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVPWd (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVPWs (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Aortic Root Diameter (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LA dimension (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVOT diameter (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LA/Ao', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LAVI (ml/m²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LV Mass Index (g/m²)', 'number', null, ++$i, $group);
-
-        // ===================== 5) DOPPLER =====================
-        $i = 0;
-        $section = 'Doppler';
-        $group = $g(5);
-        $add($fields, $section, 'MV E velocity (m/s)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'MV Deceleration Time (ms)', 'number', null, ++$i, $group);
-        $add($fields, $section, "E/E' (medial)", 'number', null, ++$i, $group);
-        $add($fields, $section, "E/E' (lateral)", 'number', null, ++$i, $group);
-        $add($fields, $section, "E/E' (average)", 'number', null, ++$i, $group);
-        $add($fields, $section, 'AV max PG (mmHg)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AV mean PG (mmHg)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AI PHT (ms)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AI EROA (cm²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'LVOT VTI (cm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'Descending Aorta (EDV/Vmax)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AVA (VTI) (cm²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AVA (Vmax) (cm²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'AVA (planimetry) (cm²)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'SV (LVOT) (ml)', 'number', null, ++$i, $group);
-
-        // ===================== 6) GLOBAL FUNCTION =====================
-        $i = 0;
-        $section = 'Global Function';
-        $group = $g(6);
-        $add($fields, $section, 'EDV (Teichholz) (ml)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'ESV (Teichholz) (ml)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'EF (Teichholz) (%)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'FS (%)', 'number', null, ++$i, $group);
-        $add($fields, $section, "EF (Simpson’s Biplane) (%)", 'number', null, ++$i, $group);
-        $add($fields, $section, "EF (Simpson’s 4ch) (%)", 'number', null, ++$i, $group);
-        $add($fields, $section, "EF (Simpson’s 2ch) (%)", 'number', null, ++$i, $group);
-        $add($fields, $section, 'TAPSE (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'IVC (Inspiration) (mm)', 'number', null, ++$i, $group);
-        $add($fields, $section, 'IVC (Expiration) (mm)', 'number', null, ++$i, $group);
-
-        // ===================== 7) ECG =====================
-        $i = 0;
-        $section = 'ECG';
-        $group = $g(7);
-        $add($fields, $section, 'ECG Rhythm', 'checkbox_group', [
-            'ECG is sinus rhythm', 'ECG is in atrial fibrillation', 'ECG is pacing rhythm', 'Other'
-        ], ++$i, $group);
-        $add($fields, $section, 'ECG (custom text)', 'textarea', null, ++$i, $group);
-
-        // ===================== 8) STUDY META =====================
-        $section = 'Study Meta';
-        $group = $g(8);
-        $add($fields, $section, 'Study Quality', 'checkbox_group', [
-            'The quality of the study is good', 'The quality of the study is adequate',
-            'The quality of the study is poor', 'The study is technically difficult due to ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Study Quality (custom text)', 'textarea', null, ++$i, $group);
-
-        // ===================== 9) LV =====================
-        $i = 0;
-        $section = 'LV';
-        $group = $g(9);
-        $add($fields, $section, 'LV (overall)', 'checkbox_group', ['Normal', 'Abnormal'], ++$i, $group);
-        $add($fields, $section, 'Cavity Size', 'checkbox_group', [
-            'Left ventricle size is normal', 'Left ventricle is dilated', 'Left ventricle is smallish', 'Left ventricle is D-shaped'
-        ], ++$i, $group);
-        $add($fields, $section, 'Wall Thickness', 'checkbox_group', [
-            'Wall thickness is normal', 'Asymmetric septal hypertrophy', 'Concentric remodeling',
-            'Concentric LV hypertrophy', 'Eccentric LV hypertrophy'
-        ], ++$i, $group);
-        $add($fields, $section, 'Global Systolic Function', 'checkbox_group', [
-            'Global LV systolic function is normal', 'Global LV systolic function is reduced'
-        ], ++$i, $group);
-        $add($fields, $section, 'Diastolic Function', 'checkbox_group', [
-            'LV Diastolic Function is normal', 'LV Diastolic Function is abnormal', 'LV Diastolic Function is indeterminate'
-        ], ++$i, $group);
-        $add($fields, $section, 'LV (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 10) RV / LA / RA =====================
-        $i = 0;
-        $section = 'RV / LA / RA';
-        $group = $g(10);
-        $add($fields, $section, 'RV (overall)', 'checkbox_group', ['Normal (size and function)', 'Abnormal'], ++$i, $group);
-        $add($fields, $section, 'RV Wall Thickness', 'checkbox_group', ['Normal', 'Right ventricular hypertrophy'], ++$i, $group);
-        $add($fields, $section, 'RV Systolic Function', 'checkbox_group', ['Normal', 'Decreased'], ++$i, $group);
-        $add($fields, $section, 'LA Size', 'checkbox_group', ['Left atrial size is normal', 'Left atrium is dilated'], ++$i, $group);
-        $add($fields, $section, 'RA Size', 'checkbox_group', ['Right atrial size is normal', 'Right atrium is dilated'], ++$i, $group);
-        $add($fields, $section, 'Right heart (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 11 / 12) INTERATRIAL / INTERVENTRICULAR SEPTUM =====================
-        $i = 0;
-        $section = 'Interatrial Septum';
-        $group = $g(11);
-        $add($fields, $section, 'Interatrial Septum Findings', 'checkbox_group', [
-            'Intact interatrial septum', 'Atrial septal aneurysm', 'Hyperkinetic interatrial septum',
-            'Gap at interatrial septum (size ...)', 'Stretched PFO L→R shunt', 'Iatrogenic ASD (size ...)',
-            'Post ASO closure', 'Post device closure'
-        ], ++$i, $group);
-        $add($fields, $section, 'IAS (notes)', 'textarea', null, ++$i, $group);
-
-        $i = 0;
-        $section = 'Interventricular Septum';
-        $group = $g(12);
-        $add($fields, $section, 'Interventricular Septum Findings', 'checkbox_group', [
-            'Intact interventricular septum', 'Gap at IVS (size ...)', 'Ventricular septal rupture'
-        ], ++$i, $group);
-        $add($fields, $section, 'IVS (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 13) AORTIC VALVE =====================
-        $i = 0;
-        $section = 'Aortic Valve';
-        $group = $g(13);
-        $add($fields, $section, 'Structure', 'checkbox_group', [
-            'Not well visualized / cusp number unknown', 'Trileaflet', 'Bicuspid', 'Leaflets thickened',
-            'Rheumatic appearance', 'No calcification', 'Cusp heavily calcified', 'Calcification at ...', 'Nodular thickening of ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Function', 'checkbox_group', [
-            'Opens well', 'Not heavily calcified', 'Systolic doming', 'Prolapse of ...', 'Flail of ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Regurgitation', 'checkbox_group', [
-            'None', 'Trace', 'Mild', 'Mild–moderate', 'Moderate', 'Moderate–severe', 'Severe', 'Jet central', 'Jet eccentric'
-        ], ++$i, $group);
-        $add($fields, $section, 'Stenosis', 'checkbox_group', [
-            'No valvular AS', 'Mild AS', 'Mild–moderate AS', 'Moderate AS', 'Moderate–severe AS', 'Severe AS',
-            'Subaortic stenosis', 'Supravalvar stenosis', 'Paradoxical AS', 'Low‑flow low‑gradient AS'
-        ], ++$i, $group);
-        $add($fields, $section, 'Vegetations / Abscess', 'checkbox_group', [
-            'No vegetation', 'Cannot exclude vegetation', 'Vegetation at ...', 'Mobile vegetation at ...', 'Abscess at ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Repair / Prosthetic', 'checkbox_group', [
-            'Post repair', 'Bioprosthetic replacement', 'Mechanical replacement', 'Homograft present',
-            'Opening not well visualized', 'Well‑seated', 'Opens well', 'Limited opening',
-            'No thrombus', 'Possible thrombus', 'No leakage', 'Central leakage', 'Paravalvar leakage',
-            'Doppler: normal prosthetic gradient', 'Doppler: increased prosthetic gradient',
-            'Prosthetic vegetations suspected', 'Prosthetic vegetations present', 'Rocking suggests dehiscence'
-        ], ++$i, $group);
-        $add($fields, $section, 'Aortic Valve (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 14) MITRAL VALVE =====================
-        $i = 0;
-        $section = 'Mitral Valve';
-        $group = $g(14);
-        $add($fields, $section, 'Structure', 'checkbox_group', [
-            'Not well visualized', 'Normal structure', 'Leaflets thickened', 'Rheumatic appearance', 'Myxomatous leaflets',
-            'Redundant elongated chordae', 'No annular calcification', 'Mitral annular calcification',
-            'Mitral cleft present', 'Chordae thickened/calcified', 'Papillary muscle thickened/calcified'
-        ], ++$i, $group);
-        $add($fields, $section, 'Function', 'checkbox_group', [
-            'Opens well', 'Doming with minimal stenosis', 'Doming with restricted opening', 'Opening restricted',
-            'Systolic tenting', 'Billowing without prolapse', 'Prolapse of ...', 'Flail of ...',
-            'Chordal rupture', 'Perforation of ...', 'No SAM', 'Chordal SAM', 'Systolic anterior motion present'
-        ], ++$i, $group);
-        $add($fields, $section, 'Regurgitation', 'checkbox_group', [
-            'None', 'Trace', 'Mild', 'Mild–moderate', 'Moderate', 'Moderate–severe', 'Severe',
-            'Jet central', 'Jet eccentric', 'Pulmonary vein systolic reversal'
-        ], ++$i, $group);
-        $add($fields, $section, 'Stenosis', 'checkbox_group', [
-            'No MS', 'Mild MS', 'Mild–moderate MS', 'Moderate MS', 'Moderate–severe MS', 'Severe MS', "Wilkins' score"
-        ], ++$i, $group);
-        $add($fields, $section, 'Vegetations / Abscess', 'checkbox_group', [
-            'No vegetation', 'Cannot exclude vegetation', 'Vegetation at ...', 'Mobile vegetation at ...', 'Abscess at ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Repair / Prosthetic', 'checkbox_group', [
-            'Post repair', 'Repair with ring annuloplasty',
-            'Bioprosthetic replacement', 'Mechanical replacement',
-            'No residual MR', 'Residual MR', 'Residual MS',
-            'Prosthetic valve abnormal', 'Opening not well visualized', 'Well‑seated', 'Opens well', 'Limited opening',
-            'No thrombus', 'Possible thrombus', 'No leakage', 'Central leakage', 'Paravalvar leakage',
-            'Doppler normal prosthetic MV gradient', 'Doppler increased prosthetic MV gradient', 'Abnormal prosthetic MV gradient',
-            'Prosthetic vegetations suspected', 'Prosthetic vegetations present', 'Rocking suggests dehiscence'
-        ], ++$i, $group);
-        $add($fields, $section, 'Mitral Valve (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 15) TRICUSPID VALVE =====================
-        $i = 0;
-        $section = 'Tricuspid Valve';
-        $group = $g(15);
-        $add($fields, $section, 'Structure', 'checkbox_group', [
-            'Not well visualized', 'Normal structure', 'Rheumatic appearance', 'Leaflets thickened',
-            'Carcinoid pattern', 'No annular calcification', 'Annular calcification'
-        ], ++$i, $group);
-        $add($fields, $section, 'Function', 'checkbox_group', [
-            'Opens well', 'Doming with minimal stenosis', 'Doming with restricted opening',
-            'Leaflet tenting', 'Uncoaptation', 'Prolapse of ...', 'Flail of ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Regurgitation', 'checkbox_group', [
-            'None', 'Trace', 'Mild', 'Mild–moderate', 'Moderate', 'Moderate–severe', 'Severe',
-            'Jet central', 'Jet eccentric', 'Hepatic vein systolic reversal'
-        ], ++$i, $group);
-        $add($fields, $section, 'Stenosis', 'checkbox_group', ['No TS', 'Non‑significant TS', 'Significant TS'], ++$i, $group);
-        $add($fields, $section, 'Vegetations / Abscess', 'checkbox_group', [
-            'No vegetation', 'Cannot exclude vegetation', 'Vegetation at ...', 'Mobile vegetation at ...', 'Abscess at ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Repair / Prosthetic', 'checkbox_group', [
-            'Post repair', 'Post repair with ring annuloplasty',
-            'Bioprosthetic replacement', 'Mechanical replacement',
-            'No residual TR', 'Residual TR', 'Residual TS',
-            'Well‑seated', 'Opens well', 'Limited opening', 'Abnormal prosthetic valve',
-            'Opening not well visualized', 'No thrombus', 'Possible thrombus',
-            'No leakage', 'Central leakage', 'Paravalvar leakage',
-            'Doppler normal prosthetic TV gradient', 'Doppler increased prosthetic TV gradient',
-            'Abnormal increase of prosthetic TV gradient',
-            'Prosthetic vegetations suspected', 'Prosthetic vegetations present', 'Rocking suggests dehiscence'
-        ], ++$i, $group);
-        $add($fields, $section, 'Tricuspid Valve (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 16) PULMONIC VALVE =====================
-        $i = 0;
-        $section = 'Pulmonic Valve';
-        $group = $g(16);
-        $add($fields, $section, 'Structure', 'checkbox_group', [
-            'Not well visualized', 'Grossly normal', 'Thickened', 'Notching of PV Doppler (↑PVR)', 'Absent pulmonary valve'
-        ], ++$i, $group);
-        $add($fields, $section, 'Function', 'checkbox_group', [
-            'Opens well', 'Doming with minimal stenosis', 'Doming with restricted opening', 'Prolapse of ...', 'Flail of ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Regurgitation', 'checkbox_group', ['None', 'Trace', 'Mild', 'Mild–moderate', 'Moderate', 'Moderate–severe', 'Severe'], ++$i, $group);
-        $add($fields, $section, 'Stenosis', 'checkbox_group', [
-            'No PS', 'Non‑significant PS', 'Significant PS (gradient ...)', 'Pulmonary stenosis', 'Supravalvar PS'
-        ], ++$i, $group);
-        $add($fields, $section, 'Vegetations / Abscess', 'checkbox_group', [
-            'No vegetation', 'Cannot exclude vegetation', 'Vegetation at ...', 'Mobile vegetation at ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Repair / Prosthetic', 'checkbox_group', [
-            'Post repair', 'Bioprosthetic replacement', 'No residual PR', 'Residual PR', 'Residual PS',
-            'Prosthetic PV opens well', 'Prosthetic PV opening limited', 'Normal prosthetic PV gradient', 'Abnormal prosthetic PV gradient'
-        ], ++$i, $group);
-        $add($fields, $section, 'Pulmonic Valve (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 17) MASS / THROMBUS =====================
-        $i = 0;
-        $section = 'Mass / Thrombus';
-        $group = $g(17);
-        $add($fields, $section, 'Findings', 'checkbox_group', [
-            'No abnormal mass or thrombus', 'Mass/Thrombus cannot be clearly visualized',
-            'Spontaneous echo contrast at ...', 'Thrombus at ...', 'Mass at ...', 'Myxoma present at ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Mass / Thrombus (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 18) PERICARDIUM =====================
-        $i = 0;
-        $section = 'Pericardium';
-        $group = $g(18);
-        $add($fields, $section, 'Findings', 'checkbox_group', [
-            'Pericardium is normal', 'No pericardial effusion', 'Pericardial effusion at ...',
-            'No sign of tamponade', 'Findings consistent with tamponade', 'Pericardium thickened',
-            'Pericardium calcified', 'Findings consistent with constrictive pericarditis'
-        ], ++$i, $group);
-        $add($fields, $section, 'Pericardium (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 19) AORTA =====================
-        $i = 0;
-        $section = 'Aorta';
-        $group = $g(19);
-        $add($fields, $section, 'Findings', 'checkbox_group', [
-            'No atheroma at descending aorta', 'Atheroma plaque at descending aorta',
-            'Aortic dissection at ...', 'Aortic diameter ...'
-        ], ++$i, $group);
-        $add($fields, $section, 'Aorta (notes)', 'textarea', null, ++$i, $group);
-
-        // ===================== 20) WALL MOTION =====================
-        $i = 0;
-        $section = 'Wall Motion';
-        $group = $g(20);
-
-        $fields[] = [
-            'template_id' => $GLOBALS['templateId'],
-            'section' => $section,
-            'label' => '2D Wall‑Motion Bullseye',
-            'type' => 'bullseye',
-            'options' => json_encode([
-                'model' => 'AHA17',
-                'scheme' => 'wall_motion_v1',
-                'legend' => [
-                    'N' => 'Normal',
-                    'H' => 'Hypokinesia',
-                    'A' => 'Akinesia',
-                    'An' => 'Aneurysm',
-                    'D' => 'Dyskinesia',
-                    'U' => 'Unknown',
-                ],
-                'segments' => [
-                    ['id' => 1, 'code' => 'basal-anterior'],
-                    ['id' => 2, 'code' => 'basal-anteroseptal'],
-                    ['id' => 3, 'code' => 'basal-inferoseptal'],
-                    ['id' => 4, 'code' => 'basal-inferior'],
-                    ['id' => 5, 'code' => 'basal-inferolateral'],
-                    ['id' => 6, 'code' => 'basal-anterolateral'],
-                    ['id' => 7, 'code' => 'mid-anterior'],
-                    ['id' => 8, 'code' => 'mid-anteroseptal'],
-                    ['id' => 9, 'code' => 'mid-inferoseptal'],
-                    ['id' => 10, 'code' => 'mid-inferior'],
-                    ['id' => 11, 'code' => 'mid-inferolateral'],
-                    ['id' => 12, 'code' => 'mid-anterolateral'],
-                    ['id' => 13, 'code' => 'apical-anterior'],
-                    ['id' => 14, 'code' => 'apical-septal'],
-                    ['id' => 15, 'code' => 'apical-inferior'],
-                    ['id' => 16, 'code' => 'apical-lateral'],
-                    ['id' => 17, 'code' => 'apex-cap'],
-                ],
-                'rings' => [
-                    'basal' => [1, 2, 3, 4, 5, 6],
-                    'mid' => [7, 8, 9, 10, 11, 12],
-                    'apical' => [13, 14, 15, 16],
-                    'apex' => [17],
-                ],
-            ], JSON_UNESCAPED_UNICODE),
-            'order' => ++$i,
-            'field_group_order' => $group,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-
-        $add($fields, $section, '2D Wall‑Motion Diagram', 'checkbox_group', ['Normal', 'Hypokinesia', 'Akinesia', 'Aneurysm', 'Dyskinesia', 'Unknown'], ++$i, $group);
-
-        // ===================== 21/22) SUMMARY / ADMIN =====================
-        $i = 0;
-        $section = 'Summary';
-        $group = $g(21);
-        $add($fields, $section, 'Diagnosis', 'textarea', null, ++$i, $group);
-        $add($fields, $section, 'Conclusion', 'textarea', null, ++$i, $group);
-        $add($fields, $section, 'Comments', 'textarea', null, ++$i, $group);
-
-        $i = 0;
-        $section = 'Administrative';
-        $group = $g(22);
-        $add($fields, $section, 'Referring Physician', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Operator', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Fellow', 'text', null, ++$i, $group);
-        $add($fields, $section, 'Supervisor Confirm', 'select', ['Yes', 'No'], ++$i, $group);
-        $add($fields, $section, 'Medical Device', 'text', null, ++$i, $group);
-
-        // Upsert all
-        foreach ($fields as $f) {
-            DB::table('template_fields')->updateOrInsert(
-                [
-                    'template_id' => $f['template_id'],
-                    'section' => $f['section'],
-                    'label' => $f['label'],
-                ],
-                $f
-            );
         }
+
+        DB::table('template_fields')
+            ->where('template_id', 5)
+            ->whereIn('id', array_column($rows, 'id'))
+            ->delete();
+
+        DB::table('template_fields')->insert($rows);
     }
 }
