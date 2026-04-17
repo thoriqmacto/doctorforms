@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
 /*
@@ -15,8 +16,8 @@ use Laravel\Sanctum\Sanctum;
 */
 
 pest()->extend(Tests\TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+    ->use(RefreshDatabase::class)
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -48,7 +49,6 @@ function something()
 {
     // ..
 }
-
 
 beforeEach(function () {
     $user = User::factory()->create(['role' => 'admin']);
