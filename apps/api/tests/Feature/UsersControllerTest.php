@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+});
 
 it('creates a user', function () {
     $payload = [
@@ -61,4 +66,3 @@ it('deletes a user', function () {
         'id' => $user->id,
     ]);
 });
-
