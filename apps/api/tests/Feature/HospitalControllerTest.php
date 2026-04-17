@@ -1,6 +1,13 @@
 <?php
 
 use App\Models\Hospital;
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Sanctum::actingAs($admin);
+});
 
 it('returns list of hospitals', function () {
     Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);

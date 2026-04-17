@@ -27,13 +27,15 @@ return new class extends Migration
         Schema::disableForeignKeyConstraints();
 
         try {
+            if (Schema::hasTable('template_fields_new')) {
+                Schema::drop('template_fields_new');
+            }
+
             if (Schema::hasTable('template_fields_old')) {
                 Schema::drop('template_fields_old');
             }
 
-            Schema::rename('template_fields', 'template_fields_old');
-
-            Schema::create('template_fields', function (Blueprint $table) {
+            Schema::create('template_fields_new', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('template_id')->constrained()->onDelete('cascade');
                 $table->string('section');
@@ -46,12 +48,13 @@ return new class extends Migration
                 $table->timestamps();
             });
 
-            DB::table('template_fields')->insertUsing(
+            DB::table('template_fields_new')->insertUsing(
                 ['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'],
-                DB::table('template_fields_old')->select(['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'])
+                DB::table('template_fields')->select(['id', 'template_id', 'section', 'label', 'unique_name', 'type', 'options', 'order', 'field_group_order', 'created_at', 'updated_at'])
             );
 
-            Schema::drop('template_fields_old');
+            Schema::drop('template_fields');
+            Schema::rename('template_fields_new', 'template_fields');
 
             Schema::table('template_fields', function (Blueprint $table) {
                 $table->index(['template_id', 'unique_name']);
