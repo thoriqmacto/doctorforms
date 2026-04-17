@@ -22,6 +22,7 @@ const api = ky.create({
             },
         ],
     },
+    timeout:30000,
 });
 
 const multipartApi = ky.create({
@@ -45,6 +46,7 @@ const multipartApi = ky.create({
             },
         ],
     },
+    timeout:30000,
 });
 export interface TemplatePayload {
     name: string;
