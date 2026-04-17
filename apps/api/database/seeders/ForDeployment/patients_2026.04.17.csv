@@ -1,0 +1,2 @@
+id,user_id,hospital_id,name,age,dob,dos,gender,mrn,height_cm,weight_kg,bsa,blood_pressure,referring_physician,diagnosis_brief,created_at,updated_at
+1,1,1,Suhaicih Orin,59,1964/07/17,2024/01/03,female,2023540463,155,89,1.87,163/88,"dr. Dwita Ryan, SpJP","HOCM, MR moderate",2024-01-03 16:14:06,2024-01-05 15:18:04

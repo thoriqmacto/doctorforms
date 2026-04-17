@@ -1,0 +1,2 @@
+id,user_id,hospital_id,patient_id,template_id,title,findings,conclusion,operator,supervisor,device,pdf_url,created_at,updated_at,test_id
+1,1,1,1,5,TEE Report - Suhaicih Orin,Normal LV function.,No significant abnormalities detected.,dr. Gusti Ayu Temi Vidianti SpJP,"Dr. Dwita Ryan, SpJP",GE Vivid i,,2024-01-05 10:00:00,2024-01-05 10:00:00,1

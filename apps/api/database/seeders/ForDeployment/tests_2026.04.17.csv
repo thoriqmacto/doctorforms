@@ -1,0 +1,3 @@
+id,code,name,type,description,created_at,updated_at
+1,TEE,Transesophageal Echocardiography,semi-invasive,High-resolution heart imaging via esophageal ultrasound.,2023-01-01 16:14:06,2023-01-01 16:14:06
+2,TTE,Transthoracic Echocardiography,non-invasive,Cardiac imaging using a chest probe.,2023-01-02 16:14:06,2023-01-02 16:14:06
