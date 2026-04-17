@@ -16,7 +16,7 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_DATABASE: doctorforms_prod
+          MYSQL_DATABASE: doctorforms_test
           MYSQL_ROOT_PASSWORD: Stream06?
         ports:
           - 3306:3306
