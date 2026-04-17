@@ -4,15 +4,27 @@ on:
   push:
     branches:
       - main
-      - develop
     paths:
-      -'apps/api/**'
-      -'.github/workflows/backend-deploy.yml'
-      -'package.json'
+      - 'apps/api/**'
+      - '.github/workflows/backend-deploy.yml'
+      - 'package.json'
 
 jobs:
   test-api:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: doctorforms_prod
+          MYSQL_ROOT_PASSWORD: Stream06?
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pStream06?"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     defaults:
       run:
@@ -26,7 +38,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, sqlite3
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
           coverage: none
 
       - name: Copy env
@@ -38,15 +50,14 @@ jobs:
       - name: Generate key
         run: php artisan key:generate
 
-      - name: Create SQLite database
+      - name: Configure MySQL for CI
         run: |
-          mkdir -p database
-          touch database/database.sqlite
-
-      - name: Configure SQLite for CI
-        run: |
-          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
-          sed -i 's|^DB_DATABASE=.*|DB_DATABASE='"$(pwd)"'/database/database.sqlite|' .env
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=doctorforms_prod/' .env
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=root/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=Stream06?/' .env
 
       - name: Run migrations
         run: php artisan migrate --force
