@@ -2,26 +2,15 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-
-class MeasurementsTableSeeder extends Seeder
+class MeasurementsTableSeeder extends CsvSnapshotSeeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    protected function tableName(): string
     {
-        DB::table('measurements')->insert([
-            'id' => 1,
-            'report_id' => 1,
-            'name' => 'LVIDd',
-            'value' => '5.2',
-            'unit' => 'cm',
-            'category' => 'LV',
-            'created_at' => Carbon::create(2024, 1, 5, 10, 0, 0),
-            'updated_at' => Carbon::create(2024, 1, 5, 10, 0, 0),
-        ]);
+        return 'measurements';
+    }
+
+    protected function csvTableColumns(): array
+    {
+        return ['id', 'report_id', 'name', 'value', 'unit', 'category', 'created_at', 'updated_at'];
     }
 }

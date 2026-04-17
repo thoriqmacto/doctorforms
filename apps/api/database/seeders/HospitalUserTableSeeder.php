@@ -2,35 +2,20 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-
-class HospitalUserTableSeeder extends Seeder
+class HospitalUserTableSeeder extends CsvSnapshotSeeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    protected function tableName(): string
     {
-        $now = Carbon::now();
+        return 'hospital_user';
+    }
 
-        DB::table('hospital_user')->insert([
-            'hospital_id' => 1,
-            'user_id' => 1,
-            'role' => 'doctor',
-            'department' => 'Cardiology',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+    protected function csvTableColumns(): array
+    {
+        return ['hospital_id', 'user_id', 'role', 'department', 'created_at', 'updated_at'];
+    }
 
-        DB::table('hospital_user')->insert([
-            'hospital_id' => 1,
-            'user_id' => 2,
-            'role' => 'fellow',
-            'department' => 'Cardiology',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+    protected function upsertKeys(): array
+    {
+        return ['hospital_id', 'user_id'];
     }
 }
