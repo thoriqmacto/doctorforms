@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { resetPassword } from '@/lib/api'
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
     const searchParams = useSearchParams()
     const token = searchParams.get('token') ?? ''
     const email = searchParams.get('email') ?? ''
@@ -97,5 +97,13 @@ export default function ResetPasswordPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="mx-auto min-h-screen p-6" />}>
+            <ResetPasswordForm />
+        </Suspense>
     )
 }
