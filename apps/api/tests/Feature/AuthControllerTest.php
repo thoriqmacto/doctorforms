@@ -38,6 +38,7 @@ it('logs out the authenticated user', function () {
 it('sends forgot password link', function () {
     Notification::fake();
     $user = User::factory()->create(['email' => 'forgot@example.com']);
+    config(['app.frontend_url' => 'https://web.doctorforms.test']);
 
     $response = $this->postJson('/api/v1/forgot-password', [
         'email' => $user->email,
@@ -45,7 +46,15 @@ it('sends forgot password link', function () {
 
     $response->assertOk()->assertJsonPath('status', 'success');
 
-    Notification::assertSentTo($user, ResetPassword::class);
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->actionUrl)->toContain('https://web.doctorforms.test/reset-password');
+        expect($mailMessage->actionUrl)->toContain('email=forgot%40example.com');
+        expect($mailMessage->actionUrl)->toContain('token=');
+
+        return true;
+    });
 });
 
 it('forbids non admin user from user management endpoint', function () {
