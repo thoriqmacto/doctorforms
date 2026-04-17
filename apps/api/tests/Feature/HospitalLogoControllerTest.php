@@ -10,7 +10,12 @@ it('uploads hospital logo', function () {
     config(['filesystems.default' => 'public']);
 
     $hospital = Hospital::create(['name' => 'General', 'address' => '123 Street']);
-    $user = User::create(['name' => 'User', 'email' => 'user@example.com', 'password' => 'secret']);
+    $user = User::create([
+        'name' => 'User',
+        'email' => 'user@example.com',
+        'password' => 'secret',
+        'role' => 'admin',
+    ]);
     $hospital->users()->attach($user->id);
     $this->actingAs($user);
 
@@ -33,7 +38,12 @@ it('deletes hospital logo', function () {
     $hospital = Hospital::create(['name' => 'General', 'address' => '123 Street', 'logo_path' => "hospitals/1/logo.png"]);
     Storage::disk('public')->put("hospitals/{$hospital->id}/logo.png", 'contents');
 
-    $user = User::create(['name' => 'User2', 'email' => 'user2@example.com', 'password' => 'secret']);
+    $user = User::create([
+        'name' => 'User2',
+        'email' => 'user2@example.com',
+        'password' => 'secret',
+        'role' => 'admin',
+    ]);
     $hospital->users()->attach($user->id);
     $this->actingAs($user);
 
