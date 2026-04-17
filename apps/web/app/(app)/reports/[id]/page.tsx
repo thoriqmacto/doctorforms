@@ -82,7 +82,7 @@ export default function ReportDetailPage() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Reports', href: '/reports' },
                     { label: title },
                 ]}

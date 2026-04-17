@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -45,3 +48,9 @@ function something()
 {
     // ..
 }
+
+
+beforeEach(function () {
+    $user = User::factory()->create(['role' => 'admin']);
+    Sanctum::actingAs($user);
+});

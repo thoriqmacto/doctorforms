@@ -185,7 +185,7 @@ export default function TemplatesPage() {
 
     return (
         <div className="space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Templates' }]} />
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Templates' }]} />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Templates</h1>
                 <Link href="/templates/new">

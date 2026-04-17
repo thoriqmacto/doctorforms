@@ -31,6 +31,7 @@ class UsersController extends ApiController
             'phone'    => ['nullable', 'string', 'max:32', 'unique:users,phone'],
             'position_title' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
+            'role' => ['nullable', 'string', 'in:admin,doctor,staff'],
         ]);
 
         if ($v->fails()) {
@@ -43,6 +44,7 @@ class UsersController extends ApiController
             'phone'    => $request->input('phone'),
             'position_title' => $request->input('position_title'),
             'password' => $request->string('password'),
+            'role' => $request->input('role', 'staff'),
         ]);
 
         return (new UserResource($user))
@@ -60,6 +62,7 @@ class UsersController extends ApiController
             'phone'    => ['sometimes', 'nullable', 'string', 'max:32', 'unique:users,phone,' . $user->id],
             'position_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['sometimes', 'string', 'min:8'],
+            'role' => ['sometimes', 'string', 'in:admin,doctor,staff'],
         ]);
 
         if ($v->fails()) {

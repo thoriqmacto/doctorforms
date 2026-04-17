@@ -1,24 +1,23 @@
 <?php
 
-use App\Http\Controllers\Api\V1\PatientController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\TemplateController;
-use App\Http\Controllers\Api\V1\ReportController;
-use App\Http\Controllers\Api\V1\TestController;
 use App\Http\Controllers\Api\V1\HospitalController;
-use App\Http\Controllers\Api\V1\UsersController;
+use App\Http\Controllers\Api\V1\HospitalLogoController;
+use App\Http\Controllers\Api\V1\PatientController;
+use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\TemplateFieldController;
 use App\Http\Controllers\Api\V1\TemplateFieldImageUploadController;
+use App\Http\Controllers\Api\V1\TestController;
+use App\Http\Controllers\Api\V1\UsersController;
+use Illuminate\Support\Facades\Route;
 
-// When you add auth later, just add ->middleware('auth:sanctum') to this group.
-Route::prefix('v1')->group(function () {
-    // Auto-register all standard REST API endpoints for templates:
-    Route::apiResource('templates', TemplateController::class);
-    Route::apiResource('template-fields', TemplateFieldController::class);
-    Route::apiResource('patients', PatientController::class);
-    Route::apiResource('reports', ReportController::class);
-    Route::apiResource('tests', TestController::class);
-    Route::apiResource('hospitals', HospitalController::class);
-    Route::apiResource('users', UsersController::class);
-    Route::post('template-field-images', [TemplateFieldImageUploadController::class, 'store']);
-});
+Route::apiResource('templates', TemplateController::class);
+Route::apiResource('template-fields', TemplateFieldController::class);
+Route::apiResource('patients', PatientController::class);
+Route::apiResource('reports', ReportController::class);
+Route::apiResource('tests', TestController::class);
+Route::apiResource('hospitals', HospitalController::class)->middleware('role:admin');
+Route::apiResource('users', UsersController::class)->middleware('role:admin');
+Route::post('template-field-images', [TemplateFieldImageUploadController::class, 'store']);
+Route::post('hospitals/{hospital}/logo', [HospitalLogoController::class, 'store'])->middleware('role:admin');
+Route::delete('hospitals/{hospital}/logo', [HospitalLogoController::class, 'destroy'])->middleware('role:admin');

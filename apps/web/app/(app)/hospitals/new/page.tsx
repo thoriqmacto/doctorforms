@@ -30,7 +30,7 @@ export default function NewHospitalPage() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Hospitals', href: '/hospitals' },
                     { label: 'New Hospital' },
                 ]}
