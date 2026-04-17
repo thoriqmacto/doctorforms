@@ -15,6 +15,9 @@ import { useSidebar } from '@/components/sidebar-provider'
 export default function Header() {
   const { user, logout } = useAuth()
   const { toggle } = useSidebar()
+  const userEmail = user?.email ?? ''
+  const userRoleLabel = user?.role ? user.role.toUpperCase() : 'USER'
+  const userInitial = userEmail.charAt(0).toUpperCase() || 'U'
 
   const handleLogout = async () => {
     try {
@@ -39,13 +42,13 @@ export default function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm">
-                {user.email.charAt(0).toUpperCase()}
+                {userInitial}
               </div>
-              <span className="hidden md:inline">{user.email}</span>
+              <span className="hidden md:inline">{userEmail || 'Unknown user'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>{user.role.toUpperCase()}</DropdownMenuItem>
+            <DropdownMenuItem>{userRoleLabel}</DropdownMenuItem>
             <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
