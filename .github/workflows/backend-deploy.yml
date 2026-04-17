@@ -21,7 +21,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pStream06?"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -55,9 +55,9 @@ jobs:
           sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
           sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
           sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
-          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=doctorforms_prod/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=doctorforms_ci/' .env
           sed -i 's/^DB_USERNAME=.*/DB_USERNAME=root/' .env
-          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=Stream06?/' .env
+          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=root/' .env
 
       - name: Run migrations
         run: php artisan migrate --force
@@ -86,6 +86,8 @@ jobs:
             cd apps/api
             composer install --no-dev --optimize-autoloader --no-interaction
 
+            php artisan config:clear
+            php artisan cache:clear
             php artisan migrate --force
             php artisan storage:link || true
             php artisan config:cache
