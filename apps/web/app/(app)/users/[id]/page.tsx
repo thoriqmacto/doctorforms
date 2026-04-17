@@ -63,7 +63,7 @@ export default function EditUserPage() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Users', href: '/users' },
                     { label: name },
                 ]}

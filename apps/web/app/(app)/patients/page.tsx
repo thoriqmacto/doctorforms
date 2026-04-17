@@ -63,7 +63,7 @@ export default function PatientsPage() {
 
     return (
         <div className="container mx-auto p-4 space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Patients' }]} />
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Patients' }]} />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Patients</h1>
                 <Link href="/patients/new">

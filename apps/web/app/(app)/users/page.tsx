@@ -14,7 +14,7 @@ export default function UsersPage() {
 
     return (
         <div className="space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Users' }]} />
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Users' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Users</CardTitle>

@@ -85,7 +85,7 @@ export default function ReportsPage() {
 
     return (
         <div className="space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Reports' }]} />
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Reports' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Reports</CardTitle>

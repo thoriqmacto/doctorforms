@@ -48,6 +48,23 @@ const multipartApi = ky.create({
     },
     timeout:30000,
 });
+
+export type AuthUser = {
+    id: number;
+    name: string;
+    email: string;
+    role: 'admin' | 'doctor' | 'staff';
+    position_title?: string | null;
+};
+
+export type AuthPayload = {
+    token_id: string | number;
+    token: string;
+    token_created_at: string;
+    token_expires_at: string;
+    user: AuthUser;
+};
+
 export interface TemplatePayload {
     name: string;
     description?: string;
@@ -137,7 +154,15 @@ export const deleteReport = (id: string | number) =>
     api.delete(`reports/${id}`).json<any>();
 
 export const login = (payload: { email: string; password: string }) =>
-    api.post('login', { json: payload }).json<any>();
+    api.post('login', { json: payload }).json<{ status: string; message: string; data: AuthPayload }>();
+
+export const me = () => api.get('me').json<{ status: string; message: string; data: AuthUser }>();
+
+export const forgotPassword = (payload: { email: string }) =>
+    api.post('forgot-password', { json: payload }).json<any>();
+
+export const resetPassword = (payload: { email: string; token: string; password: string; password_confirmation: string }) =>
+    api.post('reset-password', { json: payload }).json<any>();
 
 export const logout = () => api.post('logout').json<any>();
 

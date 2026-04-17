@@ -53,7 +53,7 @@ function NewPatientPageContent() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Patients', href: '/patients' },
                     { label: 'New Patient' },
                 ]}

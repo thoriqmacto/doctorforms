@@ -91,7 +91,7 @@ export default function NewTemplatePage() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Templates', href: '/templates' },
                     { label: 'New Template' },
                 ]}

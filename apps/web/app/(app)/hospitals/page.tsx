@@ -14,7 +14,7 @@ export default function HospitalsPage() {
 
     return (
         <div className="space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Hospitals' }]} />
+            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Hospitals' }]} />
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Hospitals</CardTitle>

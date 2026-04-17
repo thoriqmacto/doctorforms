@@ -29,7 +29,7 @@ export default function NewUserPage() {
         <div className="space-y-4">
             <Breadcrumbs
                 items={[
-                    { label: 'Dashboard', href: '/' },
+                    { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Users', href: '/users' },
                     { label: 'New User' },
                 ]}
