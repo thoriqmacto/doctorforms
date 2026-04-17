@@ -1,6 +1,12 @@
 <?php
 
 use App\Models\Test as TestModel;
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create());
+});
 
 it('returns list of tests', function () {
     TestModel::create([
@@ -16,4 +22,3 @@ it('returns list of tests', function () {
         ->assertJsonPath('data.0.attributes.code', 'TTE')
         ->assertJsonPath('data.0.attributes.name', 'Echo');
 });
-

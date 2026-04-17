@@ -3,6 +3,11 @@
 use App\Models\{Template, User, Test, Hospital};
 use App\Models\Patient;
 use App\Models\Report;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
+});
 
 it('returns list of templates', function () {
     $user = User::create(['name' => 'User', 'email' => 'user@example.com', 'password' => 'secret']);

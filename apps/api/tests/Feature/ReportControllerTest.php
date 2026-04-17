@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\{User, Hospital, Test as TestModel, Template, TemplateField, Patient, Report, ReportField, Measurement};
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create());
+});
 
 it('returns reports with attributes, relationships and fields', function () {
     $user = User::factory()->create();

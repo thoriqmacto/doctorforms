@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\{User, Hospital, Test as TestModel, Template};
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    Sanctum::actingAs(User::factory()->create());
+});
 
 it('creates template fields', function () {
     $user = User::factory()->create();
