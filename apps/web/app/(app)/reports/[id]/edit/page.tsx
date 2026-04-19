@@ -47,12 +47,16 @@ export default function EditReportPage() {
         }
     }, [templateRes]);
 
+    const editableSections = (groupedSections ?? []).filter(
+        (section: any) => section?.section?.trim().toLowerCase() !== 'header'
+    );
+
     // 3) Build initial values ONCE when both report and grouped are ready
     const [initialValues, setInitialValues] = useState<Record<string, any> | null>(null);
     const initHydrated = useRef(false);
 
     useEffect(() => {
-        if (!initHydrated.current && report && groupedSections) {
+        if (!initHydrated.current && report && editableSections.length > 0) {
             const reportFields = report?.relationships?.fields?.data ?? [];
             const reportMeasurements = report?.relationships?.measurements?.data ?? [];
             const byTemplateFieldId = new Map<string, any>(
@@ -63,7 +67,7 @@ export default function EditReportPage() {
             );
 
             const vals: Record<string, any> = {};
-            for (const sec of groupedSections) {
+            for (const sec of editableSections) {
                 for (const f of sec.items ?? []) {
                     const key = `f_${f.id}`;
                     if (f.attributes?.type === 'measurement') {
@@ -83,7 +87,7 @@ export default function EditReportPage() {
             setInitialValues(vals);
             initHydrated.current = true;
         }
-    }, [report, groupedSections]);
+    }, [editableSections, report]);
 
     async function onSubmit(values: Record<string, any>) {
         try {
@@ -95,7 +99,7 @@ export default function EditReportPage() {
                 category: string;
             }> = [];
 
-            (groupedSections ?? []).forEach((sec: any) => {
+            editableSections.forEach((sec: any) => {
                 (sec.items ?? []).forEach((field: any) => {
                     const rawValue = values[`f_${field.id}`];
                     const normalizedValue = Array.isArray(rawValue)
@@ -153,9 +157,12 @@ export default function EditReportPage() {
                     ) : (
                         <div className="page-a4 rounded-xl shadow-md">
                             <TemplateFormRenderer
-                                groupedSections={groupedSections}
+                                groupedSections={editableSections}
                                 initialValues={initialValues}
                                 onSubmit={onSubmit}
+                                enableSectionControls
+                                showPrintButton
+                                viewHref={`/reports/${id}`}
                             />
                         </div>
                     )}

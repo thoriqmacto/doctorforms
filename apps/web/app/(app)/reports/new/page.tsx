@@ -40,10 +40,14 @@ function NewReportPageContent() {
 
     const tpl = data?.data;
     const grouped = useMemo(() => tpl?.meta?.grouped_sections ?? [], [tpl]);
+    const reportFormSections = useMemo(
+        () => grouped.filter((section: any) => section?.section?.trim().toLowerCase() !== 'header'),
+        [grouped]
+    );
     const hospital = hospitalRes?.data;
 
     async function onSubmit(values: Record<string, any>) {
-        const groupedSections = grouped ?? [];
+        const groupedSections = reportFormSections ?? [];
         const fields: Array<{ template_field_id: number; value: string }> = [];
         const measurements: Array<{
             name: string;
@@ -112,14 +116,14 @@ function NewReportPageContent() {
     const templateLabel = templateName ?? `#${templateId}`;
 
     const initialValues = useMemo(() => {
-        if (grouped.length === 0) return {};
+        if (reportFormSections.length === 0) return {};
 
         const patientAttrs = patientRes?.data?.attributes ?? {};
         const userAttrs = userRes?.data?.attributes ?? {};
         const hospitalAttrs = hospital?.attributes ?? {};
         const vals: Record<string, string> = {};
 
-        grouped.forEach((sec: any) => {
+        reportFormSections.forEach((sec: any) => {
             (sec.items ?? []).forEach((f: any) => {
                 const key = `f_${f.id}`;
                 const options = (f.attributes?.options ?? {}) as any;
@@ -151,7 +155,7 @@ function NewReportPageContent() {
         });
 
         const labelMap = new Map<string, string>();
-        grouped.forEach((sec: any) =>
+        reportFormSections.forEach((sec: any) =>
             sec.items.forEach((f: any) =>
                 labelMap.set(f.attributes.label, `f_${f.id}`)
             )
@@ -166,7 +170,7 @@ function NewReportPageContent() {
         assign('Phone / Fax', (hospitalAttrs as any).phone_fax ?? hospitalAttrs.phone);
 
         return vals;
-    }, [grouped, hospital, patientRes, userRes]);
+    }, [hospital, patientRes, reportFormSections, userRes]);
 
     return (
         <div className="space-y-4">
@@ -187,9 +191,11 @@ function NewReportPageContent() {
                     {isLoading || hospitalLoading || patientLoading || userLoading ? 'Loading…' : (
                         <div className="page-a4 rounded-xl shadow-md">
                             <TemplateFormRenderer
-                                groupedSections={grouped}
+                                groupedSections={reportFormSections}
                                 onSubmit={onSubmit}
                                 initialValues={initialValues}
+                                enableSectionControls
+                                showPrintButton
                             />
                         </div>
                     )}

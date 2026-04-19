@@ -6,9 +6,19 @@ type Section = { section: string | null; items: Field[] };
 
 type Props = {
     groupedSections: Section[];
+    initialValues?: Record<string, unknown>;
+    showPrintButton?: boolean;
+    editHref?: string;
+    viewHref?: string;
 };
 
-export default function FormView({ groupedSections }: Props) {
+export default function FormView({
+    groupedSections,
+    initialValues,
+    showPrintButton = false,
+    editHref,
+    viewHref,
+}: Props) {
     return (
         <Card>
             <CardHeader>
@@ -21,8 +31,11 @@ export default function FormView({ groupedSections }: Props) {
                 <TemplateFormRenderer
                     groupedSections={groupedSections}
                     onSubmit={() => {}}
+                    initialValues={initialValues}
                     showSubmitButton={false}
-                    showPrintButton={false}
+                    showPrintButton={showPrintButton}
+                    editHref={editHref}
+                    viewHref={viewHref}
                     enableSectionControls
                 />
             </CardContent>
