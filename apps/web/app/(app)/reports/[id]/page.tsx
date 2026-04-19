@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
     getReport,
@@ -10,29 +11,47 @@ import {
     getTemplate,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import HtmlView from '@/components/template-renderer/HtmlView';
+import FormView from '@/components/template-renderer/FormView';
+import PdfView from '@/components/template-renderer/PdfView';
+import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+
+type ViewMode = 'html' | 'pdf' | 'form';
+const SUPPORTED_MODES: ViewMode[] = ['html', 'pdf', 'form'];
+
+function normalizeMode(input: string | null): ViewMode {
+    if (SUPPORTED_MODES.includes(input as ViewMode)) return input as ViewMode;
+    return 'html';
+}
+
+function withoutHeaderSection(sections: any[]) {
+    return sections.filter((section) => section?.section?.trim().toLowerCase() !== 'header');
+}
 
 export default function ReportDetailPage() {
     const params = useParams<{ id: string }>();
+    const searchParams = useSearchParams();
     const id = params.id;
+    const mode = normalizeMode(searchParams.get('mode'));
 
     const { data, isLoading } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields,template' }).then((r: any) => r)
+        () => getReport(id, { include: 'fields,template,measurements' }).then((r: any) => r)
     );
 
     const report = data?.data;
     const attrs = report?.attributes ?? {};
     const title = attrs.title ?? `Report #${id}`;
     const reportFields = report?.relationships?.fields?.data ?? [];
+    const reportMeasurements = report?.relationships?.measurements?.data ?? [];
     const templateId = report?.relationships?.template?.data?.id;
 
     const { data: templateRes } = useSWR(
@@ -40,20 +59,8 @@ export default function ReportDetailPage() {
         () => getTemplate(templateId as string, { include: 'fields' }).then((r: any) => r)
     );
     const template = templateRes?.data;
-    const templateFields =
-        template?.meta?.grouped_sections?.flatMap((sec: any) => sec.items) ?? [];
-
-    const reportFieldMap = new Map<string, any>(
-        reportFields.map((f: any) => [f.label, f])
-    );
-    const allFields = templateFields.map((f: any) => {
-        const found = reportFieldMap.get(f.attributes.label);
-        return {
-            id: f.id,
-            label: f.attributes.label,
-            value: found?.value ?? '',
-        };
-    });
+    const groupedSections = template?.meta?.grouped_sections ?? [];
+    const reportFormSections = withoutHeaderSection(groupedSections);
 
     const patientId = report?.relationships?.patient?.data?.id;
     const hospitalId = report?.relationships?.hospital?.data?.id;
@@ -78,6 +85,40 @@ export default function ReportDetailPage() {
         testsRes?.data?.find((t: any) => String(t.id) === String(testId))?.attributes?.name ??
         '-';
 
+    const reportValues = groupedSections.reduce((acc: Record<string, unknown>, section: any) => {
+        (section.items ?? []).forEach((field: any) => {
+            const fieldKey = `f_${field.id}`;
+            if (field.attributes?.type === 'measurement') {
+                const measurementName = field.attributes?.options?.measurement_name ?? field.attributes?.label;
+                const foundMeasurement = reportMeasurements.find(
+                    (measurement: any) => String(measurement.attributes?.name) === String(measurementName)
+                );
+
+                if (foundMeasurement?.attributes?.value !== undefined) {
+                    acc[fieldKey] = String(foundMeasurement.attributes.value);
+                }
+                return;
+            }
+
+            const foundField = reportFields.find(
+                (reportField: any) => String(reportField.template_field_id) === String(field.id)
+            );
+
+            if (foundField?.value !== undefined) {
+                acc[fieldKey] = String(foundField.value);
+            }
+        });
+        return acc;
+    }, {});
+
+    const viewModel = createTemplateViewModel(groupedSections, title, reportValues);
+    const modeLinks: { label: string; mode: ViewMode }[] = [
+        { label: 'HTML View', mode: 'html' },
+        { label: 'PDF View', mode: 'pdf' },
+        { label: 'Form View', mode: 'form' },
+    ];
+    const currentModeLabel = modeLinks.find((item) => item.mode === mode)?.label ?? 'Select View';
+
     return (
         <div className="space-y-4">
             <Breadcrumbs
@@ -87,51 +128,54 @@ export default function ReportDetailPage() {
                     { label: title },
                 ]}
             />
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-2xl font-semibold">{title}</h1>
+                <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={`/reports/${id}/edit`}>Edit</Link>
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                {currentModeLabel}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {modeLinks.map((item) => (
+                                <DropdownMenuItem key={item.mode} asChild>
+                                    <Link href={`/reports/${id}?mode=${item.mode}`}>{item.label}</Link>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
             {isLoading ? (
                 'Loading…'
             ) : (
-                <>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{title}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="page-a4 rounded-xl shadow-md space-y-4">
-                                <div className="space-y-1">
-                                    <div>
-                                        <span className="font-medium">Patient:</span> {patientName}
-                                    </div>
-                                    <div>
-                                        <span className="font-medium">Test:</span> {testName}
-                                    </div>
-                                    <div>
-                                        <span className="font-medium">Hospital:</span> {hospitalName}
-                                    </div>
-                                </div>
-                                {templateFields.length > 0 && (
-                                    <Table>
-                                        <TableHeader className="bg-muted/40">
-                                            <TableRow className="border-b">
-                                                <TableHead>Label</TableHead>
-                                                <TableHead>Value</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {allFields.map((f: any) => (
-                                                <TableRow key={f.id} className="border-b">
-                                                    <TableCell>{f.label ?? '-'}</TableCell>
-                                                    <TableCell>{String(f.value ?? '')}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            {title} · {patientName} · {testName} · {hospitalName}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {mode === 'html' && <HtmlView viewModel={viewModel} />}
+                            {mode === 'pdf' && <PdfView viewModel={viewModel} />}
+                            {mode === 'form' && (
+                                <FormView
+                                    groupedSections={reportFormSections}
+                                    initialValues={reportValues}
+                                    showPrintButton
+                                    editHref={`/reports/${id}/edit`}
+                                />
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
         </div>
     );
 }
-

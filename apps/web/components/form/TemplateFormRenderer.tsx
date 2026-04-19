@@ -63,6 +63,7 @@ type Props = {
     initialValues?: Record<string, unknown>;
     hideStaticRequiredLabelAndInput?: boolean;
     editHref?: string;
+    viewHref?: string;
     enableSectionControls?: boolean;
 };
 
@@ -216,6 +217,7 @@ export default function TemplateFormRenderer({
     initialValues,
     hideStaticRequiredLabelAndInput = false,
     editHref,
+    viewHref,
     enableSectionControls = false,
 }: Props) {
     const schema = useMemo(() => {
@@ -738,6 +740,11 @@ export default function TemplateFormRenderer({
                         {editHref && (
                             <Button asChild type="button" variant="outline">
                                 <Link href={editHref}>Edit</Link>
+                            </Button>
+                        )}
+                        {viewHref && (
+                            <Button asChild type="button" variant="outline">
+                                <Link href={viewHref}>View</Link>
                             </Button>
                         )}
                         <Label htmlFor="jump-to-section" className="sr-only">
