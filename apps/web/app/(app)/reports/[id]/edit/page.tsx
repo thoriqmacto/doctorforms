@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { toast } from 'sonner';
 import { getReport, getTemplate, updateReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,9 +21,9 @@ export default function EditReportPage() {
         dedupingInterval: 120_000,
     };
 
-    const { data: reportRes, isLoading } = useSWR(
+    const { data: reportRes, isLoading, mutate: mutateReport } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields,template,measurements' }),
+        () => getReport(id, { include: 'fields,template,measurements,patient,user,hospital' }),
         swrOpts
     );
 
@@ -30,7 +31,7 @@ export default function EditReportPage() {
     const title = report?.attributes?.title ?? `Report #${id}`;
     const templateId = report?.relationships?.template?.data?.id;
 
-    const { data: templateRes } = useSWR(
+    const { data: templateRes, mutate: mutateTemplate } = useSWR(
         templateId ? ['/templates', templateId] : null,
         () => getTemplate(templateId as string, { include: 'fields' }),
         swrOpts
@@ -54,6 +55,7 @@ export default function EditReportPage() {
     // 3) Build initial values ONCE when both report and grouped are ready
     const [initialValues, setInitialValues] = useState<Record<string, any> | null>(null);
     const initHydrated = useRef(false);
+    const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
     useEffect(() => {
         if (!initHydrated.current && report && editableSections.length > 0) {
@@ -67,6 +69,9 @@ export default function EditReportPage() {
             );
 
             const vals: Record<string, any> = {};
+            const patientAttrs = report?.relationships?.patient?.data?.attributes ?? {};
+            const userAttrs = report?.relationships?.user?.data?.attributes ?? {};
+            const hospitalAttrs = report?.relationships?.hospital?.data?.attributes ?? {};
             for (const sec of editableSections) {
                 for (const f of sec.items ?? []) {
                     const key = `f_${f.id}`;
@@ -81,13 +86,54 @@ export default function EditReportPage() {
                     }
 
                     const val = byTemplateFieldId.get(String(f.id));
-                    if (val !== undefined) vals[key] = val;
+                    if (val !== undefined) {
+                        vals[key] = val;
+                        continue;
+                    }
+
+                    const options = (f.attributes?.options ?? {}) as any;
+                    const defaultValue = options.default ? String(options.default) : '';
+                    const readAttr = (source: Record<string, any>, attr: string) => {
+                        const keyName = attr === 'position_title' ? 'positionTitle' : attr;
+                        const result = source?.[keyName];
+                        return result !== undefined && result !== null ? String(result) : undefined;
+                    };
+
+                    if (f.attributes?.type === 'patient' && defaultValue.startsWith('patients.')) {
+                        const attr = defaultValue.replace('patients.', '');
+                        const resolved = readAttr(patientAttrs, attr);
+                        if (resolved !== undefined) vals[key] = resolved;
+                        continue;
+                    }
+
+                    if (f.attributes?.type === 'user' && defaultValue.startsWith('users.')) {
+                        const attr = defaultValue.replace('users.', '');
+                        const resolved = readAttr(userAttrs, attr);
+                        if (resolved !== undefined) vals[key] = resolved;
+                        continue;
+                    }
+
+                    if (defaultValue.startsWith('hospitals.')) {
+                        const attr = defaultValue.replace('hospitals.', '');
+                        const resolved = readAttr(hospitalAttrs, attr);
+                        if (resolved !== undefined) vals[key] = resolved;
+                    }
                 }
             }
             setInitialValues(vals);
+            setLastRefreshedAt(new Date());
             initHydrated.current = true;
         }
     }, [editableSections, report]);
+
+    async function onRefresh() {
+        initHydrated.current = false;
+        groupedHydrated.current = false;
+        setInitialValues(null);
+        setGroupedSections(null);
+        await Promise.all([mutateReport(), mutateTemplate()]);
+        toast.success('Form refreshed with latest server data.');
+    }
 
     async function onSubmit(values: Record<string, any>) {
         try {
@@ -131,7 +177,10 @@ export default function EditReportPage() {
             });
 
             await updateReport(id, { fields, measurements });
-            router.push('/reports');
+            toast.success('Report saved successfully.');
+            setTimeout(() => {
+                router.push('/reports');
+            }, 700);
         } catch (e) {
             console.error(e);
             alert('Failed to save');
@@ -155,13 +204,19 @@ export default function EditReportPage() {
                     {isLoading || !groupedSections || !initialValues ? (
                         'Loading…'
                     ) : (
-                        <div className="page-a4 rounded-xl shadow-md">
+                        <div className="mx-auto w-full max-w-6xl rounded-xl border bg-white shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={editableSections}
                                 initialValues={initialValues}
                                 onSubmit={onSubmit}
                                 enableSectionControls
                                 showPrintButton
+                                showRefreshButton
+                                onRefresh={onRefresh}
+                                lastRefreshedAt={lastRefreshedAt}
+                                showDirtyState
+                                warnOnLeaveWithUnsavedChanges
+                                autosaveDraftKey={`report-edit-draft:${id}`}
                                 viewHref={`/reports/${id}`}
                             />
                         </div>
