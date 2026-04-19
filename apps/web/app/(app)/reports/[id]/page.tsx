@@ -111,7 +111,10 @@ export default function ReportDetailPage() {
         return acc;
     }, {});
 
-    const viewModel = createTemplateViewModel(groupedSections, title, reportValues);
+    const viewModel = createTemplateViewModel(groupedSections, title, reportValues, {
+        fallbackMode: 'empty',
+        useDefaultValueForEmpty: false,
+    });
     const modeLinks: { label: string; mode: ViewMode }[] = [
         { label: 'HTML View', mode: 'html' },
         { label: 'PDF View', mode: 'pdf' },

@@ -214,6 +214,25 @@ function sectionDomId(title: string | null | undefined, idx: number) {
     return `template-section-${idx}-${base}`;
 }
 
+function formatFindingsGroupLabel(raw: string) {
+    const value = raw.trim();
+    const match = value.match(/^0*(\d+)_+(.+)$/);
+    if (match) {
+        const [, numericPart, groupTitle] = match;
+        return `${Number(numericPart)}. ${groupTitle.replace(/_/g, " ").trim()}`;
+    }
+    return value.replace(/_/g, " ").trim();
+}
+
+function formatSectionTitle(title: string | null | undefined) {
+    if (!title) return title;
+    const trimmed = title.trim();
+    if (!/^findings_/i.test(trimmed)) return trimmed;
+
+    const suffix = trimmed.replace(/^findings_/i, "");
+    return `Findings - ${formatFindingsGroupLabel(suffix)}`;
+}
+
 export default function TemplateFormRenderer({
     groupedSections,
     onSubmit,
@@ -255,6 +274,10 @@ export default function TemplateFormRenderer({
     const sorted = useMemo(() => sortSections(groupedSections), [groupedSections]);
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [jumpSection, setJumpSection] = useState<string>("");
+    const sectionLayoutKey = useMemo(
+        () => sorted.map((sec, idx) => `${idx}:${sec.section ?? ""}:${sec.items.length}`).join("|"),
+        [sorted]
+    );
 
     const { control, handleSubmit, setValue, reset, getValues, formState: { isDirty } } = useForm({
         resolver: zodResolver(schema),
@@ -318,6 +341,14 @@ export default function TemplateFormRenderer({
 
         return () => window.clearInterval(interval);
     }, [autosaveDraftKey, autosaveIntervalMs, getValues, isDirty]);
+
+    useEffect(() => {
+        if (!enableSectionControls) return;
+        if (sorted.length === 0) return;
+        setCollapsedSections(
+            Object.fromEntries(sorted.map((_section, idx) => [idx, idx !== 0]))
+        );
+    }, [enableSectionControls, sectionLayoutKey, sorted]);
 
     const fieldGroups = useMemo(() => {
         const map = new Map<number, Field[]>();
@@ -456,9 +487,10 @@ export default function TemplateFormRenderer({
 
     function renderSectionHeader(title: string | null | undefined, idx: number, collapsed: boolean) {
         if (!title) return null;
+        const displayTitle = formatSectionTitle(title);
         return (
             <div className="sticky top-0 z-10 -mx-4 mb-2 flex items-center justify-between gap-2 bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:relative print:top-auto print:-mx-0 print:px-0">
-                <h2 className="text-lg font-semibold tracking-wide">{title}</h2>
+                <h2 className="text-lg font-semibold tracking-wide">{displayTitle}</h2>
                 {enableSectionControls && (
                     <Button
                         type="button"
@@ -814,7 +846,7 @@ export default function TemplateFormRenderer({
 
     const visibleSections = sorted.map((sec, idx) => ({
         idx,
-        title: sec.section || `Section ${idx + 1}`,
+        title: formatSectionTitle(sec.section) || `Section ${idx + 1}`,
         id: sectionDomId(sec.section, idx),
     }));
 
@@ -833,6 +865,7 @@ export default function TemplateFormRenderer({
                                 Refresh
                             </Button>
                         )}
+                        {showSubmitButton && <Button type="submit">Save</Button>}
                         {showRefreshButton && lastRefreshedAt && (
                             <span className="text-xs text-muted-foreground">
                                 Last refreshed: {lastRefreshedAt.toLocaleString()}

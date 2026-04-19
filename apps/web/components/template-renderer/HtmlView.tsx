@@ -32,6 +32,17 @@ function findingsSuffix(sectionName: string) {
     return sectionName.replace(/^findings_/i, '').trim();
 }
 
+function formatFindingsGroupText(raw: string) {
+    const value = raw.trim();
+    const match = value.match(/^0*(\d+)_+(.+)$/);
+    if (match) {
+        const [, numericPart, titlePart] = match;
+        return `${Number(numericPart)}. ${titlePart.replace(/_/g, ' ').trim()}`;
+    }
+
+    return value.replace(/_/g, ' ').trim();
+}
+
 function isAbsoluteUrl(value: string) {
     try {
         const url = new URL(value);
@@ -73,7 +84,7 @@ export default function HtmlView({ viewModel }: Props) {
                 return {
                     ...resultField,
                     id: `${resultField.id}-findings-row`,
-                    label: findingsSuffix(section.section) || resultField.label,
+                    label: formatFindingsGroupText(findingsSuffix(section.section)) || resultField.label,
                 };
             }),
         };
@@ -154,7 +165,7 @@ export default function HtmlView({ viewModel }: Props) {
         }
 
         if (field.type === 'checkbox_group') {
-            return <span className={`text-[11px] leading-tight text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue || 'Mocked checkbox selection'}</span>;
+            return <span className={`text-[11px] leading-tight text-slate-900 ${alignClassName(field.style.align)}`}>{displayValue}</span>;
         }
 
         if (field.type === 'textarea') {
@@ -285,6 +296,10 @@ export default function HtmlView({ viewModel }: Props) {
                                     {
                                         ...field,
                                         type: 'textarea',
+                                        style: {
+                                            ...field.style,
+                                            align: 'left',
+                                        },
                                     },
                                     section.section
                                 )}
