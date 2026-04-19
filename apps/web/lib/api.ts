@@ -1,5 +1,78 @@
 import ky from 'ky';
 
+export const SESSION_EXPIRED_EVENT = 'doctorforms:session-expired';
+
+const MAX_RETRY_QUEUE_SIZE = 20;
+
+let hasActiveSessionExpiredPrompt = false;
+const sessionRetryQueue: Request[] = [];
+
+const queueSessionRetry = (request: Request) => {
+    if (sessionRetryQueue.length >= MAX_RETRY_QUEUE_SIZE) {
+        return;
+    }
+
+    try {
+        sessionRetryQueue.push(request.clone());
+    } catch {
+        // request body might not be cloneable; skip retry queueing for this request
+    }
+};
+
+const notifySessionExpired = (request: Request) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const stored = window.localStorage.getItem('auth');
+    if (!stored) {
+        return;
+    }
+
+    queueSessionRetry(request);
+    if (hasActiveSessionExpiredPrompt) {
+        return;
+    }
+
+    hasActiveSessionExpiredPrompt = true;
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+};
+
+export const resetSessionExpiryState = () => {
+    hasActiveSessionExpiredPrompt = false;
+};
+
+export const replayExpiredSessionRequests = async () => {
+    if (typeof window === 'undefined' || sessionRetryQueue.length === 0) {
+        return;
+    }
+
+    const queuedRequests = [...sessionRetryQueue];
+    sessionRetryQueue.length = 0;
+
+    const stored = window.localStorage.getItem('auth');
+    let token: string | undefined;
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            token = parsed?.token as string | undefined;
+        } catch {
+            token = undefined;
+        }
+    }
+
+    await Promise.allSettled(
+        queuedRequests.map((request) => {
+            const headers = new Headers(request.headers);
+            if (token) {
+                headers.set('Authorization', `Bearer ${token}`);
+            }
+
+            return fetch(new Request(request, { headers }));
+        }),
+    );
+};
+
 const api = ky.create({
     prefixUrl: process.env.NEXT_PUBLIC_API_BASE_URL!,
     headers: { 'Content-Type': 'application/json' },
@@ -18,6 +91,13 @@ const api = ky.create({
                             // ignore parse errors
                         }
                     }
+                }
+            },
+        ],
+        afterResponse: [
+            (request, _options, response) => {
+                if (response.status === 401 && request.headers.has('Authorization')) {
+                    notifySessionExpired(request);
                 }
             },
         ],
@@ -42,6 +122,13 @@ const multipartApi = ky.create({
                             // ignore parse errors
                         }
                     }
+                }
+            },
+        ],
+        afterResponse: [
+            (request, _options, response) => {
+                if (response.status === 401 && request.headers.has('Authorization')) {
+                    notifySessionExpired(request);
                 }
             },
         ],
