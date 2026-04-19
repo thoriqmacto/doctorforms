@@ -65,6 +65,13 @@ type Props = {
     editHref?: string;
     viewHref?: string;
     enableSectionControls?: boolean;
+    onRefresh?: () => void | Promise<void>;
+    showRefreshButton?: boolean;
+    lastRefreshedAt?: Date | null;
+    showDirtyState?: boolean;
+    warnOnLeaveWithUnsavedChanges?: boolean;
+    autosaveDraftKey?: string;
+    autosaveIntervalMs?: number;
 };
 
 type FieldOptionMeta = {
@@ -219,6 +226,13 @@ export default function TemplateFormRenderer({
     editHref,
     viewHref,
     enableSectionControls = false,
+    onRefresh,
+    showRefreshButton = false,
+    lastRefreshedAt = null,
+    showDirtyState = false,
+    warnOnLeaveWithUnsavedChanges = false,
+    autosaveDraftKey,
+    autosaveIntervalMs = 15000,
 }: Props) {
     const schema = useMemo(() => {
         const baseShape: Record<string, z.ZodTypeAny> = {};
@@ -242,7 +256,7 @@ export default function TemplateFormRenderer({
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [jumpSection, setJumpSection] = useState<string>("");
 
-    const { control, handleSubmit, setValue, reset, getValues } = useForm({
+    const { control, handleSubmit, setValue, reset, getValues, formState: { isDirty } } = useForm({
         resolver: zodResolver(schema),
         defaultValues: initialValues || {},
         mode: "onChange",
@@ -256,6 +270,54 @@ export default function TemplateFormRenderer({
         lastInitialValuesHashRef.current = initialValuesHash;
         reset(initialValues ?? {});
     }, [initialValues, initialValuesHash, reset]);
+
+    useEffect(() => {
+        if (!warnOnLeaveWithUnsavedChanges || !isDirty) return;
+
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isDirty, warnOnLeaveWithUnsavedChanges]);
+
+    useEffect(() => {
+        if (!autosaveDraftKey) return;
+        if (typeof window === "undefined") return;
+        if (!initialValues) return;
+
+        try {
+            const raw = window.localStorage.getItem(autosaveDraftKey);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as { values?: Record<string, unknown> };
+            if (!parsed?.values || typeof parsed.values !== "object") return;
+            reset({ ...(initialValues ?? {}), ...(parsed.values ?? {}) });
+        } catch (error) {
+            console.error("Failed to restore autosave draft", error);
+        }
+    }, [autosaveDraftKey, initialValues, reset]);
+
+    useEffect(() => {
+        if (!autosaveDraftKey) return;
+        if (typeof window === "undefined") return;
+
+        const interval = window.setInterval(() => {
+            if (!isDirty) return;
+            const payload = {
+                savedAt: new Date().toISOString(),
+                values: getValues(),
+            };
+            try {
+                window.localStorage.setItem(autosaveDraftKey, JSON.stringify(payload));
+            } catch (error) {
+                console.error("Failed to autosave draft", error);
+            }
+        }, autosaveIntervalMs);
+
+        return () => window.clearInterval(interval);
+    }, [autosaveDraftKey, autosaveIntervalMs, getValues, isDirty]);
 
     const fieldGroups = useMemo(() => {
         const map = new Map<number, Field[]>();
@@ -424,6 +486,27 @@ export default function TemplateFormRenderer({
             t === "image" ||
             t === "title" ||
             t === "bullseye";
+        const fieldLabel = optionMeta.required ? `${label} *` : label;
+        const showValidationHints = () => {
+            const hints: string[] = [];
+            if (optionMeta.required) hints.push("Required");
+            if (t === "number") hints.push("Numbers only");
+            if (t === "date") hints.push("Format: YYYY-MM-DD");
+
+            if (
+                f.attributes?.type === "measurement" &&
+                f.attributes.options &&
+                typeof f.attributes.options === "object" &&
+                !Array.isArray(f.attributes.options)
+            ) {
+                const options = f.attributes.options as Record<string, unknown>;
+                if (options.measurement_unit) hints.push(`Unit: ${String(options.measurement_unit)}`);
+                if (options.format) hints.push(`Format: ${String(options.format)}`);
+            }
+
+            if (hints.length === 0) return null;
+            return <p className="text-xs text-muted-foreground">{hints.join(" • ")}</p>;
+        };
 
         if (hideStaticRequiredLabelAndInput && optionMeta.static && optionMeta.required) {
             return (
@@ -446,6 +529,7 @@ export default function TemplateFormRenderer({
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label>{label}</Label>
+                    {showValidationHints()}
                     {imageSrc ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={imageSrc} alt={label} className="max-h-80 w-full rounded-md border object-contain" />
@@ -460,6 +544,7 @@ export default function TemplateFormRenderer({
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label htmlFor={fieldInputId}>{label}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -480,6 +565,7 @@ export default function TemplateFormRenderer({
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
                     <Label htmlFor={fieldInputId}>{label}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -511,6 +597,7 @@ export default function TemplateFormRenderer({
                     // onFocus={() => console.log("focus:", name)}
                 >
                     <Label htmlFor={fieldInputId}>{label}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -533,7 +620,8 @@ export default function TemplateFormRenderer({
             const groupLabelId = `${fieldInputId}-legend`;
             return (
                 <div key={name} className="space-y-2 col-span-full">
-                    <Label id={groupLabelId} className="font-medium">{label}</Label>
+                    <Label id={groupLabelId} className="font-medium">{fieldLabel}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -574,7 +662,8 @@ export default function TemplateFormRenderer({
         if (t === "measurement") {
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                    <Label htmlFor={fieldInputId}>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{fieldLabel}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -589,7 +678,8 @@ export default function TemplateFormRenderer({
         if (t === "date") {
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                    <Label htmlFor={fieldInputId}>{label}</Label>
+                    <Label htmlFor={fieldInputId}>{fieldLabel}</Label>
+                    {showValidationHints()}
                     <Controller
                         control={control}
                         name={name}
@@ -601,7 +691,8 @@ export default function TemplateFormRenderer({
 
         return (
             <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
-                <Label htmlFor={fieldInputId}>{label}</Label>
+                <Label htmlFor={fieldInputId}>{fieldLabel}</Label>
+                {showValidationHints()}
                 <Controller
                     control={control}
                     name={name}
@@ -729,9 +820,24 @@ export default function TemplateFormRenderer({
 
     return (
         <form onSubmit={handleSubmit((vals) => onSubmit(vals))} className="space-y-4 print:space-y-2">
-            <div className="mx-auto max-w-[210mm] space-y-4 p-2 md:p-4">
+            <div className="mx-auto w-full max-w-[1100px] space-y-4 p-2 md:p-4 print:max-w-[210mm]">
                 {enableSectionControls && (
                     <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
+                        {showDirtyState && (
+                            <div className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                                {isDirty ? "Unsaved changes" : "All changes saved"}
+                            </div>
+                        )}
+                        {showRefreshButton && (
+                            <Button type="button" variant="outline" onClick={() => onRefresh?.()}>
+                                Refresh
+                            </Button>
+                        )}
+                        {showRefreshButton && lastRefreshedAt && (
+                            <span className="text-xs text-muted-foreground">
+                                Last refreshed: {lastRefreshedAt.toLocaleString()}
+                            </span>
+                        )}
                         {showPrintButton && (
                             <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())}>
                                 Print
@@ -786,7 +892,17 @@ export default function TemplateFormRenderer({
                 ))}
 
                 <div className="flex gap-2 pt-2 print:hidden">
+                    {showDirtyState && (
+                        <div className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                            {isDirty ? "Unsaved changes" : "All changes saved"}
+                        </div>
+                    )}
                     {showSubmitButton && <Button type="submit">Save</Button>}
+                    {showRefreshButton && (
+                        <Button type="button" variant="outline" onClick={() => onRefresh?.()}>
+                            Refresh
+                        </Button>
+                    )}
                     {showPrintButton && !enableSectionControls && (
                         <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())} className="no-print">
                             Print
