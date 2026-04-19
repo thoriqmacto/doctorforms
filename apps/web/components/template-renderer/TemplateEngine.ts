@@ -27,6 +27,10 @@ export type TemplateViewModel = {
 };
 
 type Section = { section: string | null; items: Field[] };
+type CreateTemplateViewModelOptions = {
+    fallbackMode?: 'sample' | 'empty';
+    useDefaultValueForEmpty?: boolean;
+};
 
 const SAMPLE_BY_TYPE: Partial<Record<Field['attributes']['type'], string>> = {
     text: 'Normal findings',
@@ -151,8 +155,12 @@ function getShowSectionName(field: Field): boolean {
 export function createTemplateViewModel(
     groupedSections: Section[],
     templateName: string,
-    values?: Record<string, unknown>
+    values?: Record<string, unknown>,
+    options?: CreateTemplateViewModelOptions
 ): TemplateViewModel {
+    const fallbackMode = options?.fallbackMode ?? 'sample';
+    const useDefaultValueForEmpty = options?.useDefaultValueForEmpty ?? true;
+
     const sections = groupedSections
         .slice()
         .sort((a, b) => {
@@ -174,8 +182,9 @@ export function createTemplateViewModel(
                     const normalizedValue = Array.isArray(value)
                         ? value.join(', ')
                         : value === null || value === undefined || value === ''
-                            ? defaultValue || buildSampleValue(field)
-                            : String(value);
+                          ? (useDefaultValueForEmpty ? defaultValue : '') ||
+                            (fallbackMode === 'sample' ? buildSampleValue(field) : '')
+                          : String(value);
 
                     return {
                         id: field.id,

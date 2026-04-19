@@ -58,7 +58,7 @@ export default function EditReportPage() {
     const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
     useEffect(() => {
-        if (!initHydrated.current && report && editableSections.length > 0) {
+        if (!initHydrated.current && report && groupedSections) {
             const reportFields = report?.relationships?.fields?.data ?? [];
             const reportMeasurements = report?.relationships?.measurements?.data ?? [];
             const byTemplateFieldId = new Map<string, any>(
@@ -69,9 +69,6 @@ export default function EditReportPage() {
             );
 
             const vals: Record<string, any> = {};
-            const patientAttrs = report?.relationships?.patient?.data?.attributes ?? {};
-            const userAttrs = report?.relationships?.user?.data?.attributes ?? {};
-            const hospitalAttrs = report?.relationships?.hospital?.data?.attributes ?? {};
             for (const sec of editableSections) {
                 for (const f of sec.items ?? []) {
                     const key = `f_${f.id}`;
@@ -88,35 +85,6 @@ export default function EditReportPage() {
                     const val = byTemplateFieldId.get(String(f.id));
                     if (val !== undefined) {
                         vals[key] = val;
-                        continue;
-                    }
-
-                    const options = (f.attributes?.options ?? {}) as any;
-                    const defaultValue = options.default ? String(options.default) : '';
-                    const readAttr = (source: Record<string, any>, attr: string) => {
-                        const keyName = attr === 'position_title' ? 'positionTitle' : attr;
-                        const result = source?.[keyName];
-                        return result !== undefined && result !== null ? String(result) : undefined;
-                    };
-
-                    if (f.attributes?.type === 'patient' && defaultValue.startsWith('patients.')) {
-                        const attr = defaultValue.replace('patients.', '');
-                        const resolved = readAttr(patientAttrs, attr);
-                        if (resolved !== undefined) vals[key] = resolved;
-                        continue;
-                    }
-
-                    if (f.attributes?.type === 'user' && defaultValue.startsWith('users.')) {
-                        const attr = defaultValue.replace('users.', '');
-                        const resolved = readAttr(userAttrs, attr);
-                        if (resolved !== undefined) vals[key] = resolved;
-                        continue;
-                    }
-
-                    if (defaultValue.startsWith('hospitals.')) {
-                        const attr = defaultValue.replace('hospitals.', '');
-                        const resolved = readAttr(hospitalAttrs, attr);
-                        if (resolved !== undefined) vals[key] = resolved;
                     }
                 }
             }
@@ -124,14 +92,17 @@ export default function EditReportPage() {
             setLastRefreshedAt(new Date());
             initHydrated.current = true;
         }
-    }, [editableSections, report]);
+    }, [editableSections, groupedSections, report]);
 
     async function onRefresh() {
         initHydrated.current = false;
         groupedHydrated.current = false;
         setInitialValues(null);
         setGroupedSections(null);
-        await Promise.all([mutateReport(), mutateTemplate()]);
+        await Promise.all([
+            mutateReport(undefined, { revalidate: true }),
+            mutateTemplate(undefined, { revalidate: true }),
+        ]);
         toast.success('Form refreshed with latest server data.');
     }
 
