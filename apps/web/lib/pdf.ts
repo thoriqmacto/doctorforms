@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { pdfConfig } from '@/config/pdf';
 import type { TemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+import { mergeFindingsSections } from '@/lib/template-renderer/sectionTransforms';
 
 export async function generateReportPdf(report: any) {
     const doc = await PDFDocument.create();
@@ -59,7 +60,8 @@ export async function generateTemplatePdf(viewModel: TemplateViewModel) {
     const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
     const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === 'header');
-    const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== 'header');
+    const rawBodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== 'header');
+    const bodySections = mergeFindingsSections(rawBodySections);
 
     let page = doc.addPage([A4_WIDTH, A4_HEIGHT]);
     let cursorY = A4_HEIGHT - MARGIN;
