@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import type { TemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+import { mergeFindingsSections } from '@/lib/template-renderer/sectionTransforms';
 
 export type TemplateMeta = {
     title?: string;
@@ -22,25 +23,6 @@ function isMeasurementSection(sectionName: string) {
 
 function isGeneralSection(sectionName: string) {
     return sectionName.trim().toLowerCase() === 'general';
-}
-
-function isFindingsSection(sectionName: string) {
-    return sectionName.trim().toLowerCase().startsWith('findings_');
-}
-
-function findingsSuffix(sectionName: string) {
-    return sectionName.replace(/^findings_/i, '').trim();
-}
-
-function formatFindingsGroupText(raw: string) {
-    const value = raw.trim();
-    const match = value.match(/^0*(\d+)_+(.+)$/);
-    if (match) {
-        const [, numericPart, titlePart] = match;
-        return `${Number(numericPart)}. ${titlePart.replace(/_/g, ' ').trim()}`;
-    }
-
-    return value.replace(/_/g, ' ').trim();
 }
 
 function isAbsoluteUrl(value: string) {
@@ -66,36 +48,7 @@ export default function HtmlView({ viewModel }: Props) {
 
     const headerSection = viewModel.sections.find((section) => section.section.trim().toLowerCase() === SECTION_HEADER_NAME);
     const bodySections = viewModel.sections.filter((section) => section.section.trim().toLowerCase() !== SECTION_HEADER_NAME);
-    const mergedBodySections = (() => {
-        const findings = bodySections.filter((section) => isFindingsSection(section.section));
-        if (findings.length === 0) return bodySections;
-
-        const firstFindingsIndex = bodySections.findIndex((section) => isFindingsSection(section.section));
-        const insertAt = bodySections.slice(0, firstFindingsIndex).filter((section) => !isFindingsSection(section.section)).length;
-        const mergedFindingsSection = {
-            section: 'Findings',
-            fields: findings.flatMap((section) => {
-                const resultField =
-                    section.fields.find((field) => field.type === 'textarea' && field.textareaMode === 'result') ??
-                    section.fields.find((field) => field.type === 'textarea') ??
-                    section.fields[0];
-                if (!resultField) return [];
-
-                return {
-                    ...resultField,
-                    id: `${resultField.id}-findings-row`,
-                    label: formatFindingsGroupText(findingsSuffix(section.section)) || resultField.label,
-                };
-            }),
-        };
-
-        const nonFindings = bodySections.filter((section) => !isFindingsSection(section.section));
-        return [
-            ...nonFindings.slice(0, insertAt),
-            mergedFindingsSection,
-            ...nonFindings.slice(insertAt),
-        ];
-    })();
+    const mergedBodySections = mergeFindingsSections(bodySections);
     const splitSectionsIntoPages = (sections: TemplateViewModel['sections']) => {
         const pages: TemplateViewModel['sections'][] = [];
         let currentPage: TemplateViewModel['sections'] = [];

@@ -64,6 +64,7 @@ type Props = {
     hideStaticRequiredLabelAndInput?: boolean;
     editHref?: string;
     viewHref?: string;
+    viewLabel?: string;
     enableSectionControls?: boolean;
     onRefresh?: () => void | Promise<void>;
     showRefreshButton?: boolean;
@@ -244,6 +245,7 @@ export default function TemplateFormRenderer({
     hideStaticRequiredLabelAndInput = false,
     editHref,
     viewHref,
+    viewLabel = "View",
     enableSectionControls = false,
     onRefresh,
     showRefreshButton = false,
@@ -883,7 +885,7 @@ export default function TemplateFormRenderer({
                         )}
                         {viewHref && (
                             <Button asChild type="button" variant="outline">
-                                <Link href={viewHref}>View</Link>
+                                <Link href={viewHref}>{viewLabel}</Link>
                             </Button>
                         )}
                         <Label htmlFor="jump-to-section" className="sr-only">

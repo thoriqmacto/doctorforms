@@ -8,6 +8,7 @@ import { getReport, getTemplate, updateReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import { buildReportModeHref } from '@/lib/reportViewModes';
 
 export default function EditReportPage() {
     const { id } = useParams<{ id: string }>();
@@ -55,7 +56,6 @@ export default function EditReportPage() {
     // 3) Build initial values ONCE when both report and grouped are ready
     const [initialValues, setInitialValues] = useState<Record<string, any> | null>(null);
     const initHydrated = useRef(false);
-    const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
     useEffect(() => {
         if (!initHydrated.current && report && groupedSections) {
@@ -89,7 +89,6 @@ export default function EditReportPage() {
                 }
             }
             setInitialValues(vals);
-            setLastRefreshedAt(new Date());
             initHydrated.current = true;
         }
     }, [editableSections, groupedSections, report]);
@@ -181,14 +180,14 @@ export default function EditReportPage() {
                                 initialValues={initialValues}
                                 onSubmit={onSubmit}
                                 enableSectionControls
-                                showPrintButton
                                 showRefreshButton
                                 onRefresh={onRefresh}
-                                lastRefreshedAt={lastRefreshedAt}
                                 showDirtyState
                                 warnOnLeaveWithUnsavedChanges
                                 autosaveDraftKey={`report-edit-draft:${id}`}
-                                viewHref={`/reports/${id}`}
+                                showPrintButton={false}
+                                viewHref={buildReportModeHref(id, 'pdf')}
+                                viewLabel="View PDF"
                             />
                         </div>
                     )}

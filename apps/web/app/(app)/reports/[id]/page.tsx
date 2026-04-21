@@ -23,14 +23,11 @@ import HtmlView from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
-
-type ViewMode = 'html' | 'pdf' | 'form';
-const SUPPORTED_MODES: ViewMode[] = ['html', 'pdf', 'form'];
-
-function normalizeMode(input: string | null): ViewMode {
-    if (SUPPORTED_MODES.includes(input as ViewMode)) return input as ViewMode;
-    return 'html';
-}
+import {
+    type ReportViewMode,
+    normalizeReportViewMode,
+    buildReportModeHref,
+} from '@/lib/reportViewModes';
 
 function withoutHeaderSection(sections: any[]) {
     return sections.filter((section) => section?.section?.trim().toLowerCase() !== 'header');
@@ -40,7 +37,7 @@ export default function ReportDetailPage() {
     const params = useParams<{ id: string }>();
     const searchParams = useSearchParams();
     const id = params.id;
-    const mode = normalizeMode(searchParams.get('mode'));
+    const mode = normalizeReportViewMode(searchParams.get('mode'));
 
     const { data, isLoading } = useSWR(
         id ? ['/reports', id] : null,
@@ -115,7 +112,7 @@ export default function ReportDetailPage() {
         fallbackMode: 'empty',
         useDefaultValueForEmpty: false,
     });
-    const modeLinks: { label: string; mode: ViewMode }[] = [
+    const modeLinks: { label: string; mode: ReportViewMode }[] = [
         { label: 'HTML View', mode: 'html' },
         { label: 'PDF View', mode: 'pdf' },
         { label: 'Form View', mode: 'form' },
@@ -147,7 +144,7 @@ export default function ReportDetailPage() {
                         <DropdownMenuContent align="end">
                             {modeLinks.map((item) => (
                                 <DropdownMenuItem key={item.mode} asChild>
-                                    <Link href={`/reports/${id}?mode=${item.mode}`}>{item.label}</Link>
+                                    <Link href={buildReportModeHref(id, item.mode)}>{item.label}</Link>
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>
