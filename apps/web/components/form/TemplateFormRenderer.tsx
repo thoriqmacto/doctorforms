@@ -65,6 +65,7 @@ type Props = {
     editHref?: string;
     viewHref?: string;
     viewLabel?: string;
+    viewLinks?: Array<{ href: string; label: string }>;
     enableSectionControls?: boolean;
     onRefresh?: () => void | Promise<void>;
     showRefreshButton?: boolean;
@@ -246,6 +247,7 @@ export default function TemplateFormRenderer({
     editHref,
     viewHref,
     viewLabel = "View",
+    viewLinks = [],
     enableSectionControls = false,
     onRefresh,
     showRefreshButton = false,
@@ -851,6 +853,11 @@ export default function TemplateFormRenderer({
         title: formatSectionTitle(sec.section) || `Section ${idx + 1}`,
         id: sectionDomId(sec.section, idx),
     }));
+    const resolvedViewLinks = viewLinks.length > 0
+        ? viewLinks
+        : viewHref
+          ? [{ href: viewHref, label: viewLabel }]
+          : [];
 
     return (
         <form onSubmit={handleSubmit((vals) => onSubmit(vals))} className="space-y-4 print:space-y-2">
@@ -883,11 +890,11 @@ export default function TemplateFormRenderer({
                                 <Link href={editHref}>Edit</Link>
                             </Button>
                         )}
-                        {viewHref && (
-                            <Button asChild type="button" variant="outline">
-                                <Link href={viewHref}>{viewLabel}</Link>
+                        {resolvedViewLinks.map((viewLink) => (
+                            <Button asChild type="button" variant="outline" key={`${viewLink.href}-${viewLink.label}`}>
+                                <Link href={viewLink.href}>{viewLink.label}</Link>
                             </Button>
-                        )}
+                        ))}
                         <Label htmlFor="jump-to-section" className="sr-only">
                             Jump to section
                         </Label>

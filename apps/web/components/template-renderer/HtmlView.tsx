@@ -106,9 +106,11 @@ function InfoGrid({ block }: { block: InfoGridBlock }) {
     );
 }
 
-function SectionBanner({ title }: { title: string }) {
+function SectionBanner({ title, uppercase = false }: { title: string; uppercase?: boolean }) {
     return (
-        <div className="border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-900">
+        <div
+            className={`border border-slate-500 bg-slate-100 px-2 py-0.5 text-center text-[11px] font-bold tracking-wide text-slate-900 ${uppercase ? 'uppercase' : ''}`}
+        >
             {title}
         </div>
     );
@@ -175,7 +177,7 @@ function Findings({ block }: { block: FindingsBlock }) {
 function Conclusion({ block }: { block: ConclusionBlock }) {
     return (
         <section className="break-inside-avoid">
-            <SectionBanner title={block.title.toUpperCase()} />
+            <SectionBanner title={block.title} uppercase />
             <ul className="list-none space-y-0.5 px-2 py-1 text-[11px] leading-snug text-slate-900">
                 {block.items.map((item, idx) => (
                     <li key={idx}>{item}</li>

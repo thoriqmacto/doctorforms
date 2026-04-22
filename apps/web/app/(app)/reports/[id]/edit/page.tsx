@@ -186,8 +186,10 @@ export default function EditReportPage() {
                                 warnOnLeaveWithUnsavedChanges
                                 autosaveDraftKey={`report-edit-draft:${id}`}
                                 showPrintButton={false}
-                                viewHref={buildReportModeHref(id, 'pdf')}
-                                viewLabel="View PDF"
+                                viewLinks={[
+                                    { href: buildReportModeHref(id, 'html'), label: 'View HTML' },
+                                    { href: buildReportModeHref(id, 'pdf'), label: 'View PDF' },
+                                ]}
                             />
                         </div>
                     )}
