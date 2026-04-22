@@ -5,9 +5,10 @@ Use this checklist after changes to report rendering or toolbar actions.
 ## Edit report toolbar
 
 - [ ] Open `/reports/{id}/edit`.
-- [ ] Verify **View PDF** appears in section controls.
+- [ ] Verify **View HTML** and **View PDF** appear in section controls (HTML button should be left of PDF).
 - [ ] Verify **Print** is not shown in section controls.
 - [ ] Verify **Last refreshed** text is not shown.
+- [ ] Click **View HTML** and verify URL follows `/reports/{id}?mode=html`.
 - [ ] Click **View PDF** and verify URL follows `/reports/{id}?mode=pdf`.
 
 ## Report mode routing
