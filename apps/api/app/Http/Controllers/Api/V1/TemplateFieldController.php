@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TemplateFieldResource;
 use App\Models\TemplateField;
+use App\Support\EntityBindingCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -54,17 +55,21 @@ class TemplateFieldController extends Controller
         ]);
 
         $v->after(function ($validator) use ($payload) {
-            if (($payload['type'] ?? null) !== 'measurement') {
-                return;
-            }
-
+            $type = $payload['type'] ?? null;
             $options = $payload['options'] ?? [];
-            $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
-            foreach ($requiredKeys as $key) {
-                if (!is_array($options) || blank($options[$key] ?? null)) {
-                    $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+
+            if ($type === 'measurement') {
+                $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
+                foreach ($requiredKeys as $key) {
+                    if (!is_array($options) || blank($options[$key] ?? null)) {
+                        $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+                    }
                 }
             }
+
+            // options.binding (optional) must reference a whitelisted source+path.
+            // See App\Support\EntityBindingCatalog for the legal combinations.
+            self::validateBinding($validator, $type, $options);
         });
 
         if ($v->fails()) {
@@ -102,20 +107,20 @@ class TemplateFieldController extends Controller
 
         $v->after(function ($validator) use ($payload, $templateField) {
             $type = $payload['type'] ?? $templateField->type;
-            if ($type !== 'measurement') {
-                return;
-            }
-
             $options = array_key_exists('options', $payload)
                 ? ($payload['options'] ?? [])
                 : ($templateField->options ?? []);
 
-            $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
-            foreach ($requiredKeys as $key) {
-                if (!is_array($options) || blank($options[$key] ?? null)) {
-                    $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+            if ($type === 'measurement') {
+                $requiredKeys = ['measurement_name', 'default', 'measurement_unit', 'measurement_category'];
+                foreach ($requiredKeys as $key) {
+                    if (!is_array($options) || blank($options[$key] ?? null)) {
+                        $validator->errors()->add("options.$key", "The {$key} field is required for measurement type.");
+                    }
                 }
             }
+
+            self::validateBinding($validator, $type, $options);
         });
 
         if ($v->fails()) {
@@ -136,5 +141,76 @@ class TemplateFieldController extends Controller
             'jsonapi' => ['version' => '1.0'],
             'meta'    => ['status' => 'deleted'],
         ], 200);
+    }
+
+    /**
+     * Validate options.binding against the static EntityBindingCatalog.
+     *
+     * Contract:
+     *   options.binding: {
+     *     source: "hospital"|"patient"|"user"|"report"|"signatory"|"test"|"literal",
+     *     path?:  string (dotted),   // required unless source=literal
+     *     value?: string,            // required when source=literal
+     *     format?: string,           // optional formatter hint (e.g. "date:dd/MM/yyyy")
+     *   }
+     *
+     * Unknown sources or non-whitelisted paths => 422. Binding is optional
+     * (legacy template fields without binding remain valid).
+     */
+    private static function validateBinding($validator, ?string $type, $options): void
+    {
+        if (!is_array($options)) {
+            return;
+        }
+
+        $binding = $options['binding'] ?? null;
+        if ($binding === null) {
+            return;
+        }
+
+        if (!is_array($binding)) {
+            $validator->errors()->add('options.binding', 'binding must be an object.');
+            return;
+        }
+
+        $source = $binding['source'] ?? null;
+        if (!is_string($source) || $source === '') {
+            $validator->errors()->add('options.binding.source', 'binding.source is required.');
+            return;
+        }
+
+        if ($source === 'literal') {
+            if (!array_key_exists('value', $binding)) {
+                $validator->errors()->add('options.binding.value', 'literal binding requires a value.');
+            }
+            return;
+        }
+
+        $validSources = EntityBindingCatalog::sources();
+        if (!in_array($source, $validSources, true)) {
+            $validator->errors()->add('options.binding.source', "Unknown binding source: {$source}.");
+            return;
+        }
+
+        $path = $binding['path'] ?? null;
+        if (!is_string($path) || $path === '') {
+            $validator->errors()->add('options.binding.path', 'binding.path is required.');
+            return;
+        }
+
+        if (!EntityBindingCatalog::isValid($source, $path)) {
+            $validator->errors()->add(
+                'options.binding.path',
+                "Path {$source}.{$path} is not a recognized binding."
+            );
+        }
+
+        // When field type declares an entity (patient/user), the binding.source must match.
+        if (in_array($type, ['patient', 'user'], true) && $source !== $type) {
+            $validator->errors()->add(
+                'options.binding.source',
+                "Field type {$type} requires binding.source={$type}, got {$source}."
+            );
+        }
     }
 }
