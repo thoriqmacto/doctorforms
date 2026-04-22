@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\{Template, User, Test, Hospital};
+use App\Models\{Template, TemplateField, User, Test, Hospital};
 use App\Models\Patient;
 use App\Models\Report;
 use Laravel\Sanctum\Sanctum;
@@ -102,6 +102,54 @@ it('deletes a template', function () {
 
     $response->assertStatus(200);
     expect(Template::find($template->id))->toBeNull();
+});
+
+it('classifies grouped_sections with a stable kind used by the render plan', function () {
+    $user = User::create(['name' => 'User', 'email' => 'kind@example.com', 'password' => 'secret']);
+    $test = Test::create(['code' => 'T1', 'name' => 'Test', 'type' => 'blood']);
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+
+    $template = Template::create([
+        'name' => 'Sample Template',
+        'description' => 'Desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+    ]);
+
+    $sections = [
+        ['section' => 'header', 'expected' => 'header'],
+        ['section' => 'Measurements & Calculations', 'expected' => 'measurements'],
+        ['section' => 'findings_01_Heart', 'expected' => 'findings'],
+        ['section' => 'Conclusion', 'expected' => 'conclusion'],
+        ['section' => 'Signature', 'expected' => 'signature'],
+        ['section' => 'Study Info', 'expected' => 'general'],
+    ];
+
+    foreach ($sections as $idx => $entry) {
+        TemplateField::create([
+            'template_id' => $template->id,
+            'section' => $entry['section'],
+            'label' => 'Field '.$idx,
+            'type' => 'text',
+            'order' => $idx,
+            'field_group_order' => $idx,
+        ]);
+    }
+
+    $response = $this->getJson('/api/v1/templates/'.$template->id.'?include=fields');
+
+    $response->assertStatus(200);
+    $grouped = $response->json('data.meta.grouped_sections');
+
+    $kindByName = collect($grouped)->mapWithKeys(fn ($g) => [$g['section'] => $g['kind']]);
+
+    expect($kindByName['header'])->toBe('header')
+        ->and($kindByName['Measurements & Calculations'])->toBe('measurements')
+        ->and($kindByName['findings_01_Heart'])->toBe('findings')
+        ->and($kindByName['Conclusion'])->toBe('conclusion')
+        ->and($kindByName['Signature'])->toBe('signature')
+        ->and($kindByName['Study Info'])->toBe('general');
 });
 
 it('returns conflict when deleting a template with related reports', function () {

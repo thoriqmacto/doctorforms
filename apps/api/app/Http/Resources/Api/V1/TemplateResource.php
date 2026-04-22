@@ -20,6 +20,7 @@ class TemplateResource extends JsonResource
             foreach ($sections as $section => $items) {
                 $grouped[] = [
                     'section' => $section,
+                    'kind'    => self::classifySectionKind((string) $section),
                     'items'   => TemplateFieldResource::collection($items)->resolve(),
                 ];
             }
@@ -57,5 +58,37 @@ class TemplateResource extends JsonResource
     public function with($request)
     {
         return ['jsonapi' => ['version' => '1.0']];
+    }
+
+    /**
+     * Classify a section by name into a stable "kind" consumed by the render plan.
+     * Frontend HTML and PDF renderers use this to pick the right block layout
+     * instead of re-implementing regex matching in two places.
+     */
+    public static function classifySectionKind(string $name): string
+    {
+        $normalized = strtolower(trim($name));
+
+        if ($normalized === '' || $normalized === 'header') {
+            return 'header';
+        }
+
+        if (str_starts_with($normalized, 'findings_') || $normalized === 'findings') {
+            return 'findings';
+        }
+
+        if (str_contains($normalized, 'conclusion')) {
+            return 'conclusion';
+        }
+
+        if (str_contains($normalized, 'signature')) {
+            return 'signature';
+        }
+
+        if (preg_match('/(measurement|calculation|2d|m-mode|doppler|hemodynamic|indices)/', $normalized) === 1) {
+            return 'measurements';
+        }
+
+        return 'general';
     }
 }
