@@ -12,10 +12,13 @@ class HospitalResource extends JsonResource
             'type'       => 'hospitals',
             'id'         => (string) $this->id,
             'attributes' => [
-                'name'    => $this->name,
-                'address' => $this->address,
-                'phone'   => $this->phone,
-                'email'   => $this->email,
+                'name'     => $this->name,
+                'address'  => $this->address,
+                'province' => $this->province,
+                'city'     => $this->city,
+                'phone'    => $this->phone,
+                'email'    => $this->email,
+                'website'  => $this->website,
                 'logo_url' => $this->logo_url,
             ],
             'relationships' => [

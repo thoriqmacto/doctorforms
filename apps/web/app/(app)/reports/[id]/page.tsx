@@ -23,6 +23,7 @@ import HtmlView from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
 import {
     type ReportViewMode,
     normalizeReportViewMode,
@@ -112,6 +113,51 @@ export default function ReportDetailPage() {
         fallbackMode: 'empty',
         useDefaultValueForEmpty: false,
     });
+
+    const sectionKinds: Record<string, SectionKind> = {};
+    for (const section of groupedSections as Array<{ section?: string; kind?: string }>) {
+        if (section?.section && section?.kind) {
+            sectionKinds[section.section] = section.kind as SectionKind;
+        }
+    }
+
+    const hospitalAttrs = hospitalRes?.data?.attributes;
+    const patientAttrs = patientRes?.data?.attributes;
+
+    const plan = buildReportRenderPlan({
+        viewModel,
+        sectionKinds,
+        hospital: hospitalAttrs
+            ? {
+                  name: hospitalAttrs.name,
+                  address: hospitalAttrs.address,
+                  province: hospitalAttrs.province,
+                  city: hospitalAttrs.city,
+                  phone: hospitalAttrs.phone,
+                  email: hospitalAttrs.email,
+                  website: hospitalAttrs.website,
+                  logo_url: hospitalAttrs.logo_url,
+              }
+            : undefined,
+        patient: patientAttrs
+            ? {
+                  name: patientAttrs.name,
+                  mrn: patientAttrs.mrn,
+                  dob: patientAttrs.dob,
+                  age: patientAttrs.age,
+                  diagnosis_brief: patientAttrs.diagnosis_brief,
+                  referring_physician: patientAttrs.referring_physician,
+                  dos: patientAttrs.dos,
+              }
+            : undefined,
+        report: {
+            title: attrs.title,
+            operator: attrs.operator,
+            supervisor: attrs.supervisor,
+            device: attrs.device,
+        },
+        testName,
+    });
     const modeLinks: { label: string; mode: ReportViewMode }[] = [
         { label: 'HTML View', mode: 'html' },
         { label: 'PDF View', mode: 'pdf' },
@@ -162,8 +208,8 @@ export default function ReportDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {mode === 'html' && <HtmlView viewModel={viewModel} />}
-                            {mode === 'pdf' && <PdfView viewModel={viewModel} />}
+                            {mode === 'html' && <HtmlView plan={plan} />}
+                            {mode === 'pdf' && <PdfView plan={plan} />}
                             {mode === 'form' && (
                                 <FormView
                                     groupedSections={reportFormSections}

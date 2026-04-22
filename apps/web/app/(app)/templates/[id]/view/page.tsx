@@ -14,10 +14,11 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import HtmlView, { type TemplateMeta } from '@/components/template-renderer/HtmlView';
+import HtmlView from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
 
 type ViewMode = 'html' | 'pdf' | 'form';
 
@@ -42,7 +43,6 @@ function TemplateViewPageContent() {
     const name = tpl?.attributes?.name ?? 'Template';
     const grouped = tpl?.meta?.grouped_sections ?? [];
     const page = tpl?.meta?.page;
-    const description = tpl?.attributes?.description ?? '';
 
     const userId = tpl?.relationships?.user?.data?.id;
     const testId = tpl?.relationships?.test?.data?.id;
@@ -52,17 +52,37 @@ function TemplateViewPageContent() {
         included.find((item: any) => item.type === 'users' && String(item.id) === String(userId))?.attributes?.name ?? '';
     const testTypeName =
         included.find((item: any) => item.type === 'tests' && String(item.id) === String(testId))?.attributes?.name ?? '';
-    const hospitalName =
-        included.find((item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId))?.attributes?.name ?? '';
 
     const viewModel = createTemplateViewModel(grouped, name);
-    const templateMeta: TemplateMeta = {
-        title: name,
-        description,
-        userName,
-        testTypeName,
-        hospitalName,
-    };
+    const sectionKinds: Record<string, SectionKind> = {};
+    for (const section of grouped as Array<{ section?: string; kind?: string }>) {
+        if (section?.section && section?.kind) {
+            sectionKinds[section.section] = section.kind as SectionKind;
+        }
+    }
+
+    const hospitalAttrs = included.find(
+        (item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId)
+    )?.attributes;
+
+    const plan = buildReportRenderPlan({
+        viewModel,
+        sectionKinds,
+        hospital: hospitalAttrs
+            ? {
+                  name: hospitalAttrs.name,
+                  address: hospitalAttrs.address,
+                  province: hospitalAttrs.province,
+                  city: hospitalAttrs.city,
+                  phone: hospitalAttrs.phone,
+                  email: hospitalAttrs.email,
+                  website: hospitalAttrs.website,
+                  logo_url: hospitalAttrs.logo_url,
+              }
+            : undefined,
+        testName: testTypeName,
+        operator: userName ? { name: userName } : undefined,
+    });
 
     const pageInfo = page
         ? `${page.size} · ${Number(page.width_mm / 10).toFixed(1)}cm × ${Number(page.height_mm / 10).toFixed(1)}cm`
@@ -118,10 +138,8 @@ function TemplateViewPageContent() {
                         'Loading…'
                     ) : (
                         <div className="space-y-4">
-                            {mode === 'html' && (
-                                <HtmlView viewModel={viewModel} templateMeta={templateMeta} />
-                            )}
-                            {mode === 'pdf' && <PdfView viewModel={viewModel} />}
+                            {mode === 'html' && <HtmlView plan={plan} />}
+                            {mode === 'pdf' && <PdfView plan={plan} />}
                             {mode === 'form' && <FormView groupedSections={grouped} />}
                         </div>
                     )}

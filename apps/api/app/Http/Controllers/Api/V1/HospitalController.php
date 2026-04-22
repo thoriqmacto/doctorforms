@@ -29,10 +29,13 @@ class HospitalController extends Controller
     public function store(Request $request)
     {
         $v = Validator::make($request->all(), [
-            'name'    => ['required','string','max:255'],
-            'address' => ['required','string','max:500'],
-            'phone'   => ['nullable','string','max:50'],
-            'email'   => ['nullable','email','max:255'],
+            'name'     => ['required','string','max:255'],
+            'address'  => ['required','string','max:500'],
+            'province' => ['nullable','string','max:255'],
+            'city'     => ['nullable','string','max:255'],
+            'phone'    => ['nullable','string','max:50'],
+            'email'    => ['nullable','email','max:255'],
+            'website'  => ['nullable','string','max:255'],
         ]);
 
         if ($v->fails()) {
@@ -51,10 +54,13 @@ class HospitalController extends Controller
     public function update(Request $request, Hospital $hospital)
     {
         $v = Validator::make($request->all(), [
-            'name'    => ['sometimes','string','max:255'],
-            'address' => ['sometimes','string','max:500'],
-            'phone'   => ['sometimes','nullable','string','max:50'],
-            'email'   => ['sometimes','nullable','email','max:255'],
+            'name'     => ['sometimes','string','max:255'],
+            'address'  => ['sometimes','string','max:500'],
+            'province' => ['sometimes','nullable','string','max:255'],
+            'city'     => ['sometimes','nullable','string','max:255'],
+            'phone'    => ['sometimes','nullable','string','max:50'],
+            'email'    => ['sometimes','nullable','email','max:255'],
+            'website'  => ['sometimes','nullable','string','max:255'],
         ]);
 
         if ($v->fails()) {
