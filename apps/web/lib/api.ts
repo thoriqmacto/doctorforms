@@ -158,6 +158,9 @@ export interface TemplatePayload {
     user_id: number;
     test_id: number;
     hospital_id: number;
+    department_id?: number | null;
+    /** Structured header block definition. Null to clear. */
+    header_config?: Record<string, unknown> | null;
 }
 
 export interface TemplateFieldPayload {
