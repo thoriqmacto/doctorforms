@@ -12,7 +12,13 @@ import type {
     ReportRenderPlan,
     ReportTitleBlock,
     SignatureBlock,
+    StructuredHeader,
 } from '@/lib/template-renderer/renderPlan';
+import {
+    FONT_SIZE_PT,
+    IMAGE_SIZE_PT,
+    SPACING_PT,
+} from '@/lib/template-renderer/schema';
 
 export async function generateReportPdf(report: any) {
     const doc = await PDFDocument.create();
@@ -178,6 +184,13 @@ function drawCenteredText(
 }
 
 async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise<void> {
+    // Structured path — driven by templates.header_config.
+    if (block.structured) {
+        await drawStructuredHospitalHeader(ctx, block.structured);
+        return;
+    }
+
+    // Legacy path — driven by the hospital context only.
     const { logoSizePt, titleFontPt, lineFontPt, cityFontPt } = reportLayout.hospitalHeader;
     const startY = ctx.cursorY;
     const contentLeft = ctx.margin + logoSizePt + 8;
@@ -190,7 +203,7 @@ async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise
     const textLines: Array<{ text: string; size: number; font: PDFFont }> = [];
     if (block.topLine) textLines.push({ text: block.topLine, size: lineFontPt + 2, font: ctx.fonts.bold });
     if (block.title) textLines.push({ text: block.title, size: titleFontPt, font: ctx.fonts.bold });
-    for (const line of block.contactLines) {
+    for (const line of block.contactLines ?? []) {
         textLines.push({ text: line, size: lineFontPt, font: ctx.fonts.regular });
     }
     if (block.city) textLines.push({ text: block.city, size: cityFontPt, font: ctx.fonts.bold });
@@ -235,6 +248,101 @@ async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise
         thickness: 0.75,
         color: BORDER,
     });
+    ctx.cursorY -= 6;
+}
+
+/**
+ * Structured header renderer — consumes StructuredHeader produced by
+ * buildReportRenderPlan from templates.header_config. Uses shared style
+ * tokens (FONT_SIZE_PT / IMAGE_SIZE_PT / SPACING_PT) so HTML and PDF stay
+ * visually in sync.
+ */
+async function drawStructuredHospitalHeader(ctx: Ctx, header: StructuredHeader): Promise<void> {
+    const leftSize = header.leftLogo ? IMAGE_SIZE_PT[header.leftLogo.size] : 0;
+    const rightSize = header.rightLogo ? IMAGE_SIZE_PT[header.rightLogo.size] : 0;
+    const maxLogoSize = Math.max(leftSize, rightSize);
+    const startY = ctx.cursorY;
+    const contentLeft = ctx.margin + leftSize + (leftSize > 0 ? 8 : 0);
+    const contentRight = ctx.margin + ctx.contentWidth - rightSize - (rightSize > 0 ? 8 : 0);
+    const usable = contentRight - contentLeft;
+
+    const leftImg = header.leftLogo?.visible ? await embedLogo(ctx.doc, header.leftLogo.url) : null;
+    const rightImg = header.rightLogo?.visible ? await embedLogo(ctx.doc, header.rightLogo.url) : null;
+
+    // Pre-wrap lines.
+    type Wrapped = { text: string; size: number; font: PDFFont; align: 'left' | 'center' | 'right'; marginTop: number };
+    const wrappedLines: Wrapped[] = [];
+    for (const line of header.lines) {
+        if (!line.text) continue;
+        const size = FONT_SIZE_PT[line.font ?? 'sm'];
+        const font = (line.weight ?? 'normal') === 'bold' ? ctx.fonts.bold : ctx.fonts.regular;
+        const align = (line.align ?? 'center') as 'left' | 'center' | 'right';
+        const marginTop = SPACING_PT[line.marginTop ?? 'none'];
+        const segments = wrapText(line.text, font, size, usable);
+        segments.forEach((seg, idx) => {
+            wrappedLines.push({
+                text: seg,
+                size,
+                font,
+                align,
+                marginTop: idx === 0 ? marginTop : 0,
+            });
+        });
+    }
+
+    const lineGap = 2;
+    const totalTextHeight = wrappedLines.reduce((sum, l) => sum + l.size + lineGap + l.marginTop, 0);
+    const blockHeight = Math.max(totalTextHeight, maxLogoSize) + 8;
+    ensureSpace(ctx, blockHeight);
+
+    let textY = startY - (wrappedLines[0]?.size ?? 0);
+    for (const line of wrappedLines) {
+        textY -= line.marginTop;
+        if (line.align === 'left') {
+            ctx.page.drawText(line.text, {
+                x: contentLeft,
+                y: textY,
+                size: line.size,
+                font: line.font,
+                color: TEXT,
+            });
+        } else if (line.align === 'right') {
+            const width = line.font.widthOfTextAtSize(line.text, line.size);
+            ctx.page.drawText(line.text, {
+                x: contentRight - width,
+                y: textY,
+                size: line.size,
+                font: line.font,
+                color: TEXT,
+            });
+        } else {
+            drawCenteredText(ctx, line.text, line.font, line.size, textY, TEXT, contentLeft, contentRight);
+        }
+        textY -= line.size + lineGap;
+    }
+
+    const logoY = startY - (blockHeight + maxLogoSize) / 2;
+    if (leftImg && leftSize > 0) {
+        ctx.page.drawImage(leftImg, { x: ctx.margin, y: logoY, width: leftSize, height: leftSize });
+    }
+    if (rightImg && rightSize > 0) {
+        ctx.page.drawImage(rightImg, {
+            x: ctx.margin + ctx.contentWidth - rightSize,
+            y: logoY,
+            width: rightSize,
+            height: rightSize,
+        });
+    }
+
+    ctx.cursorY = startY - blockHeight;
+    if (header.divider) {
+        ctx.page.drawLine({
+            start: { x: ctx.margin, y: ctx.cursorY + 2 },
+            end: { x: ctx.margin + ctx.contentWidth, y: ctx.cursorY + 2 },
+            thickness: 0.75,
+            color: BORDER,
+        });
+    }
     ctx.cursorY -= 6;
 }
 
@@ -470,12 +578,36 @@ function drawConclusion(ctx: Ctx, block: ConclusionBlock): void {
     }
 }
 
-function drawSignature(ctx: Ctx, block: SignatureBlock): void {
-    if (!block.name && !block.subtitle) return;
+async function drawSignature(ctx: Ctx, block: SignatureBlock): Promise<void> {
+    if (!block.name && !block.subtitle && !block.signatureImageUrl && !block.sipNumber) return;
     const { nameFontPt, subtitleFontPt, marginTopPt } = reportLayout.signature;
-    const height = marginTopPt + nameFontPt + (block.subtitle ? subtitleFontPt + 4 : 0);
+    const sigImageHeight = 48;
+    const height =
+        marginTopPt +
+        (block.signatureImageUrl ? sigImageHeight + 4 : 0) +
+        (block.name ? nameFontPt + 2 : 0) +
+        (block.subtitle ? subtitleFontPt + 2 : 0) +
+        (block.sipNumber ? subtitleFontPt + 2 : 0);
     ensureSpace(ctx, height);
     ctx.cursorY -= marginTopPt;
+
+    if (block.signatureImageUrl) {
+        const img = await embedLogo(ctx.doc, block.signatureImageUrl);
+        if (img) {
+            const maxW = 120;
+            const scale = Math.min(sigImageHeight / img.height, maxW / img.width);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            ctx.page.drawImage(img, {
+                x: ctx.margin + ctx.contentWidth - w,
+                y: ctx.cursorY - h,
+                width: w,
+                height: h,
+            });
+            ctx.cursorY -= h + 4;
+        }
+    }
+
     if (block.name) {
         const width = ctx.fonts.bold.widthOfTextAtSize(block.name, nameFontPt);
         ctx.page.drawText(block.name, {
@@ -490,6 +622,18 @@ function drawSignature(ctx: Ctx, block: SignatureBlock): void {
     if (block.subtitle) {
         const width = ctx.fonts.regular.widthOfTextAtSize(block.subtitle, subtitleFontPt);
         ctx.page.drawText(block.subtitle, {
+            x: ctx.margin + ctx.contentWidth - width,
+            y: ctx.cursorY - subtitleFontPt,
+            size: subtitleFontPt,
+            font: ctx.fonts.regular,
+            color: MUTED,
+        });
+        ctx.cursorY -= subtitleFontPt + 2;
+    }
+    if (block.sipNumber) {
+        const text = `SIP: ${block.sipNumber}`;
+        const width = ctx.fonts.regular.widthOfTextAtSize(text, subtitleFontPt);
+        ctx.page.drawText(text, {
             x: ctx.margin + ctx.contentWidth - width,
             y: ctx.cursorY - subtitleFontPt,
             size: subtitleFontPt,
@@ -569,7 +713,7 @@ async function drawBlock(ctx: Ctx, block: RenderBlock): Promise<void> {
             drawConclusion(ctx, block);
             return;
         case 'signature':
-            drawSignature(ctx, block);
+            await drawSignature(ctx, block);
             return;
         case 'generic':
             drawGeneric(ctx, block);

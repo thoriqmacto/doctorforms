@@ -259,6 +259,12 @@ export const logout = () => api.post('logout').json<any>();
 export default api;
 
 
+// Hospital signatories — signature block source of truth.
+export const getHospitalSignatories = (hospitalId: string | number) =>
+    api.get(`hospitals/${hospitalId}`, {
+        searchParams: { include: 'signatories' },
+    }).json<any>();
+
 export const uploadTemplateFieldImage = (file: File) => {
     const formData = new FormData();
     formData.append('image', file);

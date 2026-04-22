@@ -202,6 +202,13 @@ export type UserContext = {
     position_title?: string;
 };
 
+/**
+ * Alias retained so the renderPlan module can keep its historical
+ * `operator` terminology while binding resolution uses `user` as the
+ * canonical source. Both refer to the same shape.
+ */
+export type OperatorContext = UserContext;
+
 export type ReportContext = {
     title?: string;
     findings?: string;

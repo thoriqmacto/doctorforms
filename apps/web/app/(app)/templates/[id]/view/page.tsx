@@ -19,6 +19,7 @@ import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
 import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
+import type { HeaderConfig } from '@/lib/template-renderer/schema';
 
 type ViewMode = 'html' | 'pdf' | 'form';
 
@@ -65,21 +66,35 @@ function TemplateViewPageContent() {
         (item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId)
     )?.attributes;
 
+    const headerConfig = (tpl?.attributes?.header_config ?? null) as HeaderConfig | null;
+
     const plan = buildReportRenderPlan({
         viewModel,
         sectionKinds,
         hospital: hospitalAttrs
             ? {
                   name: hospitalAttrs.name,
+                  short_name: hospitalAttrs.short_name,
+                  parent_org_line: hospitalAttrs.parent_org_line,
                   address: hospitalAttrs.address,
+                  address_line_1: hospitalAttrs.address_line_1,
+                  address_line_2: hospitalAttrs.address_line_2,
                   province: hospitalAttrs.province,
                   city: hospitalAttrs.city,
+                  postal_code: hospitalAttrs.postal_code,
+                  country: hospitalAttrs.country,
                   phone: hospitalAttrs.phone,
+                  fax: hospitalAttrs.fax,
+                  whatsapp_phone: hospitalAttrs.whatsapp_phone,
                   email: hospitalAttrs.email,
                   website: hospitalAttrs.website,
                   logo_url: hospitalAttrs.logo_url,
+                  secondary_logo_url: hospitalAttrs.secondary_logo_url,
+                  accreditation_text: hospitalAttrs.accreditation_text,
+                  report_footer_line: hospitalAttrs.report_footer_line,
               }
             : undefined,
+        headerConfig,
         testName: testTypeName,
         operator: userName ? { name: userName } : undefined,
     });

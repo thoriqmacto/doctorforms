@@ -1,24 +1,75 @@
 import type { TemplateField, TemplateSection, TemplateViewModel } from '@/components/template-renderer/TemplateEngine';
 import { formatFindingsGroupText } from '@/lib/template-renderer/sectionTransforms';
+import {
+    resolveBinding,
+    type AlignToken,
+    type FontSizeToken,
+    type FontWeightToken,
+    type HeaderConfig,
+    type HeaderLayout,
+    type HospitalContext,
+    type ImageSizeToken,
+    type OperatorContext,
+    type PatientContext,
+    type RenderContexts,
+    type ReportContext,
+    type SignatoryContext,
+    type SpacingToken,
+    type TestContext,
+} from '@/lib/template-renderer/schema';
 
 /**
  * A `ReportRenderPlan` is an ordered list of display blocks. HtmlView and the
  * pdf-lib renderer both consume the exact same plan, so layout decisions
  * (ordering, column counts, field grouping) live in one place instead of
  * being reimplemented per view.
+ *
+ * Pipeline:
+ *   TemplateController → grouped_sections (API)
+ *     → createTemplateViewModel (TemplateEngine.ts)
+ *     → buildReportRenderPlan (this file)
+ *         ├─ if templates.header_config exists → structured header
+ *         └─ else → legacy hardcoded header from hospital context
+ *     → HtmlView.tsx / generateTemplatePdf()
  */
 
+// ---------------------------------------------------------------------------
+// Block types
+// ---------------------------------------------------------------------------
+
+export type StructuredHeaderLine = {
+    text: string;
+    font?: FontSizeToken;
+    weight?: FontWeightToken;
+    align?: AlignToken;
+    uppercase?: boolean;
+    marginTop?: SpacingToken;
+};
+
+export type StructuredHeader = {
+    layout: HeaderLayout;
+    leftLogo?: { url?: string; size: ImageSizeToken; visible: boolean };
+    rightLogo?: { url?: string; size: ImageSizeToken; visible: boolean };
+    lines: StructuredHeaderLine[];
+    divider: boolean;
+};
+
+/**
+ * Hospital header block.
+ *
+ * When `structured` is present (header_config path), renderers draw the
+ * structured form. Otherwise they fall back to the legacy shape —
+ * which is what existing templates without header_config still use.
+ */
 export type HospitalHeaderBlock = {
     kind: 'hospital_header';
+    structured?: StructuredHeader;
+    // Legacy
     leftLogoUrl?: string;
     rightLogoUrl?: string;
-    /** provincial / government prefix line, e.g. "PEMERINTAH PROVINSI KALIMANTAN BARAT" */
     topLine?: string;
-    /** main hospital name, rendered largest */
-    title: string;
-    /** contact/address lines, rendered small */
-    contactLines: string[];
-    /** city line, rendered slightly larger than contact lines */
+    title?: string;
+    contactLines?: string[];
     city?: string;
 };
 
@@ -61,6 +112,8 @@ export type SignatureBlock = {
     kind: 'signature';
     name: string;
     subtitle?: string;
+    sipNumber?: string;
+    signatureImageUrl?: string;
 };
 
 export type GenericSectionBlock = {
@@ -94,37 +147,15 @@ export type SectionKind =
 
 export type PlanSection = TemplateSection & { kind?: SectionKind };
 
-export type HospitalContext = {
-    name?: string;
-    address?: string;
-    province?: string;
-    city?: string;
-    phone?: string;
-    email?: string;
-    website?: string;
-    logo_url?: string;
-};
-
-export type PatientContext = {
-    name?: string;
-    mrn?: string;
-    dob?: string;
-    age?: number | string;
-    diagnosis_brief?: string;
-    referring_physician?: string;
-    dos?: string;
-};
-
-export type ReportContext = {
-    title?: string;
-    operator?: string;
-    supervisor?: string;
-    device?: string;
-};
-
-export type OperatorContext = {
-    name?: string;
-    position_title?: string;
+// Re-export context types so upstream callers have one import source.
+export type {
+    HospitalContext,
+    PatientContext,
+    ReportContext,
+    OperatorContext,
+    SignatoryContext,
+    TestContext,
+    RenderContexts,
 };
 
 export type BuildPlanInput = {
@@ -134,10 +165,18 @@ export type BuildPlanInput = {
     patient?: PatientContext;
     report?: ReportContext;
     operator?: OperatorContext;
+    signatory?: SignatoryContext;
+    test?: TestContext;
+    /** Structured header definition from templates.header_config. Takes precedence over legacy header rendering. */
+    headerConfig?: HeaderConfig | null;
     testName?: string;
-    /** right-side logo for the hospital header, independent of hospital.logo_url */
+    /** right-side logo for the legacy hospital header, independent of hospital.logo_url */
     secondaryLogoUrl?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 const EM_DASH = '—';
 
@@ -168,11 +207,67 @@ function formatStudyDate(dos?: string): string {
 }
 
 function kindOf(section: PlanSection): SectionKind {
-    if (section.kind) return section.kind;
-    return 'general';
+    // Backend returns the kind on grouped_sections[].kind (via TemplateResource::classifySectionKind).
+    // We no longer duplicate that classifier on the frontend; missing kind = "general".
+    return section.kind ?? 'general';
 }
 
-function buildHospitalHeader(
+// ---------------------------------------------------------------------------
+// Header composition — structured (header_config) then legacy fallback
+// ---------------------------------------------------------------------------
+
+function buildStructuredHeader(
+    headerConfig: HeaderConfig,
+    contexts: RenderContexts
+): HospitalHeaderBlock {
+    const leftLogoVisible = headerConfig.logo.left?.visible ?? false;
+    const rightLogoVisible = headerConfig.logo.right?.visible ?? false;
+
+    const leftLogoUrl = headerConfig.logo.left?.binding
+        ? resolveBinding(headerConfig.logo.left.binding, contexts)
+        : undefined;
+    const rightLogoUrl = headerConfig.logo.right?.binding
+        ? resolveBinding(headerConfig.logo.right.binding, contexts)
+        : undefined;
+
+    const lines: StructuredHeaderLine[] = headerConfig.lines
+        .filter((line) => line.visible !== false)
+        .map((line) => {
+            let text = '';
+            if (line.binding) {
+                text = resolveBinding(line.binding, contexts) ?? '';
+            } else if (line.literal !== undefined) {
+                text = line.literal;
+            }
+            if (line.uppercase && text) text = text.toUpperCase();
+            return {
+                text,
+                font: line.font,
+                weight: line.weight,
+                align: line.align,
+                uppercase: line.uppercase,
+                marginTop: line.marginTop,
+            };
+        })
+        .filter((line) => line.text.trim().length > 0);
+
+    return {
+        kind: 'hospital_header',
+        structured: {
+            layout: headerConfig.layout,
+            leftLogo: leftLogoVisible
+                ? { url: leftLogoUrl, size: headerConfig.logo.left?.size ?? 'lg', visible: true }
+                : undefined,
+            rightLogo: rightLogoVisible
+                ? { url: rightLogoUrl, size: headerConfig.logo.right?.size ?? 'lg', visible: true }
+                : undefined,
+            lines,
+            divider: headerConfig.divider?.visible ?? true,
+        },
+    };
+}
+
+function buildLegacyHospitalHeader(
     hospital: HospitalContext | undefined,
     secondaryLogoUrl: string | undefined
 ): HospitalHeaderBlock | null {
@@ -180,7 +275,11 @@ function buildHospitalHeader(
 
     const province = nonEmpty(hospital.province);
     const city = nonEmpty(hospital.city);
-    const topLine = province ? `PEMERINTAH PROVINSI ${province.toUpperCase()}` : undefined;
+    // Prefer hospital.parent_org_line (real field); fall back to the old
+    // hardcoded "PEMERINTAH PROVINSI {province}" convention.
+    const topLine =
+        nonEmpty(hospital.parent_org_line) ??
+        (province ? `PEMERINTAH PROVINSI ${province.toUpperCase()}` : undefined);
 
     const contactBits: string[] = [];
     const addressLine = nonEmpty(hospital.address);
@@ -197,13 +296,17 @@ function buildHospitalHeader(
     return {
         kind: 'hospital_header',
         leftLogoUrl: nonEmpty(hospital.logo_url),
-        rightLogoUrl: nonEmpty(secondaryLogoUrl),
+        rightLogoUrl: nonEmpty(secondaryLogoUrl) ?? nonEmpty(hospital.secondary_logo_url),
         topLine,
         title: (nonEmpty(hospital.name) ?? '').toUpperCase(),
         contactLines: contactBits,
         city: city ? city.toUpperCase() : undefined,
     };
 }
+
+// ---------------------------------------------------------------------------
+// Info grid / section builders
+// ---------------------------------------------------------------------------
 
 function buildInfoGrid(
     patient: PatientContext | undefined,
@@ -293,12 +396,19 @@ function buildConclusion(section: PlanSection): ConclusionBlock {
 function buildSignature(
     section: PlanSection,
     operator: OperatorContext | undefined,
-    report: ReportContext | undefined
+    report: ReportContext | undefined,
+    signatory: SignatoryContext | undefined
 ): SignatureBlock {
+    // Priority order for the signing person:
+    //   1. report.signatory (hospital_signatories row, the source of truth)
+    //   2. a textarea field inside the signature section (legacy free-text)
+    //   3. a text field inside the signature section (legacy free-text)
+    //   4. operator context / report.operator / report.supervisor
     const textareaField = section.fields.find((f) => f.type === 'textarea');
     const labelField = section.fields.find((f) => f.type === 'text');
 
     const name =
+        nonEmpty(signatory?.name) ??
         nonEmpty(textareaField?.value) ??
         nonEmpty(labelField?.value) ??
         nonEmpty(operator?.name) ??
@@ -306,9 +416,18 @@ function buildSignature(
         nonEmpty(report?.operator) ??
         '';
 
-    const subtitle = nonEmpty(operator?.position_title) ?? undefined;
+    const subtitle =
+        nonEmpty(signatory?.position_title) ??
+        nonEmpty(operator?.position_title) ??
+        undefined;
 
-    return { kind: 'signature', name, subtitle };
+    return {
+        kind: 'signature',
+        name,
+        subtitle,
+        sipNumber: nonEmpty(signatory?.sip_number),
+        signatureImageUrl: nonEmpty(signatory?.signature_image_url),
+    };
 }
 
 function buildGeneric(section: PlanSection): GenericSectionBlock {
@@ -323,29 +442,63 @@ function buildGeneric(section: PlanSection): GenericSectionBlock {
     };
 }
 
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
+
 /**
  * Convert a template view model plus data context into an ordered list of
- * display blocks. Section `kind` comes from the API (TemplateResource) —
- * falls back to heuristic by name for backwards compatibility.
+ * display blocks.
+ *
+ * Header source of truth, in order:
+ *   1. templates.header_config (structured, from admin editor)
+ *   2. legacy hardcoded header derived from hospital context
+ *   3. fall back to the template's "Header" section (kept verbatim)
  */
 export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
-    const { viewModel, sectionKinds, hospital, patient, report, operator, secondaryLogoUrl } = input;
+    const {
+        viewModel,
+        sectionKinds,
+        hospital,
+        patient,
+        report,
+        operator,
+        signatory,
+        test,
+        headerConfig,
+        secondaryLogoUrl,
+    } = input;
+
+    const contexts: RenderContexts = {
+        hospital,
+        patient,
+        user: operator,
+        report,
+        signatory,
+        test,
+    };
 
     const sections: PlanSection[] = viewModel.sections.map((section) => ({
         ...section,
-        kind: sectionKinds?.[section.section] ?? classifyByName(section.section),
+        kind: sectionKinds?.[section.section],
     }));
 
     const blocks: RenderBlock[] = [];
 
-    const hospitalHeader = buildHospitalHeader(hospital, secondaryLogoUrl);
-    if (hospitalHeader) {
-        blocks.push(hospitalHeader);
+    // 1. Structured header (preferred)
+    if (headerConfig) {
+        blocks.push(buildStructuredHeader(headerConfig, contexts));
     } else {
-        // Fall back to the template's "header" section when hospital context is absent.
-        const templateHeader = sections.find((s) => kindOf(s) === 'header');
-        if (templateHeader && templateHeader.fields.length) {
-            blocks.push(buildGeneric({ ...templateHeader, section: templateHeader.section || 'Header' }));
+        // 2. Legacy header derived from hospital context
+        const legacy = buildLegacyHospitalHeader(hospital, secondaryLogoUrl);
+        if (legacy) {
+            blocks.push(legacy);
+        } else {
+            // 3. Template-declared Header section (last resort)
+            const templateHeader = sections.find((s) => kindOf(s) === 'header');
+            if (templateHeader && templateHeader.fields.length) {
+                blocks.push(buildGeneric({ ...templateHeader, section: templateHeader.section || 'Header' }));
+            }
         }
     }
 
@@ -381,36 +534,34 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
         }
 
         if (kind === 'signature') {
-            blocks.push(buildSignature(section, operator, report));
+            blocks.push(buildSignature(section, operator, report, signatory));
             continue;
         }
 
         blocks.push(buildGeneric(section));
     }
 
-    // Ensure a signature block closes the report if the template didn't emit one.
+    // Ensure a signature block closes the report even when the template
+    // didn't declare one. Uses signatory > operator > report.operator.
     const hasSignature = blocks.some((b) => b.kind === 'signature');
-    if (!hasSignature && (operator?.name || report?.operator)) {
+    if (!hasSignature && (signatory?.name || operator?.name || report?.operator)) {
         blocks.push({
             kind: 'signature',
-            name: nonEmpty(operator?.name) ?? nonEmpty(report?.operator) ?? '',
-            subtitle: nonEmpty(operator?.position_title) ?? undefined,
+            name:
+                nonEmpty(signatory?.name) ??
+                nonEmpty(operator?.name) ??
+                nonEmpty(report?.operator) ??
+                '',
+            subtitle:
+                nonEmpty(signatory?.position_title) ??
+                nonEmpty(operator?.position_title) ??
+                undefined,
+            sipNumber: nonEmpty(signatory?.sip_number),
+            signatureImageUrl: nonEmpty(signatory?.signature_image_url),
         });
     }
 
     return { title: viewModel.title, blocks };
 }
 
-function classifyByName(name: string): SectionKind {
-    const normalized = name.trim().toLowerCase();
-    if (normalized === '' || normalized === 'header') return 'header';
-    if (normalized.startsWith('findings_') || normalized === 'findings') return 'findings';
-    if (normalized.includes('conclusion')) return 'conclusion';
-    if (normalized.includes('signature')) return 'signature';
-    if (/(measurement|calculation|2d|m-mode|doppler|hemodynamic|indices)/.test(normalized)) {
-        return 'measurements';
-    }
-    return 'general';
-}
-
-export const __testing = { classifyByName, formatDob, formatStudyDate };
+export const __testing = { formatDob, formatStudyDate };

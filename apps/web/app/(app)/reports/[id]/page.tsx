@@ -7,8 +7,10 @@ import {
     getReport,
     getPatient,
     getHospital,
+    getHospitalSignatories,
     getTests,
     getTemplate,
+    getUser,
 } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -24,6 +26,7 @@ import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
 import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
+import type { HeaderConfig, RenderContexts } from '@/lib/template-renderer/schema';
 import {
     type ReportViewMode,
     normalizeReportViewMode,
@@ -63,6 +66,8 @@ export default function ReportDetailPage() {
     const patientId = report?.relationships?.patient?.data?.id;
     const hospitalId = report?.relationships?.hospital?.data?.id;
     const testId = report?.relationships?.test?.data?.id;
+    const userId = report?.relationships?.user?.data?.id;
+    const signatoryId = report?.relationships?.signatory?.data?.id;
 
     const { data: patientRes } = useSWR(
         patientId ? ['/patients', patientId] : null,
@@ -71,6 +76,14 @@ export default function ReportDetailPage() {
     const { data: hospitalRes } = useSWR(
         hospitalId ? ['/hospitals', hospitalId] : null,
         () => getHospital(hospitalId as string).then((r: any) => r)
+    );
+    const { data: hospitalWithSignatoriesRes } = useSWR(
+        hospitalId && signatoryId ? ['/hospitals/signatories', hospitalId] : null,
+        () => getHospitalSignatories(hospitalId as string).then((r: any) => r)
+    );
+    const { data: userRes } = useSWR(
+        userId ? ['/users', userId] : null,
+        () => getUser(userId as string).then((r: any) => r)
     );
     const { data: testsRes } = useSWR(['/tests'], () => getTests().then((r: any) => r));
 
@@ -123,39 +136,91 @@ export default function ReportDetailPage() {
 
     const hospitalAttrs = hospitalRes?.data?.attributes;
     const patientAttrs = patientRes?.data?.attributes;
+    const userAttrs = userRes?.data?.attributes;
+    const headerConfig = (template?.attributes?.header_config ?? null) as HeaderConfig | null;
 
-    const plan = buildReportRenderPlan({
-        viewModel,
-        sectionKinds,
+    // Signatory lookup: the hospital resource with include=signatories
+    // returns them in relationships.signatories.data[].attributes.
+    const signatoryAttrs = (() => {
+        if (!signatoryId) return undefined;
+        const bag = hospitalWithSignatoriesRes?.data?.relationships?.signatories?.data;
+        if (!Array.isArray(bag)) return undefined;
+        const found = bag.find((s: any) => String(s?.id) === String(signatoryId));
+        return found?.attributes;
+    })();
+
+    const renderContexts: RenderContexts = {
         hospital: hospitalAttrs
             ? {
                   name: hospitalAttrs.name,
+                  short_name: hospitalAttrs.short_name,
+                  parent_org_line: hospitalAttrs.parent_org_line,
                   address: hospitalAttrs.address,
+                  address_line_1: hospitalAttrs.address_line_1,
+                  address_line_2: hospitalAttrs.address_line_2,
                   province: hospitalAttrs.province,
                   city: hospitalAttrs.city,
+                  postal_code: hospitalAttrs.postal_code,
+                  country: hospitalAttrs.country,
                   phone: hospitalAttrs.phone,
+                  fax: hospitalAttrs.fax,
+                  whatsapp_phone: hospitalAttrs.whatsapp_phone,
                   email: hospitalAttrs.email,
                   website: hospitalAttrs.website,
                   logo_url: hospitalAttrs.logo_url,
+                  secondary_logo_url: hospitalAttrs.secondary_logo_url,
+                  accreditation_text: hospitalAttrs.accreditation_text,
+                  report_footer_line: hospitalAttrs.report_footer_line,
               }
             : undefined,
         patient: patientAttrs
             ? {
                   name: patientAttrs.name,
                   mrn: patientAttrs.mrn,
+                  gender: patientAttrs.gender,
                   dob: patientAttrs.dob,
                   age: patientAttrs.age,
+                  dos: patientAttrs.dos,
+                  height_cm: patientAttrs.height_cm,
+                  weight_kg: patientAttrs.weight_kg,
+                  bsa: patientAttrs.bsa,
+                  blood_pressure: patientAttrs.blood_pressure,
                   diagnosis_brief: patientAttrs.diagnosis_brief,
                   referring_physician: patientAttrs.referring_physician,
-                  dos: patientAttrs.dos,
+              }
+            : undefined,
+        user: userAttrs
+            ? {
+                  name: userAttrs.name,
+                  email: userAttrs.email,
+                  phone: userAttrs.phone,
+                  position_title: userAttrs.position_title,
               }
             : undefined,
         report: {
             title: attrs.title,
+            findings: attrs.findings,
+            conclusion: attrs.conclusion,
             operator: attrs.operator,
             supervisor: attrs.supervisor,
             device: attrs.device,
         },
+        signatory: signatoryAttrs,
+        test: {
+            name: testName !== '-' ? testName : undefined,
+        },
+    };
+
+    const plan = buildReportRenderPlan({
+        viewModel,
+        sectionKinds,
+        hospital: renderContexts.hospital,
+        patient: renderContexts.patient,
+        operator: renderContexts.user,
+        signatory: renderContexts.signatory,
+        test: renderContexts.test,
+        report: renderContexts.report,
+        headerConfig,
         testName,
     });
     const modeLinks: { label: string; mode: ReportViewMode }[] = [
@@ -216,6 +281,7 @@ export default function ReportDetailPage() {
                                     initialValues={reportValues}
                                     showPrintButton
                                     editHref={`/reports/${id}/edit`}
+                                    contexts={renderContexts}
                                 />
                             )}
                         </div>
