@@ -75,8 +75,9 @@ A typical page (for example `apps/web/app/(app)/reports/page.tsx`) follows this 
 
 `apps/web/components/form/TemplateFormRenderer.tsx` is a key component:
 
-- Renders server-defined fields by type (`text`, `number`, `select`, `textarea`, `title`, `image`, `checkbox_group`, `date`, `bullseye`)
+- Renders server-defined fields by type (`text`, `number`, `select`, `textarea`, `title`, `image`, `checkbox_group`, `date`, `bullseye`, `patient`, `user`, `measurement`)
 - Builds a Zod schema dynamically from field definitions
+- Resolves entity bindings (`options.binding`) at render time — `patient`/`user`/`hospital` fields auto-fill from the `contexts` prop and remain editable (an override shows a "revert" link)
 - Supports helpers such as:
   - auto age from DOB
   - auto BSA from height/weight
@@ -84,15 +85,29 @@ A typical page (for example `apps/web/app/(app)/reports/page.tsx`) follows this 
 
 This is one of the most important files for understanding report authoring UX.
 
+### Render pipeline
+
+Template rendering is a four-stage pipeline:
+
+1. **API** — `TemplateController::show` returns `meta.grouped_sections[]` (each with `kind`) and `attributes.header_config`.
+2. **View model** — `apps/web/components/template-renderer/TemplateEngine.ts` normalizes fields into a typed `TemplateViewModel`.
+3. **Render plan** — `apps/web/lib/template-renderer/renderPlan.ts` takes the view model plus a contexts bag (hospital/patient/user/report/signatory/test) and emits an ordered `RenderBlock[]`. Header priority: structured `header_config` → legacy hardcoded from hospital context → template "Header" section.
+4. **Views** — `HtmlView.tsx` and the pdf-lib renderer in `apps/web/lib/pdf.ts` both iterate the same plan. Shared style tokens in `apps/web/lib/template-renderer/schema/styleTokens.ts` keep HTML and PDF consistent.
+
+The structured header block is admin-editable via `HeaderConfigEditor.tsx` in the template builder. Bindings are whitelisted by `App\Support\EntityBindingCatalog` (PHP) mirrored by `apps/web/lib/template-renderer/schema/bindings.ts` (TS).
+
 ### Auth status in current code
 
-The header is currently wired to `auth-provider.mock` (no-op auth), while a real provider exists in `auth-provider.tsx`.
+API side: all `/api/v1` resources are behind `auth:sanctum`, with `role:admin` gating on `hospitals` and `users`. Web side: the default layout uses `auth-provider.mock.tsx` while a real `auth-provider.tsx` exists. The `ky` client reads the bearer token from `localStorage.auth` when present.
 
-That means login/logout scaffolding exists, but production auth flow is not fully wired in the default layout/header right now.
+### PDF generation and preview
 
-### PDF generation
+`apps/web/lib/pdf.ts` builds PDFs with `pdf-lib` and exposes two entry points:
 
-`apps/web/lib/pdf.ts` handles client-side PDF creation with `pdf-lib` and downloads a generated report document.
+- `renderPlanToPdfBytes(plan)` — returns a `Uint8Array`; consumed by the in-browser viewer.
+- `downloadPdfPlan(plan)` — thin "Save as" wrapper.
+
+`apps/web/components/template-renderer/PdfPreview.tsx` decodes those bytes with `pdfjs-dist` (worker loaded locally via `new Worker(new URL(..., import.meta.url))`, no CDN) and renders a viewer with prev/next page, zoom -/+/reset, text search with match counter, and a Download button.
 
 ## 4) Backend structure (`apps/api`)
 
@@ -101,9 +116,8 @@ That means login/logout scaffolding exists, but production auth flow is not full
 `apps/api/routes/api.php` defines:
 
 - `GET /api/ping` health endpoint
-- loads versioned routes from `api_v1.php`
-- explicit hospital logo upload/delete routes
-- commented auth route registration (login/logout/user)
+- login / forgot-password / reset-password under `/api/v1`
+- everything else in `/api/v1` is wrapped in `auth:sanctum`, including the `me` / `logout` endpoints and the `api_v1.php` resource group
 
 `apps/api/routes/api_v1.php` groups `Route::apiResource(...)` endpoints under `/api/v1` for:
 
@@ -112,8 +126,10 @@ That means login/logout scaffolding exists, but production auth flow is not full
 - patients
 - reports
 - tests
-- hospitals
-- users
+- hospitals (admin-only)
+- users (admin-only)
+
+Hospital sub-resources expanded via `?include=departments,installations,signatories` on the hospital show/index endpoints.
 
 ### Controller + resource response pattern
 
@@ -134,9 +150,9 @@ Core Eloquent models are in `apps/api/app/Models`.
 
 Examples:
 
-- `Report` belongs to user/hospital/patient/template/test; has many fields and measurements.
-- `Template` has many template fields and can instantiate a report with default field values.
-- `Hospital` appends computed `logo_url` and links to patients/templates/users/reports.
+- `Report` belongs to user/hospital/patient/template/test/signatory; has many fields and measurements. `signatory_id` is the signature block source of truth.
+- `Template` has many template fields; carries optional `header_config` (JSON) and `department_id`. Can instantiate a report with default field values.
+- `Hospital` holds the identity fields used by the report header (`short_name`, `parent_org_line`, `address_line_1/2`, `postal_code`, `country`, `fax`, `whatsapp_phone`, `secondary_logo_url`, `accreditation_text`, `report_footer_line`) and has many `HospitalDepartment`, `HospitalInstallation`, `HospitalSignatory`.
 
 ### Database and seeders
 

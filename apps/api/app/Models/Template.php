@@ -15,10 +15,22 @@ class Template extends Model
         'user_id',
         'test_id',
         'hospital_id',
+        'department_id',
+        'header_config',
+    ];
+
+    protected $casts = [
+        // Structured header block definition. See HeaderConfig schema on the web side.
+        'header_config' => 'array',
     ];
 
     // timestamps (created_at, updated_at)
     public $timestamps = true;
+
+    public function department()
+    {
+        return $this->belongsTo(HospitalDepartment::class, 'department_id');
+    }
 
     // relations
     public function fields()

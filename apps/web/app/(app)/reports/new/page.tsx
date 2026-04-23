@@ -4,10 +4,9 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import { getTemplate, createReport, getReport, getHospital, getPatient, getUser } from '@/lib/api';
+import { getTemplate, createReport, getHospital, getPatient, getUser } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { generateReportPdf } from '@/lib/pdf';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 function NewReportPageContent() {
@@ -100,10 +99,16 @@ function NewReportPageContent() {
         };
 
         try {
-            const created: any = await createReport(payload);
-            const detail = await getReport(created.data.id, { include: 'patient,fields' });
-            await generateReportPdf(detail);
-            router.push('/reports');
+            // Create the report and navigate to its detail view. The detail
+            // page offers HTML / PDF / Form modes; the PDF mode uses
+            // <PdfPreview/> so there's no need to auto-download here.
+            const created: { data?: { id?: string | number } } = await createReport(payload);
+            const newId = created?.data?.id;
+            if (newId) {
+                router.push(`/reports/${newId}?mode=html`);
+            } else {
+                router.push('/reports');
+            }
         } catch (e) {
             console.error(e);
             alert('Failed to save');

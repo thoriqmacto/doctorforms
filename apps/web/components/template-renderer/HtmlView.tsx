@@ -11,7 +11,15 @@ import type {
     ReportRenderPlan,
     ReportTitleBlock,
     SignatureBlock,
+    StructuredHeader,
 } from '@/lib/template-renderer/renderPlan';
+import {
+    ALIGN_HTML_CLASS,
+    FONT_SIZE_HTML_CLASS,
+    FONT_WEIGHT_HTML_CLASS,
+    IMAGE_SIZE_PX,
+    SPACING_HTML_CLASS,
+} from '@/lib/template-renderer/schema';
 
 type Props = {
     plan: ReportRenderPlan;
@@ -28,6 +36,10 @@ function isAbsoluteUrl(value: string | undefined): value is string {
 }
 
 function HospitalHeader({ block }: { block: HospitalHeaderBlock }) {
+    // Structured path — built from templates.header_config.
+    if (block.structured) return <StructuredHospitalHeader header={block.structured} />;
+
+    // Legacy path — built from hospital context alone.
     return (
         <div className="grid grid-cols-[72px_1fr_72px] items-center gap-3 border-b border-slate-500 px-2 py-2">
             <div className="flex items-center justify-start">
@@ -49,7 +61,7 @@ function HospitalHeader({ block }: { block: HospitalHeaderBlock }) {
                 {block.title ? (
                     <p className="text-[13px] font-bold uppercase leading-tight text-slate-900">{block.title}</p>
                 ) : null}
-                {block.contactLines.map((line, idx) => (
+                {(block.contactLines ?? []).map((line, idx) => (
                     <p key={idx} className="text-[8px] leading-tight text-slate-800">
                         {line}
                     </p>
@@ -67,6 +79,64 @@ function HospitalHeader({ block }: { block: HospitalHeaderBlock }) {
                         height={64}
                         unoptimized
                         className="h-16 w-16 object-contain"
+                    />
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function StructuredHospitalHeader({ header }: { header: StructuredHeader }) {
+    const leftSize = header.leftLogo ? IMAGE_SIZE_PX[header.leftLogo.size] : 64;
+    const rightSize = header.rightLogo ? IMAGE_SIZE_PX[header.rightLogo.size] : 64;
+    const borderCls = header.divider ? 'border-b border-slate-500' : '';
+
+    return (
+        <div
+            className={`grid items-center gap-3 px-2 py-2 ${borderCls}`}
+            style={{ gridTemplateColumns: `${leftSize}px 1fr ${rightSize}px` }}
+        >
+            <div className="flex items-center justify-start">
+                {header.leftLogo?.visible && isAbsoluteUrl(header.leftLogo.url) ? (
+                    <Image
+                        src={header.leftLogo.url}
+                        alt="Left logo"
+                        width={leftSize}
+                        height={leftSize}
+                        unoptimized
+                        style={{ height: leftSize, width: leftSize }}
+                        className="object-contain"
+                    />
+                ) : null}
+            </div>
+            <div className="font-['Times_New_Roman']">
+                {header.lines.map((line, idx) => (
+                    <p
+                        key={idx}
+                        className={[
+                            line.font ? FONT_SIZE_HTML_CLASS[line.font] : 'text-[10px]',
+                            line.weight ? FONT_WEIGHT_HTML_CLASS[line.weight] : 'font-normal',
+                            line.align ? ALIGN_HTML_CLASS[line.align] : 'text-center',
+                            line.marginTop ? SPACING_HTML_CLASS[line.marginTop] : '',
+                            'leading-tight text-slate-900',
+                        ]
+                            .filter(Boolean)
+                            .join(' ')}
+                    >
+                        {line.text}
+                    </p>
+                ))}
+            </div>
+            <div className="flex items-center justify-end">
+                {header.rightLogo?.visible && isAbsoluteUrl(header.rightLogo.url) ? (
+                    <Image
+                        src={header.rightLogo.url}
+                        alt="Right logo"
+                        width={rightSize}
+                        height={rightSize}
+                        unoptimized
+                        style={{ height: rightSize, width: rightSize }}
+                        className="object-contain"
                     />
                 ) : null}
             </div>
@@ -188,11 +258,22 @@ function Conclusion({ block }: { block: ConclusionBlock }) {
 }
 
 function Signature({ block }: { block: SignatureBlock }) {
-    if (!block.name && !block.subtitle) return null;
+    if (!block.name && !block.subtitle && !block.signatureImageUrl) return null;
     return (
         <section className="mt-8 break-inside-avoid px-2 text-right text-[11px]">
+            {block.signatureImageUrl && isAbsoluteUrl(block.signatureImageUrl) ? (
+                <Image
+                    src={block.signatureImageUrl}
+                    alt="Signature"
+                    width={120}
+                    height={48}
+                    unoptimized
+                    className="ml-auto h-12 w-auto object-contain"
+                />
+            ) : null}
             {block.name ? <p className="font-semibold text-slate-900">{block.name}</p> : null}
             {block.subtitle ? <p className="text-slate-700">{block.subtitle}</p> : null}
+            {block.sipNumber ? <p className="text-slate-700">SIP: {block.sipNumber}</p> : null}
         </section>
     );
 }

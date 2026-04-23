@@ -30,14 +30,18 @@ class TemplateResource extends JsonResource
             'type'       => 'templates',
             'id'         => (string) $this->id,
             'attributes' => [
-                'name'        => $this->name,
-                'description' => $this->description,
+                'name'          => $this->name,
+                'description'   => $this->description,
+                // Primary source for the report header (structured block config).
+                // Null => consumers fall back to legacy Header-section rendering.
+                'header_config' => $this->header_config,
             ],
             'relationships' => [
-                'user'     => $this->user_id     ? ['data' => ['type' => 'users', 'id' => (string) $this->user_id]]         : null,
-                'test'     => $this->test_id     ? ['data' => ['type' => 'tests', 'id' => (string) $this->test_id]]         : null,
-                'hospital' => $this->hospital_id ? ['data' => ['type' => 'hospitals', 'id' => (string) $this->hospital_id]] : null,
-                'fields'   => [
+                'user'       => $this->user_id       ? ['data' => ['type' => 'users',                'id' => (string) $this->user_id]]        : null,
+                'test'       => $this->test_id       ? ['data' => ['type' => 'tests',                'id' => (string) $this->test_id]]        : null,
+                'hospital'   => $this->hospital_id   ? ['data' => ['type' => 'hospitals',            'id' => (string) $this->hospital_id]]    : null,
+                'department' => $this->department_id ? ['data' => ['type' => 'hospital_departments', 'id' => (string) $this->department_id]]  : null,
+                'fields'     => [
                     'links' => [
                         'related' => url("/api/v1/templates/{$this->id}?include=fields"),
                     ],

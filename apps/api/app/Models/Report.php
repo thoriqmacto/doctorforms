@@ -10,6 +10,7 @@ class Report extends Model
 
     protected $fillable = [
         'user_id',
+        'signatory_id',
         'hospital_id',
         'patient_id',
         'template_id',
@@ -48,6 +49,11 @@ class Report extends Model
     public function hospital()
     {
         return $this->belongsTo(Hospital::class);
+    }
+
+    public function signatory()
+    {
+        return $this->belongsTo(HospitalSignatory::class, 'signatory_id');
     }
 
     public function fields()

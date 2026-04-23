@@ -1,6 +1,7 @@
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Field } from '@/components/form/TemplateFormRenderer';
+import type { RenderContexts } from '@/lib/template-renderer/schema';
 
 type Section = { section: string | null; items: Field[] };
 
@@ -10,6 +11,7 @@ type Props = {
     showPrintButton?: boolean;
     editHref?: string;
     viewHref?: string;
+    contexts?: RenderContexts;
 };
 
 export default function FormView({
@@ -18,6 +20,7 @@ export default function FormView({
     showPrintButton = false,
     editHref,
     viewHref,
+    contexts,
 }: Props) {
     return (
         <Card>
@@ -37,6 +40,7 @@ export default function FormView({
                     editHref={editHref}
                     viewHref={viewHref}
                     enableSectionControls
+                    contexts={contexts}
                 />
             </CardContent>
         </Card>

@@ -37,6 +37,14 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import HeaderConfigEditor, {
+  DEFAULT_HEADER_CONFIG,
+} from "@/components/template-builder/HeaderConfigEditor";
+import {
+  bindingPathsFor,
+  type Binding,
+  type HeaderConfig,
+} from "@/lib/template-renderer/schema";
 
 type TemplateFieldForm = {
   field_id?: string;
@@ -58,27 +66,28 @@ type TemplateFieldForm = {
   measurement_category: string;
 };
 
-const PATIENT_ATTRIBUTE_OPTIONS = [
-  "patients.name",
-  "patients.age",
-  "patients.dob",
-  "patients.dos",
-  "patients.gender",
-  "patients.mrn",
-  "patients.height_cm",
-  "patients.weight_kg",
-  "patients.bsa",
-  "patients.blood_pressure",
-  "patients.referring_physician",
-  "patients.diagnosis_brief",
-];
+/*
+ * Legacy "patients.xxx" / "users.xxx" attribute strings are replaced by the
+ * typed binding catalog in lib/template-renderer/schema. These helpers build
+ * dropdown values that look the same to the admin but emit options.binding
+ * on save.
+ */
+const PATIENT_ATTRIBUTE_OPTIONS = bindingPathsFor("patient").map(
+  (p) => `patients.${p}`,
+);
+const USER_ATTRIBUTE_OPTIONS = bindingPathsFor("user").map(
+  (p) => `users.${p}`,
+);
 
-const USER_ATTRIBUTE_OPTIONS = [
-  "users.name",
-  "users.email",
-  "users.phone",
-  "users.position_title",
-];
+function bindingPathFromLegacyDefault(
+  source: "patient" | "user",
+  legacy: string,
+): string | null {
+  const prefix = source === "patient" ? "patients." : "users.";
+  if (!legacy.startsWith(prefix)) return null;
+  const path = legacy.slice(prefix.length);
+  return bindingPathsFor(source).includes(path) ? path : null;
+}
 
 type EditTemplateFormValues = {
   name: string;
@@ -86,6 +95,7 @@ type EditTemplateFormValues = {
   user_id: string;
   test_id: string;
   hospital_id: string;
+  header_config: HeaderConfig | null;
   fields: TemplateFieldForm[];
 };
 
@@ -266,6 +276,7 @@ export default function EditTemplatePage() {
       user_id: "",
       test_id: "",
       hospital_id: "",
+      header_config: null,
       fields: [],
     },
   });
@@ -477,23 +488,54 @@ export default function EditTemplatePage() {
         .flatMap((g: any) =>
           (g.items ?? []).map((f: any) => {
             const options = normalizeOptions(f.attributes?.options);
+            const fieldType = f.attributes?.type;
+
+            // For patient/user fields, prefer the structured binding.path
+            // and surface it via the legacy "patients.xxx" / "users.xxx"
+            // string so the existing dropdown keeps working unchanged.
+            let defaultValue: string =
+              fieldType === "image"
+                ? resolveApiAssetUrl(options.default)
+                : options.default;
+            const rawOptions = f.attributes?.options;
+            const bindingRaw =
+              rawOptions &&
+              typeof rawOptions === "object" &&
+              !Array.isArray(rawOptions)
+                ? (rawOptions as Record<string, unknown>).binding
+                : undefined;
+            const binding =
+              bindingRaw &&
+              typeof bindingRaw === "object" &&
+              !Array.isArray(bindingRaw)
+                ? (bindingRaw as { source?: string; path?: string })
+                : null;
+            if (
+              (fieldType === "patient" || fieldType === "user") &&
+              binding &&
+              binding.source === fieldType &&
+              typeof binding.path === "string"
+            ) {
+              defaultValue =
+                fieldType === "patient"
+                  ? `patients.${binding.path}`
+                  : `users.${binding.path}`;
+            }
+
             return {
               field_id: String(f.id),
               section: f.attributes?.section ?? g.section ?? "General",
               label: f.attributes?.label ?? "",
               type:
-                f.attributes?.type === "checkbox_group"
+                fieldType === "checkbox_group"
                   ? "checkbox"
-                  : f.attributes?.type === "textarea" &&
+                  : fieldType === "textarea" &&
                       options.textarea_mode === "result"
                     ? "textarea_result"
-                    : f.attributes?.type === "textarea"
+                    : fieldType === "textarea"
                       ? "textarea_free"
-                  : (f.attributes?.type ?? "text"),
-              default_value:
-                f.attributes?.type === "image"
-                  ? resolveApiAssetUrl(options.default)
-                  : options.default,
+                  : (fieldType ?? "text"),
+              default_value: defaultValue,
               required: options.required,
               static: options.static,
               order: f.attributes?.order ?? 0,
@@ -525,6 +567,9 @@ export default function EditTemplatePage() {
         hospital_id: rels?.hospital?.data?.id
           ? String(rels.hospital.data.id)
           : "",
+        // a.header_config is a plain JSON object from the API. Null preserves
+        // the back-compat fallback (legacy "Header" section is rendered).
+        header_config: (a.header_config ?? null) as HeaderConfig | null,
         fields: existing,
       });
     },
@@ -597,6 +642,11 @@ export default function EditTemplatePage() {
         user_id: Number(values.user_id),
         test_id: Number(values.test_id),
         hospital_id: Number(values.hospital_id),
+        // header_config is the new primary source. Sending null keeps
+        // the legacy "Header" section as the render fallback.
+        header_config: values.header_config as unknown as
+          | Record<string, unknown>
+          | null,
       });
 
       if (values.fields?.length) {
@@ -618,14 +668,21 @@ export default function EditTemplatePage() {
               if (f.default_value) {
                 baseOptions.default = f.default_value;
               }
-            } else if (f.type === "patient") {
-              if (f.default_value) {
-                baseOptions.default = f.default_value;
-              }
-            } else if (f.type === "user") {
-              baseOptions.values = USER_ATTRIBUTE_OPTIONS;
-              if (f.default_value) {
-                baseOptions.default = f.default_value;
+            } else if (f.type === "patient" || f.type === "user") {
+              // Emit options.binding so the backend validator and the
+              // frontend resolver (schema/bindings.ts) both see a
+              // structured reference instead of a free-text attribute
+              // string. The path comes from the "patients.xxx"/"users.xxx"
+              // dropdown value we keep in default_value for UI purposes.
+              const resolved = bindingPathFromLegacyDefault(
+                f.type,
+                f.default_value ?? "",
+              );
+              if (resolved) {
+                baseOptions.binding = {
+                  source: f.type,
+                  path: resolved,
+                } as Binding;
               }
             } else if (f.type === "measurement") {
               baseOptions.default = f.default_value;
@@ -1046,6 +1103,53 @@ export default function EditTemplatePage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/*
+                Header Block editor — writes to templates.header_config.
+                When left at the default (not edited), value is whatever
+                the API returned (null or a prior config). Null keeps the
+                legacy static "Header" section as the render fallback.
+              */}
+              <HeaderConfigEditor
+                value={form.watch("header_config")}
+                onChange={(next) =>
+                  form.setValue("header_config", next, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                  })
+                }
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    form.setValue("header_config", null, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    })
+                  }
+                  disabled={!form.watch("header_config")}
+                >
+                  Clear header (use legacy Header section)
+                </Button>
+                {!form.watch("header_config") ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      form.setValue("header_config", DEFAULT_HEADER_CONFIG, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      })
+                    }
+                  >
+                    Initialize from default
+                  </Button>
+                ) : null}
+              </div>
 
               <div className="space-y-4">
                 {groupedFields.map((group) => {

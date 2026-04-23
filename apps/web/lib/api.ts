@@ -158,6 +158,9 @@ export interface TemplatePayload {
     user_id: number;
     test_id: number;
     hospital_id: number;
+    department_id?: number | null;
+    /** Structured header block definition. Null to clear. */
+    header_config?: Record<string, unknown> | null;
 }
 
 export interface TemplateFieldPayload {
@@ -255,6 +258,12 @@ export const logout = () => api.post('logout').json<any>();
 
 export default api;
 
+
+// Hospital signatories — signature block source of truth.
+export const getHospitalSignatories = (hospitalId: string | number) =>
+    api.get(`hospitals/${hospitalId}`, {
+        searchParams: { include: 'signatories' },
+    }).json<any>();
 
 export const uploadTemplateFieldImage = (file: File) => {
     const formData = new FormData();

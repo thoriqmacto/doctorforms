@@ -4,8 +4,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { getReport, getTemplate, updateReport } from '@/lib/api';
+import { getHospital, getPatient, getReport, getTemplate, getUser, updateReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
+import type { RenderContexts } from '@/lib/template-renderer/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { buildReportModeHref } from '@/lib/reportViewModes';
@@ -31,6 +32,37 @@ export default function EditReportPage() {
     const report = reportRes?.data;
     const title = report?.attributes?.title ?? `Report #${id}`;
     const templateId = report?.relationships?.template?.data?.id;
+    const patientId = report?.relationships?.patient?.data?.id;
+    const hospitalId = report?.relationships?.hospital?.data?.id;
+    const userId = report?.relationships?.user?.data?.id;
+
+    const { data: patientRes } = useSWR(
+        patientId ? ['/patients', patientId] : null,
+        () => getPatient(patientId as string),
+        swrOpts
+    );
+    const { data: hospitalRes } = useSWR(
+        hospitalId ? ['/hospitals', hospitalId] : null,
+        () => getHospital(hospitalId as string),
+        swrOpts
+    );
+    const { data: userRes } = useSWR(
+        userId ? ['/users', userId] : null,
+        () => getUser(userId as string),
+        swrOpts
+    );
+
+    const contexts: RenderContexts = {
+        hospital: hospitalRes?.data?.attributes,
+        patient: patientRes?.data?.attributes,
+        user: userRes?.data?.attributes,
+        report: {
+            title: report?.attributes?.title,
+            operator: report?.attributes?.operator,
+            supervisor: report?.attributes?.supervisor,
+            device: report?.attributes?.device,
+        },
+    };
 
     const { data: templateRes, mutate: mutateTemplate } = useSWR(
         templateId ? ['/templates', templateId] : null,
@@ -186,6 +218,7 @@ export default function EditReportPage() {
                                 warnOnLeaveWithUnsavedChanges
                                 autosaveDraftKey={`report-edit-draft:${id}`}
                                 showPrintButton={false}
+                                contexts={contexts}
                                 viewLinks={[
                                     { href: buildReportModeHref(id, 'html'), label: 'View HTML' },
                                     { href: buildReportModeHref(id, 'pdf'), label: 'View PDF' },

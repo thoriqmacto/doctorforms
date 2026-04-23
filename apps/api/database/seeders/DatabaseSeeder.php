@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             UsersTableSeeder::class,
             HospitalsTableSeeder::class,
             HospitalUserTableSeeder::class,
+            HospitalStructureSeeder::class,
             PatientsTableSeeder::class,
             TestsTableSeeder::class,
             TemplatesTableSeeder::class,

@@ -61,11 +61,15 @@ class TemplateController extends Controller
     public function store(Request $request)
     {
         $v = Validator::make($request->all(), [
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'user_id'     => ['required', 'exists:users,id'],
-            'test_id'     => ['required', 'exists:tests,id'],
-            'hospital_id' => ['required', 'exists:hospitals,id'],
+            'name'          => ['required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string'],
+            'user_id'       => ['required', 'exists:users,id'],
+            'test_id'       => ['required', 'exists:tests,id'],
+            'hospital_id'   => ['required', 'exists:hospitals,id'],
+            'department_id' => ['sometimes', 'nullable', 'exists:hospital_departments,id'],
+            // header_config is the structured primary source for the report header.
+            // Legacy templates without it fall back to the hardcoded buildHospitalHeader.
+            'header_config' => ['sometimes', 'nullable', 'array'],
         ]);
 
         if ($v->fails()) {
@@ -84,11 +88,13 @@ class TemplateController extends Controller
     public function update(Request $request, Template $template)
     {
         $v = Validator::make($request->all(), [
-            'name'        => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'nullable', 'string'],
-            'user_id'     => ['sometimes', 'exists:users,id'],
-            'test_id'     => ['sometimes', 'exists:tests,id'],
-            'hospital_id' => ['sometimes', 'exists:hospitals,id'],
+            'name'          => ['sometimes', 'string', 'max:255'],
+            'description'   => ['sometimes', 'nullable', 'string'],
+            'user_id'       => ['sometimes', 'exists:users,id'],
+            'test_id'       => ['sometimes', 'exists:tests,id'],
+            'hospital_id'   => ['sometimes', 'exists:hospitals,id'],
+            'department_id' => ['sometimes', 'nullable', 'exists:hospital_departments,id'],
+            'header_config' => ['sometimes', 'nullable', 'array'],
         ]);
 
         if ($v->fails()) {

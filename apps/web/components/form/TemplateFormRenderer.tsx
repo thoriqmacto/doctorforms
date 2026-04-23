@@ -22,6 +22,11 @@ import {
     makeDefaultBullseye,
     type BullseyeValue,
 } from "@/components/form/BullseyeWallMotion";
+import {
+    parseFieldOptions,
+    resolveBinding,
+    type RenderContexts,
+} from "@/lib/template-renderer/schema";
 
 export type Field = {
     id: string;
@@ -74,6 +79,13 @@ type Props = {
     warnOnLeaveWithUnsavedChanges?: boolean;
     autosaveDraftKey?: string;
     autosaveIntervalMs?: number;
+    /**
+     * Entity contexts for resolving options.binding on bound fields
+     * (patient/user/hospital/...). When a field carries a binding, its
+     * rendered value is resolved from these contexts rather than report
+     * storage. See lib/template-renderer/schema/bindings.ts.
+     */
+    contexts?: RenderContexts;
 };
 
 type FieldOptionMeta = {
@@ -256,6 +268,7 @@ export default function TemplateFormRenderer({
     warnOnLeaveWithUnsavedChanges = false,
     autosaveDraftKey,
     autosaveIntervalMs = 15000,
+    contexts,
 }: Props) {
     const schema = useMemo(() => {
         const baseShape: Record<string, z.ZodTypeAny> = {};
@@ -596,7 +609,60 @@ export default function TemplateFormRenderer({
             );
         }
 
-        if (t === "select" || t === "patient" || t === "user") {
+        if (t === "patient" || t === "user") {
+            // Bound field path:
+            //   - template_fields.options.binding.{source,path} → entity value
+            //   - we pre-fill the input with the resolved value
+            //   - input stays editable so doctors can override when necessary
+            //     (per plan priority: editable where practical)
+            const parsed = parseFieldOptions(f.attributes.options);
+            const resolved = contexts
+                ? resolveBinding(parsed.binding, contexts)
+                : undefined;
+
+            return (
+                <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
+                    <Label htmlFor={fieldInputId}>{fieldLabel}</Label>
+                    <Controller
+                        control={control}
+                        name={name}
+                        render={({ field }) => {
+                            const currentValue = (field.value as string | undefined) ?? "";
+                            const displayValue = currentValue || resolved || "";
+                            return (
+                                <>
+                                    <Input
+                                        id={fieldInputId}
+                                        type="text"
+                                        value={displayValue}
+                                        onChange={(e) => field.onChange(e.target.value)}
+                                        placeholder={resolved ?? ""}
+                                    />
+                                    {resolved && currentValue && currentValue !== resolved ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Overridden — default is “{resolved}”.{" "}
+                                            <button
+                                                type="button"
+                                                className="underline"
+                                                onClick={() => field.onChange("")}
+                                            >
+                                                revert
+                                            </button>
+                                        </p>
+                                    ) : parsed.binding ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Auto-filled from {parsed.binding.source === "literal" ? "literal" : `${parsed.binding.source}.${parsed.binding.path}`}
+                                        </p>
+                                    ) : null}
+                                </>
+                            );
+                        }}
+                    />
+                </div>
+            );
+        }
+
+        if (t === "select") {
             const selectOptions = optionList(f.attributes.options);
             return (
                 <div key={name} className={fullWidth ? "space-y-1 col-span-full" : "space-y-1"}>
@@ -608,7 +674,7 @@ export default function TemplateFormRenderer({
                         render={({ field }) => (
                             <Select onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
                                 <SelectTrigger id={fieldInputId} aria-label={label}>
-                                    <SelectValue placeholder={t === "patient" || t === "user" ? "Select attribute" : "Select"} />
+                                    <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {selectOptions.map((opt) => (
