@@ -152,6 +152,69 @@ it('classifies grouped_sections with a stable kind used by the render plan', fun
         ->and($kindByName['Study Info'])->toBe('general');
 });
 
+it('round-trips header_config through create, show, and update', function () {
+    $user = User::create(['name' => 'User', 'email' => 'hc@example.com', 'password' => 'secret']);
+    $test = Test::create(['code' => 'T1', 'name' => 'Test', 'type' => 'blood']);
+    $hospital = Hospital::create(['name' => 'General Hospital', 'address' => '123 Street']);
+
+    $headerConfig = [
+        'layout' => 'three-col',
+        'logo' => [
+            'left' => [
+                'binding' => ['source' => 'hospital', 'path' => 'logo_url'],
+                'size' => 'lg',
+                'visible' => true,
+            ],
+            'right' => [
+                'binding' => ['source' => 'hospital', 'path' => 'secondary_logo_url'],
+                'size' => 'lg',
+                'visible' => false,
+            ],
+        ],
+        'lines' => [
+            [
+                'binding' => ['source' => 'hospital', 'path' => 'name'],
+                'font' => 'lg',
+                'weight' => 'bold',
+                'align' => 'center',
+                'uppercase' => true,
+            ],
+            [
+                'literal' => 'Transthoracic Echocardiography Report',
+                'font' => 'md',
+                'weight' => 'bold',
+                'align' => 'center',
+            ],
+        ],
+        'divider' => ['visible' => true, 'thicknessPt' => 0.75],
+    ];
+
+    $create = $this->postJson('/api/v1/templates', [
+        'name' => 'With Header',
+        'description' => 'Desc',
+        'user_id' => $user->id,
+        'test_id' => $test->id,
+        'hospital_id' => $hospital->id,
+        'header_config' => $headerConfig,
+    ]);
+
+    $create->assertStatus(201)
+        ->assertJsonPath('data.attributes.header_config.layout', 'three-col')
+        ->assertJsonPath('data.attributes.header_config.lines.0.binding.path', 'name');
+
+    $templateId = $create->json('data.id');
+
+    $this->getJson("/api/v1/templates/{$templateId}")
+        ->assertStatus(200)
+        ->assertJsonPath('data.attributes.header_config.lines.1.literal', 'Transthoracic Echocardiography Report');
+
+    // Clear it — legacy fallback kicks in.
+    $this->patchJson("/api/v1/templates/{$templateId}", [
+        'header_config' => null,
+    ])->assertStatus(200)
+        ->assertJsonPath('data.attributes.header_config', null);
+});
+
 it('returns conflict when deleting a template with related reports', function () {
     $user = User::create(['name' => 'User', 'email' => 'user@example.com', 'password' => 'secret']);
     $test = Test::create(['code' => 'T1', 'name' => 'Test', 'type' => 'blood']);

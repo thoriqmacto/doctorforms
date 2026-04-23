@@ -19,7 +19,8 @@ DoctorForms helps clinicians and staff:
   - dynamic template answers
   - measurements (name/value/unit/category)
 - Upload and manage **hospital logos** for branding.
-- Generate a downloadable report PDF from report data in the web app.
+- Preview the report PDF in-browser (page navigation / zoom / text search) and download when ready.
+- Structured hospital **header block** (`header_config`) so admins configure letterhead once per template; entity bindings (`options.binding`) auto-fill patient/user/hospital fields at render time.
 
 ---
 
@@ -50,12 +51,14 @@ DoctorForms helps clinicians and staff:
 - Reusable table/card UI with shadcn components.
 - Data fetching via **SWR** and API client built with **ky**.
 - Dynamic form renderer supporting multiple field types:
-  - `text`, `number`, `select`, `textarea`, `title`, `image`, `date`, `checkbox_group`, `bullseye`
+  - `text`, `number`, `select`, `textarea`, `title`, `image`, `date`, `checkbox_group`, `bullseye`, `patient`, `user`, `measurement`
+- Entity-bound fields (`options.binding`) auto-resolve against hospital / patient / user / report / signatory contexts; doctors can still override in the form.
+- Structured header block editor for templates (logos, lines, font / weight / alignment / margin tokens).
 - Form helpers in report entry flow:
   - age auto-calc from DOB
   - BSA auto-calc from height/weight
   - auto-composed textarea summaries by field group
-- Client-side PDF generation (`pdf-lib`) for report download.
+- Client-side PDF generation (`pdf-lib`) + in-browser PDF viewer (`pdfjs-dist`) with page nav, zoom, and text search.
 - Hospital logo upload component integrated to API endpoint.
 - Auth context scaffolding exists; current header uses mock auth provider by default.
 
@@ -249,8 +252,8 @@ This gives you immediately usable data for exercising list/detail workflows in t
 ## Notes and current limitations
 
 - Frontend auth UI currently uses a mock auth provider in the header; real auth provider remains available but not wired into layout by default.
-- API auth routes for login/logout are present in codebase but commented out in route registration.
-- PDF export currently generates a simple downloadable report document from loaded report data.
+- API side all `/api/v1` resources are gated by `auth:sanctum`, with `role:admin` on hospitals and users.
+- Reports detail `?mode=pdf` is an in-browser preview (`pdfjs-dist` over `pdf-lib` bytes) with page nav, zoom, and text search; "Download PDF" is still one click.
 
 ---
 
@@ -265,6 +268,7 @@ This gives you immediately usable data for exercising list/detail workflows in t
 - SWR
 - react-hook-form + zod
 - pdf-lib
+- pdfjs-dist
 
 ### API
 

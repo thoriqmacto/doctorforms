@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Hospital;
+use App\Models\HospitalDepartment;
+use App\Models\HospitalSignatory;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
@@ -81,4 +83,52 @@ it('deletes a hospital', function () {
 
     $response->assertStatus(200);
     expect(Hospital::find($hospital->id))->toBeNull();
+});
+
+it('persists and returns the expanded report-identity fields', function () {
+    $response = $this->postJson('/api/v1/hospitals', [
+        'name' => 'RSUD Soedarso',
+        'short_name' => 'RSUD Soedarso',
+        'parent_org_line' => 'PEMERINTAH PROVINSI KALIMANTAN BARAT',
+        'address' => 'Jl. dr. Soedarso No. 1',
+        'address_line_1' => 'Jl. dr. Soedarso No. 1',
+        'postal_code' => '78124',
+        'country' => 'Indonesia',
+        'fax' => '(0561) 736528',
+        'whatsapp_phone' => '085294445252',
+        'city' => 'Pontianak',
+        'province' => 'Kalimantan Barat',
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.attributes.short_name', 'RSUD Soedarso')
+        ->assertJsonPath('data.attributes.parent_org_line', 'PEMERINTAH PROVINSI KALIMANTAN BARAT')
+        ->assertJsonPath('data.attributes.postal_code', '78124')
+        ->assertJsonPath('data.attributes.fax', '(0561) 736528')
+        ->assertJsonPath('data.attributes.whatsapp_phone', '085294445252');
+});
+
+it('includes departments and signatories when requested', function () {
+    $hospital = Hospital::create([
+        'name' => 'RSUD Soedarso',
+        'address' => 'Jl. dr. Soedarso No. 1',
+    ]);
+    HospitalDepartment::create([
+        'hospital_id' => $hospital->id,
+        'name' => 'Poliklinik Jantung',
+        'code' => 'CARDIO',
+        'active' => true,
+    ]);
+    HospitalSignatory::create([
+        'hospital_id' => $hospital->id,
+        'name' => 'dr. Andi Cardio, Sp.JP',
+        'position_title' => 'Spesialis Jantung',
+        'active' => true,
+    ]);
+
+    $response = $this->getJson('/api/v1/hospitals/'.$hospital->id.'?include=departments,signatories');
+
+    $response->assertStatus(200)
+        ->assertJsonPath('data.relationships.departments.data.0.attributes.name', 'Poliklinik Jantung')
+        ->assertJsonPath('data.relationships.signatories.data.0.attributes.name', 'dr. Andi Cardio, Sp.JP');
 });
