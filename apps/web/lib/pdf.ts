@@ -721,7 +721,12 @@ async function drawBlock(ctx: Ctx, block: RenderBlock): Promise<void> {
     }
 }
 
-export async function generateTemplatePdf(plan: ReportRenderPlan): Promise<void> {
+/**
+ * Render a plan to PDF bytes without touching the DOM. The bytes can be
+ * fed to <PdfPreview/> for an in-browser viewer or handed to
+ * {@link downloadPdfPlan} for the classic download flow.
+ */
+export async function renderPlanToPdfBytes(plan: ReportRenderPlan): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
     const fonts: Fonts = {
         regular: await doc.embedFont(StandardFonts.TimesRoman),
@@ -749,7 +754,16 @@ export async function generateTemplatePdf(plan: ReportRenderPlan): Promise<void>
         await drawBlock(ctx, block);
     }
 
-    const bytes = await doc.save();
+    return doc.save();
+}
+
+/**
+ * Download flow — kept for callers that explicitly want "Save as".
+ * Most UIs should use <PdfPreview/> instead so the file is shown in-browser
+ * first and the download is an optional second step.
+ */
+export async function downloadPdfPlan(plan: ReportRenderPlan): Promise<void> {
+    const bytes = await renderPlanToPdfBytes(plan);
     const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
 
@@ -759,3 +773,9 @@ export async function generateTemplatePdf(plan: ReportRenderPlan): Promise<void>
     anchor.click();
     URL.revokeObjectURL(url);
 }
+
+/**
+ * @deprecated Use {@link downloadPdfPlan} or {@link renderPlanToPdfBytes}.
+ * Kept as an alias so older imports keep working during the Phase 5 rollout.
+ */
+export const generateTemplatePdf = downloadPdfPlan;
