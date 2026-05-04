@@ -53,7 +53,10 @@ function LoginForm() {
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <div className="flex items-center justify-between">
               <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</Button>
-              <Link href="/forgot-password" className="text-sm text-primary underline-offset-4 hover:underline">Forgot password?</Link>
+              <div className="flex items-center gap-3 text-sm">
+                <Link href="/" className="text-primary underline-offset-4 hover:underline">Back to homepage</Link>
+                <Link href="/forgot-password" className="text-primary underline-offset-4 hover:underline">Forgot password?</Link>
+              </div>
             </div>
           </form>
         </CardContent>

@@ -19,7 +19,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <DashboardTextareaFocusTestCard />
     </div>
   )
 }

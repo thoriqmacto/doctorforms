@@ -9,7 +9,7 @@ export default function LandingPage() {
         <CardHeader>
           <CardTitle>DoctorForms</CardTitle>
           <CardDescription>
-            Smart medical form workflows with role-based access and Sanctum bearer token authentication.
+            Smart medical form workflows with role-based access.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
