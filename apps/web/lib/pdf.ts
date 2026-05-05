@@ -94,25 +94,47 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 
 async function embedLogo(doc: PDFDocument, url?: string): Promise<PDFImage | null> {
     if (!url) return null;
+
+    const proxiedUrl = `/api/pdf-image-proxy?url=${encodeURIComponent(url)}`;
+
     try {
-        const response = await fetch(url);
-        if (!response.ok) return null;
+        const response = await fetch(proxiedUrl);
+        if (!response.ok) {
+            console.error('PDF logo proxy request failed', {
+                status: response.status,
+                logoUrl: url,
+                proxyUrl: proxiedUrl,
+            });
+            return null;
+        }
+
         const buffer = await response.arrayBuffer();
-        const type = response.headers.get('content-type') ?? '';
+        const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
         const bytes = new Uint8Array(buffer);
-        if (type.includes('png') || url.toLowerCase().endsWith('.png')) {
-            return doc.embedPng(bytes);
-        }
-        if (type.includes('jpeg') || type.includes('jpg') || /\.(jpe?g)$/i.test(url)) {
-            return doc.embedJpg(bytes);
-        }
-        // Try PNG then JPG as fallbacks.
+
         try {
-            return await doc.embedPng(bytes);
-        } catch {
-            return await doc.embedJpg(bytes);
+            if (contentType.includes('png')) {
+                return await doc.embedPng(bytes);
+            }
+            if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+                return await doc.embedJpg(bytes);
+            }
+        } catch (error) {
+            console.error('PDF logo embedding failed', { error, logoUrl: url, contentType });
+            return null;
         }
-    } catch {
+
+        console.error('PDF logo content type is unsupported', {
+            logoUrl: url,
+            contentType,
+        });
+        return null;
+    } catch (error) {
+        console.error('PDF logo proxy fetch crashed', {
+            error,
+            logoUrl: url,
+            proxyUrl: proxiedUrl,
+        });
         return null;
     }
 }
