@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useParams, useSearchParams } from 'next/navigation';
-import { getTemplate } from '@/lib/api';
+import { getHospital, getTemplate } from '@/lib/api';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,9 +73,16 @@ function TemplateViewPageContent() {
         }
     }
 
-    const hospitalAttrs = included.find(
+    const { data: hospitalRes } = useSWR(
+        hospitalId ? ['/hospitals', hospitalId] : null,
+        () => getHospital(hospitalId as string).then((r: any) => r)
+    );
+
+    const includedHospitalAttrs = included.find(
         (item: any) => item.type === 'hospitals' && String(item.id) === String(hospitalId)
     )?.attributes;
+
+    const hospitalAttrs = hospitalRes?.data?.attributes ?? includedHospitalAttrs;
 
     const headerConfig = (tpl?.attributes?.header_config ?? null) as HeaderConfig | null;
     const previewOperator = userAttrs
@@ -133,6 +140,10 @@ function TemplateViewPageContent() {
         testName: testTypeName || mockPreviewTest.name,
     });
 
+    const isHospitalLoading = Boolean(hospitalId) && !hospitalRes;
+
+    const shouldShowHospitalWarning = !isHospitalLoading && (!hospitalId || !hospitalAttrs);
+
     const pageInfo = page
         ? `${page.size} · ${Number(page.width_mm / 10).toFixed(1)}cm × ${Number(page.height_mm / 10).toFixed(1)}cm`
         : 'Page info unavailable';
@@ -186,10 +197,16 @@ function TemplateViewPageContent() {
                     </p>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? (
+                    {isLoading || isHospitalLoading ? (
                         'Loading…'
                     ) : (
                         <div className="space-y-4">
+                            {shouldShowHospitalWarning && (
+                                <p className="text-sm text-muted-foreground">
+                                    Hospital data is not available for this template, so the preview header may be
+                                    incomplete.
+                                </p>
+                            )}
                             {mode === 'html' && <HtmlView plan={plan} />}
                             {mode === 'pdf' && <PdfView plan={plan} />}
                             {mode === 'form' && <FormView groupedSections={grouped} />}
