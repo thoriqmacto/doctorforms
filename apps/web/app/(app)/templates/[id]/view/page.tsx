@@ -18,6 +18,13 @@ import HtmlView from '@/components/template-renderer/HtmlView';
 import FormView from '@/components/template-renderer/FormView';
 import PdfView from '@/components/template-renderer/PdfView';
 import { createTemplateViewModel } from '@/components/template-renderer/TemplateEngine';
+import {
+    mockPreviewOperator,
+    mockPreviewPatient,
+    mockPreviewReport,
+    mockPreviewSignatory,
+    mockPreviewTest,
+} from '@/lib/template-renderer/mockPreviewContext';
 import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
 import type { HeaderConfig } from '@/lib/template-renderer/schema';
 
@@ -49,10 +56,14 @@ function TemplateViewPageContent() {
     const testId = tpl?.relationships?.test?.data?.id;
     const hospitalId = tpl?.relationships?.hospital?.data?.id;
 
-    const userName =
-        included.find((item: any) => item.type === 'users' && String(item.id) === String(userId))?.attributes?.name ?? '';
-    const testTypeName =
-        included.find((item: any) => item.type === 'tests' && String(item.id) === String(testId))?.attributes?.name ?? '';
+    const userAttrs = included.find(
+        (item: any) => item.type === 'users' && String(item.id) === String(userId)
+    )?.attributes;
+    const testAttrs = included.find(
+        (item: any) => item.type === 'tests' && String(item.id) === String(testId)
+    )?.attributes;
+    const userName = userAttrs?.name ?? '';
+    const testTypeName = testAttrs?.name ?? '';
 
     const viewModel = createTemplateViewModel(grouped, name);
     const sectionKinds: Record<string, SectionKind> = {};
@@ -67,6 +78,25 @@ function TemplateViewPageContent() {
     )?.attributes;
 
     const headerConfig = (tpl?.attributes?.header_config ?? null) as HeaderConfig | null;
+    const previewOperator = userAttrs
+        ? {
+              name: userAttrs.name,
+              email: userAttrs.email,
+              phone: userAttrs.phone,
+              position_title: userAttrs.position_title,
+          }
+        : mockPreviewOperator;
+    const previewReport = {
+        ...mockPreviewReport,
+        title: name,
+        operator: userName || mockPreviewReport.operator,
+    };
+    const previewTest = testTypeName
+        ? {
+              ...mockPreviewTest,
+              name: testTypeName,
+          }
+        : mockPreviewTest;
 
     const plan = buildReportRenderPlan({
         viewModel,
@@ -95,8 +125,12 @@ function TemplateViewPageContent() {
               }
             : undefined,
         headerConfig,
-        testName: testTypeName,
-        operator: userName ? { name: userName } : undefined,
+        patient: mockPreviewPatient,
+        report: previewReport,
+        operator: previewOperator,
+        signatory: mockPreviewSignatory,
+        test: previewTest,
+        testName: testTypeName || mockPreviewTest.name,
     });
 
     const pageInfo = page
@@ -147,6 +181,9 @@ function TemplateViewPageContent() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base font-medium text-muted-foreground">{pageInfo}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        Preview uses sample patient/report data. Hospital data is from the associated template hospital.
+                    </p>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
