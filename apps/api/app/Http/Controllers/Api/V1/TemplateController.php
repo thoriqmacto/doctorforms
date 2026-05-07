@@ -48,10 +48,19 @@ class TemplateController extends Controller
     // GET /api/v1/templates/{template}
     public function show(Request $request, Template $template)
     {
-        $includeFields = str_contains((string) $request->query('include'), 'fields');
+        $include = collect(explode(',', (string) $request->query('include')))
+            ->map(fn ($item) => trim($item))
+            ->filter();
 
-        if ($includeFields) {
-            $template->load('fields');
+        $allowedIncludes = ['fields', 'user', 'test', 'hospital', 'department'];
+
+        $relations = $include
+            ->intersect($allowedIncludes)
+            ->values()
+            ->all();
+
+        if (!empty($relations)) {
+            $template->load($relations);
         }
 
         return new TemplateResource($template);
