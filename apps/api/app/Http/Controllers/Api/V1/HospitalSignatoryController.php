@@ -77,7 +77,7 @@ class HospitalSignatoryController extends Controller
     private function validatedPayload(Request $request, bool $required): array
     {
         $rules = [
-            'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
+            'user_id' => $required ? ['required', 'exists:users,id'] : ['sometimes', 'required', 'exists:users,id'],
             'name' => [$required ? 'required' : 'sometimes', 'string', 'max:255'],
             'position_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'sip_number' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -85,7 +85,7 @@ class HospitalSignatoryController extends Controller
         ];
 
         $validator = Validator::make($request->all(), $rules);
-        $validator->after(function (ValidationValidator $validator) use ($request) {
+        $validator->after(function (ValidationValidator $validator) use ($request, $required) {
             $userId = $request->input('user_id');
             if (!$userId) {
                 return;
@@ -95,6 +95,17 @@ class HospitalSignatoryController extends Controller
             if ($user && $user->role !== 'doctor') {
                 $validator->errors()->add('user_id', 'Selected user must have doctor role.');
             }
+            if ($required && $userId) {
+                $duplicate = HospitalSignatory::query()
+                    ->where('hospital_id', $request->route('hospital')->id)
+                    ->where('user_id', $userId)
+                    ->exists();
+
+                if ($duplicate) {
+                    $validator->errors()->add('user_id', 'This doctor already has a signatory record for this hospital.');
+                }
+            }
+
         });
         $validator->validate();
 

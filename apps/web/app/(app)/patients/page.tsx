@@ -83,8 +83,9 @@ export default function PatientsPage() {
                             <TableHeader className="bg-muted/40">
                                 <TableRow className="border-b">
                                     <TableHead className="w-20">ID</TableHead>
-                                    <TableHead>Name</TableHead>
                                     <TableHead>MRN</TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Gender / Age</TableHead>
                                     <TableHead>Hospital</TableHead>
                                     <TableHead>Reports</TableHead>
                                     <TableHead className="text-right w-60">Actions</TableHead>
@@ -104,12 +105,9 @@ export default function PatientsPage() {
                                     return (
                                         <TableRow key={p.id} className="border-b hover:bg-muted/30">
                                             <TableCell>{p.id}</TableCell>
-                                            <TableCell>
-                                                {p.attributes?.name ??
-                                                    p.attributes?.values?.patient_name ??
-                                                    '-'}
-                                            </TableCell>
                                             <TableCell>{p.attributes?.mrn ?? '-'}</TableCell>
+                                            <TableCell>{p.attributes?.name ?? '-'}</TableCell>
+                                            <TableCell>{p.attributes?.gender ?? '-'} / {p.attributes?.age ?? '-'}</TableCell>
                                             <TableCell>{hospitalName}</TableCell>
                                             <TableCell>
                                                 {patientReports.length > 0 ? (
