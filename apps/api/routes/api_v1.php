@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\HospitalController;
 use App\Http\Controllers\Api\V1\HospitalLogoController;
 use App\Http\Controllers\Api\V1\PatientController;
@@ -24,3 +25,7 @@ Route::delete('hospitals/{hospital}/logo', [HospitalLogoController::class, 'dest
 
 Route::post('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'storeSecondary'])->middleware('role:admin');
 Route::delete('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'destroySecondary'])->middleware('role:admin');
+
+Route::post('feedback', [FeedbackController::class, 'store']);
+Route::get('feedback', [FeedbackController::class, 'index'])->middleware('role:admin');
+Route::patch('feedback/{feedbackMessage}', [FeedbackController::class, 'update'])->middleware('role:admin');
