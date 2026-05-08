@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\HospitalController;
 use App\Http\Controllers\Api\V1\HospitalLogoController;
+use App\Http\Controllers\Api\V1\HospitalSignatoryController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TemplateController;
@@ -25,6 +26,15 @@ Route::delete('hospitals/{hospital}/logo', [HospitalLogoController::class, 'dest
 
 Route::post('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'storeSecondary'])->middleware('role:admin');
 Route::delete('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'destroySecondary'])->middleware('role:admin');
+
+
+Route::get('hospitals/{hospital}/signatories', [HospitalSignatoryController::class, 'index'])->middleware('role:admin');
+Route::post('hospitals/{hospital}/signatories', [HospitalSignatoryController::class, 'store'])->middleware('role:admin');
+Route::get('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'show'])->middleware('role:admin');
+Route::patch('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'update'])->middleware('role:admin');
+Route::delete('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'destroy'])->middleware('role:admin');
+Route::post('hospital-signatories/{hospitalSignatory}/signature-image', [HospitalSignatoryController::class, 'uploadSignatureImage'])->middleware('role:admin');
+Route::delete('hospital-signatories/{hospitalSignatory}/signature-image', [HospitalSignatoryController::class, 'deleteSignatureImage'])->middleware('role:admin');
 
 Route::post('feedback', [FeedbackController::class, 'store']);
 Route::get('feedback', [FeedbackController::class, 'index'])->middleware('role:admin');
