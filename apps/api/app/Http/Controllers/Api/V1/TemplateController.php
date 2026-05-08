@@ -79,6 +79,7 @@ class TemplateController extends Controller
             // header_config is the structured primary source for the report header.
             // Legacy templates without it fall back to the hardcoded buildHospitalHeader.
             'header_config' => ['sometimes', 'nullable', 'array'],
+            'layout_config' => ['sometimes', 'nullable', 'array'],
         ]);
 
         if ($v->fails()) {
@@ -104,6 +105,7 @@ class TemplateController extends Controller
             'hospital_id'   => ['sometimes', 'exists:hospitals,id'],
             'department_id' => ['sometimes', 'nullable', 'exists:hospital_departments,id'],
             'header_config' => ['sometimes', 'nullable', 'array'],
+            'layout_config' => ['sometimes', 'nullable', 'array'],
         ]);
 
         if ($v->fails()) {

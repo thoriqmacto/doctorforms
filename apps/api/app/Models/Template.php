@@ -17,11 +17,13 @@ class Template extends Model
         'hospital_id',
         'department_id',
         'header_config',
+        'layout_config',
     ];
 
     protected $casts = [
         // Structured header block definition. See HeaderConfig schema on the web side.
         'header_config' => 'array',
+        'layout_config' => 'array',
     ];
 
     // timestamps (created_at, updated_at)
