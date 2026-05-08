@@ -11,9 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import HospitalLogoUploader from '@/components/HospitalLogoUploader';
-import HospitalAvatar from '@/components/HospitalAvatar';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import Image from 'next/image';
 
 const HOSPITAL_FIELD_CONFIG = [
     { name: 'name', label: 'Name', required: true, input: 'text', section: 'identity' },
@@ -44,16 +42,6 @@ const SECTION_ORDER = [
     { key: 'report', title: 'Report metadata' },
 ] as const;
 
-function isValidImageUrl(value?: string) {
-    if (!value) return false;
-    try {
-        const url = new URL(value);
-        return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url.pathname);
-    } catch {
-        return false;
-    }
-}
-
 export default function EditHospitalPage() {
     const router = useRouter();
     const params = useParams();
@@ -64,8 +52,6 @@ export default function EditHospitalPage() {
     const form = useForm({
         defaultValues: Object.fromEntries(HOSPITAL_FIELD_CONFIG.map((field) => [field.name, ''])),
     });
-
-    const secondaryLogoUrl = form.watch('secondary_logo_url');
 
     useEffect(() => {
         if (data?.data) {
@@ -85,6 +71,9 @@ export default function EditHospitalPage() {
     }
 
     async function onDelete() {
+        const confirmed = window.confirm('This will delete the hospital and cannot be undone.');
+        if (!confirmed) return;
+
         try {
             await deleteHospital(id);
             router.push('/hospitals');
@@ -119,36 +108,24 @@ export default function EditHospitalPage() {
                                             </h3>
                                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                                 <div className="space-y-3 rounded-md border p-3">
-                                                    <p className="text-sm font-medium">Primary logo</p>
-                                                    {data?.data && (
-                                                        <HospitalAvatar
-                                                            name={data.data.attributes.name}
-                                                            logoUrl={data.data.attributes.logo_url}
-                                                        />
-                                                    )}
-                                                    {data?.data?.attributes?.logo_url ? (
-                                                        <Input value={data.data.attributes.logo_url} readOnly />
-                                                    ) : (
-                                                        <p className="text-sm text-muted-foreground">No primary logo set yet.</p>
-                                                    )}
-                                                    <HospitalLogoUploader hospitalId={id} onUploaded={() => mutate()} />
+                                                    <HospitalLogoUploader
+                                                        hospitalId={id}
+                                                        slot="primary"
+                                                        currentUrl={data?.data?.attributes?.logo_url}
+                                                        label="Primary logo"
+                                                        onUploaded={() => mutate()}
+                                                        onDeleted={() => mutate()}
+                                                    />
                                                 </div>
                                                 <div className="space-y-3 rounded-md border p-3">
-                                                    <p className="text-sm font-medium">Secondary logo</p>
-                                                    {isValidImageUrl(secondaryLogoUrl) ? (
-                                                        <Image
-                                                            src={secondaryLogoUrl}
-                                                            alt="Secondary logo preview"
-                                                            width={64}
-                                                            height={64}
-                                                            className="h-16 w-16 rounded-md border object-contain"
-                                                            unoptimized
-                                                        />
-                                                    ) : (
-                                                        <div className="grid h-16 w-16 place-items-center rounded-md border text-xs text-muted-foreground">
-                                                            No preview
-                                                        </div>
-                                                    )}
+                                                    <HospitalLogoUploader
+                                                        hospitalId={id}
+                                                        slot="secondary"
+                                                        currentUrl={data?.data?.attributes?.secondary_logo_url}
+                                                        label="Secondary logo"
+                                                        onUploaded={() => mutate()}
+                                                        onDeleted={() => mutate()}
+                                                    />
                                                     {HOSPITAL_FIELD_CONFIG.filter((field) => field.name === 'secondary_logo_url').map((field) => (
                                                         <FormField
                                                             key={field.name}
@@ -160,6 +137,9 @@ export default function EditHospitalPage() {
                                                                     <FormControl>
                                                                         <Input type="text" {...formField} />
                                                                     </FormControl>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Uploaded secondary logo takes precedence over this manual URL.
+                                                                    </p>
                                                                     <FormMessage />
                                                                 </FormItem>
                                                             )}
@@ -212,8 +192,8 @@ export default function EditHospitalPage() {
                                 );
                             })}
 
-                            <div className="sticky bottom-0 z-10 -mx-2 border-t bg-background/95 px-2 py-3 backdrop-blur">
-                                <div className="flex items-center justify-end gap-2">
+                            <div className="sticky bottom-0 z-10 -mx-4 mt-8 border-t bg-background/95 px-4 py-3 backdrop-blur">
+                                <div className="flex items-center justify-between gap-2">
                                     <Button variant="destructive" onClick={onDelete} type="button">
                                         Delete
                                     </Button>

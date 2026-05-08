@@ -13,43 +13,75 @@ class HospitalLogoController extends Controller
 {
     public function store(Request $request, Hospital $hospital)
     {
-        $this->authorize('update', $hospital);
-
-        $data = $request->validate([
-            'logo' => [
-                'required',
-                File::image()->types(['png','jpg','jpeg','webp'])->max(2 * 1024),
-            ],
-        ]);
-
-        $file = $request->file('logo');
-        $ext = $file->extension();
-        $dir = "hospitals/{$hospital->id}";
-        $disk = config('filesystems.default');
-
-        if ($hospital->logo_path && Storage::disk($disk)->exists($hospital->logo_path)) {
-            Storage::disk($disk)->delete($hospital->logo_path);
-        }
-
-        $storedPath = $file->storeAs($dir, "logo.{$ext}", $disk);
-        $hospital->update(['logo_path' => $storedPath]);
-
-        return (new HospitalResource($hospital))
-            ->additional(['meta' => ['status' => 'logo_uploaded']])
-            ->response()
-            ->setStatusCode(201);
+        return $this->storeForSlot($request, $hospital, 'primary');
     }
 
     public function destroy(Request $request, Hospital $hospital)
     {
+        return $this->destroyForSlot($request, $hospital, 'primary');
+    }
+
+    public function storeSecondary(Request $request, Hospital $hospital)
+    {
+        return $this->storeForSlot($request, $hospital, 'secondary');
+    }
+
+    public function destroySecondary(Request $request, Hospital $hospital)
+    {
+        return $this->destroyForSlot($request, $hospital, 'secondary');
+    }
+
+    private function storeForSlot(Request $request, Hospital $hospital, string $slot)
+    {
+        $this->authorize('update', $hospital);
+
+        $request->validate([
+            'logo' => [
+                'required',
+                File::image()->types(['png', 'jpg', 'jpeg', 'webp'])->max(2 * 1024),
+            ],
+        ]);
+
+        $file = $request->file('logo');
+        $disk = config('filesystems.default');
+
+        [$field, $filename, $status] = $this->slotMeta($slot);
+        $existingPath = $hospital->{$field};
+        if ($existingPath && Storage::disk($disk)->exists($existingPath)) {
+            Storage::disk($disk)->delete($existingPath);
+        }
+
+        $storedPath = $file->storeAs("hospitals/{$hospital->id}", "{$filename}.{$file->extension()}", $disk);
+        $hospital->update([$field => $storedPath]);
+
+        return (new HospitalResource($hospital))
+            ->additional(['meta' => ['status' => $status]])
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    private function destroyForSlot(Request $request, Hospital $hospital, string $slot)
+    {
         $this->authorize('update', $hospital);
 
         $disk = config('filesystems.default');
-        if ($hospital->logo_path && Storage::disk($disk)->exists($hospital->logo_path)) {
-            Storage::disk($disk)->delete($hospital->logo_path);
-        }
-        $hospital->update(['logo_path' => null]);
+        [$field, , $status] = $this->slotMeta($slot);
 
-        return response()->json(['meta' => ['status' => 'logo_deleted']]);
+        $existingPath = $hospital->{$field};
+        if ($existingPath && Storage::disk($disk)->exists($existingPath)) {
+            Storage::disk($disk)->delete($existingPath);
+        }
+
+        $hospital->update([$field => null]);
+
+        return response()->json(['meta' => ['status' => str_replace('uploaded', 'deleted', $status)]]);
+    }
+
+    private function slotMeta(string $slot): array
+    {
+        return match ($slot) {
+            'secondary' => ['secondary_logo_path', 'secondary-logo', 'secondary_logo_uploaded'],
+            default => ['logo_path', 'logo', 'logo_uploaded'],
+        };
     }
 }
