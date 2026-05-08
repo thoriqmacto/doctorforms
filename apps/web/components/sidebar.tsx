@@ -17,11 +17,12 @@ export default function Sidebar() {
 
   const role = (user?.role ?? 'staff') as Role
 
+  // TODO: Future: replace static role list with admin-editable page access matrix.
   const navItems: Array<{ href: string; label: string; exact?: boolean; roles: Role[] }> = [
     { href: '/dashboard', label: 'Dashboard', exact: true, roles: ['admin', 'doctor', 'staff'] },
     { href: '/reports', label: 'Reports', roles: ['admin', 'doctor', 'staff'] },
     { href: '/patients', label: 'Patients', roles: ['admin', 'doctor', 'staff'] },
-    { href: '/templates', label: 'Templates', roles: ['admin', 'doctor'] },
+    { href: '/templates', label: 'Templates', roles: ['admin'] },
     { href: '/hospitals', label: 'Hospitals', roles: ['admin'] },
     { href: '/tests', label: 'Tests', roles: ['admin'] },
     { href: '/users', label: 'Users', roles: ['admin'] },

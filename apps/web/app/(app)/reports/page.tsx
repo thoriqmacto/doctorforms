@@ -1,223 +1,191 @@
 'use client';
 
-import { useState } from 'react';
-import useSWR from 'swr';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-    getReports,
-    deleteReport,
-    getHospitals,
-    getTemplates,
-    getPatients,
-    getTests,
-} from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import useSWR from 'swr';
+import { deleteReport, getHospitals, getPatients, getReports, getTemplates, getTests } from '@/lib/api';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function ReportsPage() {
-    const router = useRouter();
-    const { data, isLoading, mutate } = useSWR(['/reports'], () =>
-        getReports().then((r: any) => r)
-    );
-    const { data: hospitalsData } = useSWR(['/hospitals'], () =>
-        getHospitals().then((r: any) => r)
-    );
-    const { data: templatesData } = useSWR(['/templates'], () =>
-        getTemplates().then((r: any) => r)
-    );
-    const { data: patientsData } = useSWR(['/patients'], () =>
-        getPatients().then((r: any) => r)
-    );
-    const { data: testsData } = useSWR(['/tests'], () =>
-        getTests().then((r: any) => r)
-    );
+  const router = useRouter();
+  const { data, isLoading, mutate } = useSWR(['/reports'], () => getReports().then((r: any) => r));
+  const { data: hospitalsData } = useSWR(['/hospitals'], () => getHospitals().then((r: any) => r));
+  const { data: templatesData } = useSWR(['/templates'], () => getTemplates().then((r: any) => r));
+  const { data: patientsData } = useSWR(['/patients'], () => getPatients().then((r: any) => r));
+  const { data: testsData } = useSWR(['/tests'], () => getTests().then((r: any) => r));
 
-    const [name, setName] = useState('');
-    const [hospitalId, setHospitalId] = useState('');
-    const [templateId, setTemplateId] = useState('');
+  const [templateId, setTemplateId] = useState('');
+  const [patientId, setPatientId] = useState('');
 
-    const rows = data?.data ?? [];
-    const hospitals = hospitalsData?.data ?? [];
-    const templates = templatesData?.data ?? [];
-    const patients = patientsData?.data ?? [];
-    const tests = testsData?.data ?? [];
+  const rows = data?.data ?? [];
+  const hospitals = hospitalsData?.data ?? [];
+  const templates = templatesData?.data ?? [];
+  const patients = patientsData?.data ?? [];
+  const tests = testsData?.data ?? [];
 
-    const hospitalsMap = new Map<string, any>(
-        hospitals.map((h: any) => [String(h.id), h])
-    );
-    const patientsMap = new Map<string, any>(
-        patients.map((p: any) => [String(p.id), p])
-    );
-    const templatesMap = new Map<string, any>(
-        templates.map((t: any) => [String(t.id), t])
-    );
-    const testsMap = new Map<string, any>(
-        tests.map((t: any) => [String(t.id), t])
-    );
-    const hospitalName =
-        hospitals.find((h: any) => String(h.id) === hospitalId)?.attributes?.name ?? '';
-    const templateName =
-        templates.find((t: any) => String(t.id) === templateId)?.attributes?.name ?? '';
-    const newReportHref = (() => {
-        const params = new URLSearchParams({
-            name,
-            hospitalId,
-            templateId,
-            hospitalName,
-            templateName,
-        });
-        return `/reports/new?${params.toString()}`;
-    })();
+  const hospitalsMap = new Map<string, any>(hospitals.map((item: any) => [String(item.id), item]));
+  const templatesMap = new Map<string, any>(templates.map((item: any) => [String(item.id), item]));
+  const patientsMap = new Map<string, any>(patients.map((item: any) => [String(item.id), item]));
+  const testsMap = new Map<string, any>(tests.map((item: any) => [String(item.id), item]));
 
-    async function handleDelete(id: number | string) {
-        if (!confirm('Delete this report?')) return;
-        await deleteReport(id);
-        mutate();
+  const selectedTemplate = useMemo(
+    () => templates.find((item: any) => String(item.id) === templateId),
+    [templateId, templates],
+  );
+  const selectedPatient = useMemo(
+    () => patients.find((item: any) => String(item.id) === patientId),
+    [patientId, patients],
+  );
+
+  const derivedHospitalId = selectedTemplate?.relationships?.hospital?.data?.id
+    ? String(selectedTemplate.relationships.hospital.data.id)
+    : '';
+  const derivedTestId = selectedTemplate?.relationships?.test?.data?.id
+    ? String(selectedTemplate.relationships.test.data.id)
+    : '';
+
+  const selectedHospital = derivedHospitalId ? hospitalsMap.get(derivedHospitalId) : null;
+  const selectedTest = derivedTestId ? testsMap.get(derivedTestId) : null;
+  const patientDisplayName =
+    selectedPatient?.attributes?.name ?? selectedPatient?.attributes?.values?.patient_name ?? '';
+
+  const canCreate = Boolean(patientId && templateId && derivedHospitalId && derivedTestId);
+
+  const newReportHref = useMemo(() => {
+    if (!canCreate) return '';
+    const params = new URLSearchParams({
+      patientId,
+      templateId,
+      hospitalId: derivedHospitalId,
+      testId: derivedTestId,
+      name: patientDisplayName,
+      hospitalName: selectedHospital?.attributes?.name ?? '',
+      templateName: selectedTemplate?.attributes?.name ?? '',
+    });
+    if (selectedTest?.attributes?.name) {
+      params.set('testName', selectedTest.attributes.name);
     }
+    return `/reports/new?${params.toString()}`;
+  }, [canCreate, patientId, templateId, derivedHospitalId, derivedTestId, patientDisplayName, selectedHospital, selectedTemplate, selectedTest]);
 
-    function handleCreate() {
-        if (!hospitalId || !templateId) return;
-        router.push(newReportHref);
-    }
+  async function handleDelete(id: number | string) {
+    if (!confirm('Delete this report?')) return;
+    await deleteReport(id);
+    mutate();
+  }
 
-    return (
-        <div className="space-y-4">
-            <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Reports' }]} />
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Reports</CardTitle>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            placeholder="Patient Name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-48"
-                        />
-                        <Select value={hospitalId} onValueChange={setHospitalId}>
-                            <SelectTrigger className="w-48">
-                                <SelectValue placeholder="Select hospital" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {hospitals.map((h: any) => (
-                                    <SelectItem key={h.id} value={String(h.id)}>
-                                        {h.attributes?.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={templateId} onValueChange={setTemplateId}>
-                            <SelectTrigger className="w-48">
-                                <SelectValue placeholder="Select template" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {templates.map((t: any) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>
-                                        {t.attributes?.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            onClick={handleCreate}
-                            disabled={!hospitalId || !templateId}
-                        >
-                            Create Report
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {isLoading ? (
-                        'Loading…'
-                    ) : (
-                        <Table>
-                            <TableHeader className="bg-muted/40">
-                                <TableRow className="border-b">
-                                    <TableHead>Patient Name</TableHead>
-                                    <TableHead>Hospital Name</TableHead>
-                                    <TableHead>Template</TableHead>
-                                    <TableHead>Test Type</TableHead>
-                                    <TableHead className="text-right w-40">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rows.map((r: any) => {
-                                    const patientId = r.relationships?.patient?.data?.id;
-                                    const patient = patientId
-                                        ? patientsMap.get(String(patientId))
-                                        : undefined;
-                                    const patientName =
-                                        patient?.attributes?.name ??
-                                        patient?.attributes?.values?.patient_name ??
-                                        '-';
+  function handleCreate() {
+    if (!canCreate) return;
+    router.push(newReportHref);
+  }
 
-                                    const hospitalId = r.relationships?.hospital?.data?.id;
-                                    const hospital = hospitalId
-                                        ? hospitalsMap.get(String(hospitalId))
-                                        : undefined;
-                                    const hospitalName = hospital?.attributes?.name ?? '-';
+  return (
+    <div className="space-y-4">
+      <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Reports' }]} />
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Reports</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select value={patientId} onValueChange={setPatientId}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="Select patient" />
+              </SelectTrigger>
+              <SelectContent>
+                {patients.map((patient: any) => {
+                  const pName = patient.attributes?.name ?? patient.attributes?.values?.patient_name ?? `Patient #${patient.id}`;
+                  const identifier = patient.attributes?.mrn ?? patient.attributes?.identifier;
+                  return (
+                    <SelectItem key={patient.id} value={String(patient.id)}>
+                      {identifier ? `${pName} (${identifier})` : pName}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
 
-                                    const templateId = r.relationships?.template?.data?.id;
-                                    const template = templateId
-                                        ? templatesMap.get(String(templateId))
-                                        : undefined;
-                                    const templateName = template?.attributes?.name ?? '-';
-                                    const testId = r.relationships?.test?.data?.id;
-                                    const test = testId
-                                        ? testsMap.get(String(testId))
-                                        : undefined;
-                                    const testType = test?.attributes?.name ?? '-';
+            <Select value={templateId} onValueChange={setTemplateId}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="Select template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template: any) => (
+                  <SelectItem key={template.id} value={String(template.id)}>
+                    {template.attributes?.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-                                    return (
-                                        <TableRow key={r.id} className="border-b hover:bg-muted/30">
-                                            <TableCell>{patientName}</TableCell>
-                                            <TableCell>{hospitalName}</TableCell>
-                                            <TableCell>{templateName}</TableCell>
-                                            <TableCell>{testType}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                {r.attributes?.pdf_url && (
-                                                    <Link href={r.attributes.pdf_url} target="_blank">
-                                                        <Button variant="secondary" size="sm">
-                                                            PDF
-                                                        </Button>
-                                                    </Link>
-                                                )}
-                                                <Link href={`/reports/${r.id}`}>
-                                                    <Button size="sm" variant="secondary">
-                                                        View
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/reports/${r.id}/edit`}>
-                                                    <Button size="sm" variant="secondary">
-                                                        Edit
-                                                    </Button>
-                                                </Link>
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(r.id)}
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
+            <Button onClick={handleCreate} disabled={!canCreate}>
+              Create Report
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          {templateId && !derivedHospitalId && (
+            <p className="text-sm text-destructive">Selected template is missing hospital relationship.</p>
+          )}
+          {templateId && !derivedTestId && (
+            <p className="text-sm text-destructive">Selected template is missing test relationship.</p>
+          )}
+          {templateId && derivedHospitalId && (
+            <p className="text-sm text-muted-foreground">
+              Hospital: {selectedHospital?.attributes?.name ?? `#${derivedHospitalId}`}
+            </p>
+          )}
+          {templateId && derivedTestId && (
+            <p className="text-sm text-muted-foreground">
+              Test: {selectedTest?.attributes?.name ?? `#${derivedTestId}`}
+            </p>
+          )}
+          {isLoading ? (
+            'Loading…'
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="border-b">
+                  <TableHead>Patient Name</TableHead>
+                  <TableHead>Hospital Name</TableHead>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Test Type</TableHead>
+                  <TableHead className="w-40 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((report: any) => {
+                  const p = patientsMap.get(String(report.relationships?.patient?.data?.id));
+                  const h = hospitalsMap.get(String(report.relationships?.hospital?.data?.id));
+                  const t = templatesMap.get(String(report.relationships?.template?.data?.id));
+                  const test = testsMap.get(String(report.relationships?.test?.data?.id));
+                  return (
+                    <TableRow key={report.id} className="border-b hover:bg-muted/30">
+                      <TableCell>{p?.attributes?.name ?? p?.attributes?.values?.patient_name ?? '-'}</TableCell>
+                      <TableCell>{h?.attributes?.name ?? '-'}</TableCell>
+                      <TableCell>{t?.attributes?.name ?? '-'}</TableCell>
+                      <TableCell>{test?.attributes?.name ?? '-'}</TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        {report.attributes?.pdf_url && (
+                          <Link href={report.attributes.pdf_url} target="_blank">
+                            <Button variant="secondary" size="sm">PDF</Button>
+                          </Link>
+                        )}
+                        <Link href={`/reports/${report.id}`}><Button size="sm" variant="secondary">View</Button></Link>
+                        <Link href={`/reports/${report.id}/edit`}><Button size="sm" variant="secondary">Edit</Button></Link>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(report.id)}>Delete</Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
