@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function EditUserPage() {
@@ -19,7 +20,7 @@ export default function EditUserPage() {
     const { data } = useSWR(id ? ['/users', id] : null, () => getUser(id));
     const name = data?.data?.attributes?.name ?? 'User';
     const form = useForm({
-        defaultValues: { name: '', email: '', phone: '', position_title: '', password: '' },
+        defaultValues: { name: '', email: '', phone: '', role: 'staff', position_title: '', password: '' },
     });
 
     useEffect(() => {
@@ -29,6 +30,7 @@ export default function EditUserPage() {
                 name: a.name,
                 email: a.email,
                 phone: a.phone ?? '',
+                role: a.role ?? 'staff',
                 position_title: a.positionTitle ?? '',
                 password: '',
             });
@@ -121,6 +123,29 @@ export default function EditUserPage() {
                             />
                             <FormField
                                 control={form.control}
+                                name="role"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Role</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="admin">admin</SelectItem>
+                                                <SelectItem value="doctor">doctor</SelectItem>
+                                                <SelectItem value="staff">staff</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {/* Role changes are currently admin-only because the users API is protected by role:admin. Introduce super_admin later if stricter hierarchy is needed. */}
+                            <FormField
+                                control={form.control}
                                 name="position_title"
                                 render={({ field }) => (
                                     <FormItem>
@@ -153,4 +178,3 @@ export default function EditUserPage() {
         </div>
     );
 }
-

@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { getUsers } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -33,6 +34,7 @@ export default function UsersPage() {
                                     <TableHead>Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Phone</TableHead>
+                                    <TableHead>Role</TableHead>
                                     <TableHead>Position Title</TableHead>
                                     <TableHead className="text-right w-40">Actions</TableHead>
                                 </TableRow>
@@ -44,6 +46,9 @@ export default function UsersPage() {
                                         <TableCell>{u.attributes.name}</TableCell>
                                         <TableCell>{u.attributes.email}</TableCell>
                                         <TableCell>{u.attributes.phone ?? '-'}</TableCell>
+                                        <TableCell>
+                                            {u.attributes.role ? <Badge variant="secondary">{u.attributes.role}</Badge> : '-'}
+                                        </TableCell>
                                         <TableCell>{u.attributes.positionTitle ?? '-'}</TableCell>
                                         <TableCell className="text-right space-x-2">
                                             <Link href={`/users/${u.id}`}>
@@ -60,4 +65,3 @@ export default function UsersPage() {
         </div>
     );
 }
-

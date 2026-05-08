@@ -157,6 +157,35 @@ function drawCenteredText(
     ctx.page.drawText(text, { x, y, size, font, color });
 }
 
+function fitImageInsideBox(
+    image: PDFImage,
+    maxWidth: number,
+    maxHeight: number
+): { width: number; height: number } {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    return {
+        width: image.width * scale,
+        height: image.height * scale,
+    };
+}
+
+function drawContainedImage(
+    page: PDFPage,
+    image: PDFImage,
+    boxX: number,
+    boxY: number,
+    boxWidth: number,
+    boxHeight: number
+): void {
+    const { width, height } = fitImageInsideBox(image, boxWidth, boxHeight);
+    page.drawImage(image, {
+        x: boxX + (boxWidth - width) / 2,
+        y: boxY + (boxHeight - height) / 2,
+        width,
+        height,
+    });
+}
+
 async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise<void> {
     // Structured path — driven by templates.header_config.
     if (block.structured) {
@@ -203,15 +232,17 @@ async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise
 
     const logoY = startY - (blockHeight + logoSizePt) / 2;
     if (leftImg) {
-        ctx.page.drawImage(leftImg, { x: ctx.margin, y: logoY, width: logoSizePt, height: logoSizePt });
+        drawContainedImage(ctx.page, leftImg, ctx.margin, logoY, logoSizePt, logoSizePt);
     }
     if (rightImg) {
-        ctx.page.drawImage(rightImg, {
-            x: ctx.margin + ctx.contentWidth - logoSizePt,
-            y: logoY,
-            width: logoSizePt,
-            height: logoSizePt,
-        });
+        drawContainedImage(
+            ctx.page,
+            rightImg,
+            ctx.margin + ctx.contentWidth - logoSizePt,
+            logoY,
+            logoSizePt,
+            logoSizePt
+        );
     }
 
     ctx.cursorY = startY - blockHeight;
@@ -295,17 +326,21 @@ async function drawStructuredHospitalHeader(ctx: Ctx, header: StructuredHeader):
         textY -= line.size + lineGap;
     }
 
-    const logoY = startY - (blockHeight + maxLogoSize) / 2;
+    const logoBoxY = startY - (blockHeight + maxLogoSize) / 2;
     if (leftImg && leftSize > 0) {
-        ctx.page.drawImage(leftImg, { x: ctx.margin, y: logoY, width: leftSize, height: leftSize });
+        const leftLogoY = logoBoxY + (maxLogoSize - leftSize) / 2;
+        drawContainedImage(ctx.page, leftImg, ctx.margin, leftLogoY, leftSize, leftSize);
     }
     if (rightImg && rightSize > 0) {
-        ctx.page.drawImage(rightImg, {
-            x: ctx.margin + ctx.contentWidth - rightSize,
-            y: logoY,
-            width: rightSize,
-            height: rightSize,
-        });
+        const rightLogoY = logoBoxY + (maxLogoSize - rightSize) / 2;
+        drawContainedImage(
+            ctx.page,
+            rightImg,
+            ctx.margin + ctx.contentWidth - rightSize,
+            rightLogoY,
+            rightSize,
+            rightSize
+        );
     }
 
     ctx.cursorY = startY - blockHeight;

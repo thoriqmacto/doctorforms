@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Breadcrumbs from '@/components/Breadcrumbs';
 
 export default function NewUserPage() {
     const router = useRouter();
     const form = useForm({
-        defaultValues: { name: '', email: '', phone: '', position_title: '', password: '' },
+        defaultValues: { name: '', email: '', phone: '', role: 'staff', position_title: '', password: '' },
     });
 
     async function onSubmit(values: any) {
@@ -84,6 +85,28 @@ export default function NewUserPage() {
                             />
                             <FormField
                                 control={form.control}
+                                name="role"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Role</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="admin">admin</SelectItem>
+                                                <SelectItem value="doctor">doctor</SelectItem>
+                                                <SelectItem value="staff">staff</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
                                 name="position_title"
                                 render={({ field }) => (
                                     <FormItem>
@@ -117,4 +140,3 @@ export default function NewUserPage() {
         </div>
     );
 }
-
