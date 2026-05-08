@@ -216,9 +216,26 @@ export const getPatients = (params?: Record<string, any>) =>
 
 export const getPatient = (id: string | number) =>
     api.get(`patients/${id}`).json<any>();
-export const createPatient = (payload: any) =>
+export type PatientPayload = {
+    mrn: string;
+    name: string;
+    gender: "male" | "female";
+    dob?: string | null;
+    dos?: string | null;
+    age?: number | null;
+    height_cm?: number | null;
+    weight_kg?: number | null;
+    bsa?: number | null;
+    blood_pressure?: string | null;
+    diagnosis_brief?: string | null;
+    referring_physician?: string | null;
+    hospital_id: number;
+    user_id: number;
+};
+
+export const createPatient = (payload: PatientPayload) =>
     api.post('patients', { json: payload }).json<any>();
-export const updatePatient = (id: string | number, payload: any) =>
+export const updatePatient = (id: string | number, payload: Partial<PatientPayload>) =>
     api.put(`patients/${id}`, { json: payload }).json<any>();
 export const deletePatient = (id: string | number) =>
     api.delete(`patients/${id}`).json<any>();
@@ -302,7 +319,7 @@ export default api;
 
 
 export type HospitalSignatoryPayload = {
-    user_id?: number | null;
+    user_id: number;
     name: string;
     position_title?: string | null;
     sip_number?: string | null;
