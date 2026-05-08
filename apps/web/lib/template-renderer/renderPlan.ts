@@ -2,6 +2,7 @@ import type { TemplateField, TemplateSection, TemplateViewModel } from '@/compon
 import { formatFindingsGroupText } from '@/lib/template-renderer/sectionTransforms';
 import {
     resolveBinding,
+    resolveTemplateString,
     type AlignToken,
     type FontSizeToken,
     type FontWeightToken,
@@ -234,7 +235,9 @@ function buildStructuredHeader(
         .filter((line) => line.visible !== false)
         .map((line) => {
             let text = '';
-            if (line.binding) {
+            if (line.template !== undefined) {
+                text = resolveTemplateString(line.template, contexts);
+            } else if (line.binding) {
                 text = resolveBinding(line.binding, contexts) ?? '';
             } else if (line.literal !== undefined) {
                 text = line.literal;
