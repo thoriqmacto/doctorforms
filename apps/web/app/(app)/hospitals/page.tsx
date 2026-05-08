@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import Image from 'next/image';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { getHospitals } from '@/lib/api';
@@ -23,6 +24,32 @@ type HospitalAttributes = {
     phone?: string;
     whatsapp_phone?: string;
     email?: string;
+};
+
+const resolveAssetUrl = (url?: string | null) => {
+    if (!url) {
+        return undefined;
+    }
+
+    if (/^https?:\/\//i.test(url)) {
+        return url;
+    }
+
+    if (/^(\/storage|\/api)/i.test(url)) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        if (!apiBaseUrl) {
+            return url;
+        }
+
+        try {
+            const apiOrigin = new URL(apiBaseUrl).origin;
+            return new URL(url, apiOrigin).toString();
+        } catch {
+            return url;
+        }
+    }
+
+    return url;
 };
 
 const formatHospitalAddress = (attributes: HospitalAttributes) => {
@@ -52,6 +79,27 @@ const getHospitalInitial = (attributes: HospitalAttributes) => {
 
     return trimmedName[0]?.toUpperCase() ?? '—';
 };
+
+function HospitalLogo({ attributes }: { attributes: HospitalAttributes }) {
+    const [hasError, setHasError] = useState(false);
+    const resolvedLogoUrl = useMemo(() => resolveAssetUrl(attributes.logo_url), [attributes.logo_url]);
+    const showImage = Boolean(resolvedLogoUrl && !hasError);
+
+    return (
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border bg-muted/30 text-xs font-medium text-muted-foreground">
+            {showImage ? (
+                <img
+                    src={resolvedLogoUrl}
+                    alt={`${attributes.name ?? 'Hospital'} logo`}
+                    className="h-full w-full object-contain"
+                    onError={() => setHasError(true)}
+                />
+            ) : (
+                <span>{getHospitalInitial(attributes)}</span>
+            )}
+        </div>
+    );
+}
 
 export default function HospitalsPage() {
     const { data, isLoading } = useSWR(['/hospitals'], () => getHospitals());
@@ -95,19 +143,7 @@ export default function HospitalsPage() {
                                         <TableRow key={h.id} className="border-b hover:bg-muted/30">
                                             <TableCell className="align-top">{h.id}</TableCell>
                                             <TableCell className="align-top">
-                                                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border bg-muted/30 text-xs font-medium text-muted-foreground">
-                                                    {attributes.logo_url ? (
-                                                        <Image
-                                                            src={attributes.logo_url}
-                                                            alt={`${attributes.name ?? 'Hospital'} logo`}
-                                                            width={40}
-                                                            height={40}
-                                                            className="h-full w-full object-contain"
-                                                        />
-                                                    ) : (
-                                                        <span>{getHospitalInitial(attributes)}</span>
-                                                    )}
-                                                </div>
+                                                <HospitalLogo attributes={attributes} />
                                             </TableCell>
                                             <TableCell className="align-top">
                                                 <div className="max-w-[220px] truncate font-medium" title={attributes.name ?? '-'}>

@@ -195,6 +195,22 @@ export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
 export const getTests = (params?: Record<string, any>) =>
     api.get('tests', { searchParams: params }).json();
+
+export type TestPayload = {
+    code?: string | null;
+    name: string;
+    type?: string | null;
+    description?: string | null;
+};
+
+export const getTest = (id: string | number) =>
+    api.get(`tests/${id}`).json<any>();
+export const createTest = (payload: TestPayload) =>
+    api.post('tests', { json: payload }).json<any>();
+export const updateTest = (id: string | number, payload: Partial<TestPayload>) =>
+    api.put(`tests/${id}`, { json: payload }).json<any>();
+export const deleteTest = (id: string | number) =>
+    api.delete(`tests/${id}`).json<any>();
 export const getPatients = (params?: Record<string, any>) =>
     api.get('patients', { searchParams: params }).json<any>();
 

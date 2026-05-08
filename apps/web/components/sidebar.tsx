@@ -23,6 +23,7 @@ export default function Sidebar() {
     { href: '/patients', label: 'Patients', roles: ['admin', 'doctor', 'staff'] },
     { href: '/templates', label: 'Templates', roles: ['admin', 'doctor'] },
     { href: '/hospitals', label: 'Hospitals', roles: ['admin'] },
+    { href: '/tests', label: 'Tests', roles: ['admin'] },
     { href: '/users', label: 'Users', roles: ['admin'] },
     { href: '/feedback', label: 'Feedback', roles: ['admin'] },
   ]
