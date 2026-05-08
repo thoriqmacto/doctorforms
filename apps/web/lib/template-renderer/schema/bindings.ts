@@ -122,3 +122,19 @@ export function resolveBinding(
     if (typeof value === 'string') return value;
     return String(value);
 }
+
+
+export function resolveTemplateString(template: string, contexts: RenderContexts): string {
+    const resolved = template.replace(/{{\s*([a-zA-Z_]+)\.([a-zA-Z0-9_]+)\s*}}/g, (_match, source, path) => {
+        if (source === 'literal') return '';
+        const text = resolveBinding({ source, path } as Binding, contexts);
+        return text ?? '';
+    });
+
+    return resolved
+        .replace(/[\t ]{2,}/g, ' ')
+        .replace(/\s+,/g, ',')
+        .replace(/\s+\//g, ' /')
+        .replace(/([,:\/])\s*([,:\/])/g, '$1 $2')
+        .trim();
+}

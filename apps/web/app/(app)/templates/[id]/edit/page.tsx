@@ -9,6 +9,7 @@ import {
   createTemplateField,
   deleteTemplateField,
   getHospitals,
+  getHospital,
   getUser,
   getTemplate,
   getTests,
@@ -879,11 +880,26 @@ export default function EditTemplatePage() {
     ];
   }, [hospitalsData?.data, included, selectedHospitalId]);
 
+
+  const { data: selectedHospitalRes } = useSWR(
+    selectedHospitalId ? ["/hospitals", selectedHospitalId, "header-preview"] : null,
+    () => getHospital(selectedHospitalId as string).then((r: any) => r),
+  );
+
   const userId = data?.data?.relationships?.user?.data?.id;
   const { data: userData } = useSWR(userId ? ["/users", userId] : null, () =>
     getUser(userId as string).then((r: any) => r),
   );
   const userName = userData?.data?.attributes?.name ?? "";
+
+  const fallbackSelectedHospitalAttrs = useMemo(() => {
+    const fromList = hospitals.find((h: any) => String(h.id) === selectedHospitalId);
+    return (fromList?.attributes ?? {}) as Record<string, unknown>;
+  }, [hospitals, selectedHospitalId]);
+
+  const selectedHospitalAttrs =
+    (selectedHospitalRes?.data?.attributes as Record<string, unknown> | undefined) ??
+    fallbackSelectedHospitalAttrs;
 
   const isProcessing =
     isTemplateLoading ||
@@ -1110,8 +1126,40 @@ export default function EditTemplatePage() {
                 the API returned (null or a prior config). Null keeps the
                 legacy static "Header" section as the render fallback.
               */}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Selected Hospital Attributes</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                  <div className="md:col-span-2"><span className="font-medium">Hospital:</span> {String(selectedHospitalAttrs?.name ?? "Not set")}</div>
+                  {[
+                    "parent_org_line",
+                    "name",
+                    "address",
+                    "phone",
+                    "fax",
+                    "whatsapp_phone",
+                    "email",
+                    "website",
+                    "city",
+                    "logo_url",
+                    "secondary_logo_url",
+                  ].map((key) => {
+                    const value = selectedHospitalAttrs?.[key];
+                    return (
+                      <div key={key} className="space-y-0.5">
+                        <p className="text-xs font-medium text-muted-foreground">{key}</p>
+                        <p className="break-all">{value ? String(value) : <span className="text-muted-foreground">Not set</span>}</p>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
               <HeaderConfigEditor
                 value={form.watch("header_config")}
+                hospitalAttributes={selectedHospitalAttrs}
                 onChange={(next) =>
                   form.setValue("header_config", next, {
                     shouldDirty: true,

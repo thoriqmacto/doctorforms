@@ -128,12 +128,13 @@ export type HeaderLineStyle = {
 
 /**
  * One line in the reusable hospital header block. Exactly one of
- * `binding` (entity-resolved at render time) or `literal` (verbatim)
- * must be provided.
+ * `binding` (entity-resolved at render time), `template` (placeholder-driven)
+ * or `literal` (verbatim) may be provided.
  */
 export type HeaderLine = HeaderLineStyle & {
     id?: string;
     binding?: Binding;
+    template?: string;
     literal?: string;
     visible?: boolean;
 };
