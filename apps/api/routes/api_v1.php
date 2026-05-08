@@ -21,3 +21,6 @@ Route::apiResource('users', UsersController::class)->middleware('role:admin');
 Route::post('template-field-images', [TemplateFieldImageUploadController::class, 'store']);
 Route::post('hospitals/{hospital}/logo', [HospitalLogoController::class, 'store'])->middleware('role:admin');
 Route::delete('hospitals/{hospital}/logo', [HospitalLogoController::class, 'destroy'])->middleware('role:admin');
+
+Route::post('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'storeSecondary'])->middleware('role:admin');
+Route::delete('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'destroySecondary'])->middleware('role:admin');

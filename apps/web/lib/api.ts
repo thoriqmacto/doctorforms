@@ -219,6 +219,24 @@ export const updateHospital = (id: string | number, payload: any) =>
 export const deleteHospital = (id: string | number) =>
     api.delete(`hospitals/${id}`).json<any>();
 
+
+export type HospitalLogoSlot = 'primary' | 'secondary';
+
+const hospitalLogoPath = (hospitalId: string | number, slot: HospitalLogoSlot) =>
+    slot === 'secondary'
+        ? `hospitals/${hospitalId}/secondary-logo`
+        : `hospitals/${hospitalId}/logo`;
+
+export const uploadHospitalLogo = (hospitalId: string | number, file: File, slot: HospitalLogoSlot = 'primary') => {
+    const form = new FormData();
+    form.append('logo', file);
+
+    return multipartApi.post(hospitalLogoPath(hospitalId, slot), { body: form }).json<any>();
+};
+
+export const deleteHospitalLogo = (hospitalId: string | number, slot: HospitalLogoSlot = 'primary') =>
+    multipartApi.delete(hospitalLogoPath(hospitalId, slot)).json<any>();
+
 // Users
 export const getUsers = (params?: Record<string, any>) =>
     api.get('users', { searchParams: params }).json<any>();

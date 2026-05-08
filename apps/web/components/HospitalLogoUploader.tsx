@@ -1,65 +1,83 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useMemo, useState } from 'react';
+import { deleteHospitalLogo, HospitalLogoSlot, uploadHospitalLogo } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type Props = {
-  hospitalId: number | string;
-  authToken?: string;
-  onUploaded?: (url: string) => void;
+    hospitalId: number | string;
+    slot: HospitalLogoSlot;
+    currentUrl?: string | null;
+    label?: string;
+    onUploaded?: () => void;
+    onDeleted?: () => void;
 };
 
-export default function HospitalLogoUploader({ hospitalId, authToken, onUploaded }: Props) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function HospitalLogoUploader({ hospitalId, slot, currentUrl, label, onUploaded, onDeleted }: Props) {
+    const [file, setFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    setFile(f);
-    setPreview(f ? URL.createObjectURL(f) : null);
-  }
+    const selectedPreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+    const previewUrl = selectedPreview ?? currentUrl ?? null;
 
-  async function upload() {
-    if (!file) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append("logo", file);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/hospitals/${hospitalId}/logo`,
-        {
-          method: "POST",
-          body: form,
-          headers: {
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          },
-          credentials: "include",
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      const url = json?.data?.attributes?.logo_url ?? "";
-      if (onUploaded && url) onUploaded(url);
-    } catch (e: any) {
-      setError(e?.message || "Upload failed");
-    } finally {
-      setLoading(false);
+    function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+        setError(null);
+        setFile(e.target.files?.[0] ?? null);
     }
-  }
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onPick} />
-        <button onClick={upload} disabled={!file || loading} className="px-3 py-1 rounded-md border">
-          {loading ? "Uploading..." : "Upload"}
-        </button>
-      </div>
-      {preview && <img src={preview} alt="Preview" className="max-w-[240px] h-auto border rounded-md p-2" />}
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-    </div>
-  );
+    async function onUpload() {
+        if (!file) return;
+        setLoading(true);
+        setError(null);
+        try {
+            await uploadHospitalLogo(hospitalId, file, slot);
+            setFile(null);
+            onUploaded?.();
+        } catch (e: any) {
+            setError(e?.response ? `Upload failed (${e.response.status})` : e?.message || 'Upload failed');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function onDeleteUploaded() {
+        setLoading(true);
+        setError(null);
+        try {
+            await deleteHospitalLogo(hospitalId, slot);
+            setFile(null);
+            onDeleted?.();
+        } catch (e: any) {
+            setError(e?.response ? `Delete failed (${e.response.status})` : e?.message || 'Delete failed');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="space-y-3">
+            <p className="text-sm font-medium">{label ?? (slot === 'secondary' ? 'Secondary logo' : 'Primary logo')}</p>
+            {previewUrl ? (
+                <img src={previewUrl} alt={`${slot} logo preview`} className="h-20 w-20 rounded-md border object-contain p-1" />
+            ) : (
+                <div className="grid h-20 w-20 place-items-center rounded-md border text-xs text-muted-foreground">No preview</div>
+            )}
+            {currentUrl ? <Input value={currentUrl} readOnly /> : <p className="text-sm text-muted-foreground">No uploaded logo yet.</p>}
+            <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={onPick} />
+            <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={onUpload} disabled={!file || loading}>
+                    {loading ? 'Uploading...' : 'Upload'}
+                </Button>
+                {currentUrl ? (
+                    <Button type="button" variant="outline" onClick={onDeleteUploaded} disabled={loading}>
+                        Clear uploaded image
+                    </Button>
+                ) : null}
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </div>
+    );
 }
