@@ -24,6 +24,7 @@ export default function Sidebar() {
     { href: '/templates', label: 'Templates', roles: ['admin', 'doctor'] },
     { href: '/hospitals', label: 'Hospitals', roles: ['admin'] },
     { href: '/users', label: 'Users', roles: ['admin'] },
+    { href: '/feedback', label: 'Feedback', roles: ['admin'] },
   ]
 
   const visibleItems = navItems.filter((item) => item.roles.includes(role))

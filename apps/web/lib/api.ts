@@ -258,6 +258,14 @@ export const updateReport = (id: string | number, payload: any) =>
     api.put(`reports/${id}`, { json: payload }).json<any>();
 export const createReport = (payload: any) =>
     api.post('reports', { json: payload }).json<any>();
+
+// Feedback
+export const createFeedback = (payload: { message: string; page_url?: string }) =>
+    api.post('feedback', { json: payload }).json<any>();
+export const getFeedbackMessages = (params?: Record<string, any>) =>
+    api.get('feedback', { searchParams: params }).json<any>();
+export const updateFeedbackMessage = (id: string | number, payload: { status: 'new' | 'reviewed' | 'closed' }) =>
+    api.patch(`feedback/${id}`, { json: payload }).json<any>();
 export const deleteReport = (id: string | number) =>
     api.delete(`reports/${id}`).json<any>();
 
