@@ -45,14 +45,14 @@ class HospitalLogoController extends Controller
         $file = $request->file('logo');
         $disk = config('filesystems.default');
 
-        [$field, $filename, $status] = $this->slotMeta($slot);
+        [$field, $urlField, $filename, $status] = $this->slotMeta($slot);
         $existingPath = $hospital->{$field};
         if ($existingPath && Storage::disk($disk)->exists($existingPath)) {
             Storage::disk($disk)->delete($existingPath);
         }
 
         $storedPath = $file->storeAs("hospitals/{$hospital->id}", "{$filename}.{$file->extension()}", $disk);
-        $hospital->update([$field => $storedPath]);
+        $hospital->update([$field => $storedPath, $urlField => null]);
 
         return (new HospitalResource($hospital))
             ->additional(['meta' => ['status' => $status]])
@@ -65,14 +65,14 @@ class HospitalLogoController extends Controller
         $this->authorize('update', $hospital);
 
         $disk = config('filesystems.default');
-        [$field, , $status] = $this->slotMeta($slot);
+        [$field, $urlField, , $status] = $this->slotMeta($slot);
 
         $existingPath = $hospital->{$field};
         if ($existingPath && Storage::disk($disk)->exists($existingPath)) {
             Storage::disk($disk)->delete($existingPath);
         }
 
-        $hospital->update([$field => null]);
+        $hospital->update([$field => null, $urlField => null]);
 
         return response()->json(['meta' => ['status' => str_replace('uploaded', 'deleted', $status)]]);
     }
@@ -80,8 +80,8 @@ class HospitalLogoController extends Controller
     private function slotMeta(string $slot): array
     {
         return match ($slot) {
-            'secondary' => ['secondary_logo_path', 'secondary-logo', 'secondary_logo_uploaded'],
-            default => ['logo_path', 'logo', 'logo_uploaded'],
+            'secondary' => ['secondary_logo_path', 'secondary_logo_url', 'secondary-logo', 'secondary_logo_uploaded'],
+            default => ['logo_path', 'logo_url', 'logo', 'logo_uploaded'],
         };
     }
 }

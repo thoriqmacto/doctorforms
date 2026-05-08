@@ -9,6 +9,10 @@ class HospitalPolicy
 {
     public function update(User $user, Hospital $hospital): bool
     {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
         return $hospital->users()->where('users.id', $user->id)->exists();
     }
 }

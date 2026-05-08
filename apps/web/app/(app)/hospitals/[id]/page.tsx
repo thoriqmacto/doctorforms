@@ -29,7 +29,6 @@ const HOSPITAL_FIELD_CONFIG = [
     { name: 'whatsapp_phone', label: 'WhatsApp Phone', input: 'text', section: 'contact' },
     { name: 'email', label: 'Email', input: 'email', section: 'contact' },
     { name: 'website', label: 'Website', input: 'text', section: 'contact' },
-    { name: 'secondary_logo_url', label: 'Secondary Logo URL', input: 'text', section: 'logos' },
     { name: 'accreditation_text', label: 'Accreditation Text', input: 'textarea', section: 'report' },
     { name: 'report_footer_line', label: 'Report Footer Line', input: 'textarea', section: 'report' },
 ] as const;
@@ -126,25 +125,6 @@ export default function EditHospitalPage() {
                                                         onUploaded={() => mutate()}
                                                         onDeleted={() => mutate()}
                                                     />
-                                                    {HOSPITAL_FIELD_CONFIG.filter((field) => field.name === 'secondary_logo_url').map((field) => (
-                                                        <FormField
-                                                            key={field.name}
-                                                            control={form.control}
-                                                            name={field.name}
-                                                            render={({ field: formField }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>{field.label}</FormLabel>
-                                                                    <FormControl>
-                                                                        <Input type="text" {...formField} />
-                                                                    </FormControl>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Uploaded secondary logo takes precedence over this manual URL.
-                                                                    </p>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    ))}
                                                 </div>
                                             </div>
                                         </section>
