@@ -301,11 +301,32 @@ export const logout = () => api.post('logout').json<any>();
 export default api;
 
 
-// Hospital signatories — signature block source of truth.
+export type HospitalSignatoryPayload = {
+    user_id?: number | null;
+    name: string;
+    position_title?: string | null;
+    sip_number?: string | null;
+    active?: boolean;
+};
+
+// Hospital signatories
 export const getHospitalSignatories = (hospitalId: string | number) =>
-    api.get(`hospitals/${hospitalId}`, {
-        searchParams: { include: 'signatories' },
-    }).json<any>();
+    api.get(`hospitals/${hospitalId}/signatories`).json<any>();
+export const createHospitalSignatory = (hospitalId: string | number, payload: HospitalSignatoryPayload) =>
+    api.post(`hospitals/${hospitalId}/signatories`, { json: payload }).json<any>();
+export const getHospitalSignatory = (id: string | number) =>
+    api.get(`hospital-signatories/${id}`).json<any>();
+export const updateHospitalSignatory = (id: string | number, payload: Partial<HospitalSignatoryPayload>) =>
+    api.patch(`hospital-signatories/${id}`, { json: payload }).json<any>();
+export const deleteHospitalSignatory = (id: string | number) =>
+    api.delete(`hospital-signatories/${id}`).json<any>();
+export const uploadHospitalSignatorySignature = (id: string | number, file: File) => {
+    const form = new FormData();
+    form.append('signature', file);
+    return multipartApi.post(`hospital-signatories/${id}/signature-image`, { body: form }).json<any>();
+};
+export const deleteHospitalSignatorySignature = (id: string | number) =>
+    multipartApi.delete(`hospital-signatories/${id}/signature-image`).json<any>();
 
 export const uploadTemplateFieldImage = (file: File) => {
     const formData = new FormData();
