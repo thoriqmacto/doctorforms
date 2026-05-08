@@ -13,27 +13,46 @@ import { Textarea } from '@/components/ui/textarea';
 import HospitalLogoUploader from '@/components/HospitalLogoUploader';
 import HospitalAvatar from '@/components/HospitalAvatar';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import Image from 'next/image';
 
 const HOSPITAL_FIELD_CONFIG = [
-    { name: 'name', label: 'Name', required: true, input: 'text' },
-    { name: 'short_name', label: 'Short Name', input: 'text' },
-    { name: 'parent_org_line', label: 'Parent Organization Line', input: 'text' },
-    { name: 'address', label: 'Address', required: true, input: 'textarea' },
-    { name: 'address_line_1', label: 'Address Line 1', input: 'text' },
-    { name: 'address_line_2', label: 'Address Line 2', input: 'text' },
-    { name: 'province', label: 'Province', input: 'text' },
-    { name: 'city', label: 'City', input: 'text' },
-    { name: 'postal_code', label: 'Postal Code', input: 'text' },
-    { name: 'country', label: 'Country', input: 'text' },
-    { name: 'phone', label: 'Phone', input: 'text' },
-    { name: 'fax', label: 'Fax', input: 'text' },
-    { name: 'whatsapp_phone', label: 'WhatsApp Phone', input: 'text' },
-    { name: 'email', label: 'Email', input: 'email' },
-    { name: 'website', label: 'Website', input: 'text' },
-    { name: 'secondary_logo_url', label: 'Secondary Logo URL', input: 'text' },
-    { name: 'accreditation_text', label: 'Accreditation Text', input: 'textarea' },
-    { name: 'report_footer_line', label: 'Report Footer Line', input: 'textarea' },
+    { name: 'name', label: 'Name', required: true, input: 'text', section: 'identity' },
+    { name: 'short_name', label: 'Short Name', input: 'text', section: 'identity' },
+    { name: 'parent_org_line', label: 'Parent Organization Line', input: 'text', section: 'identity' },
+    { name: 'address', label: 'Address', required: true, input: 'textarea', section: 'address' },
+    { name: 'address_line_1', label: 'Address Line 1', input: 'text', section: 'address' },
+    { name: 'address_line_2', label: 'Address Line 2', input: 'text', section: 'address' },
+    { name: 'province', label: 'Province', input: 'text', section: 'address' },
+    { name: 'city', label: 'City', input: 'text', section: 'address' },
+    { name: 'postal_code', label: 'Postal Code', input: 'text', section: 'address' },
+    { name: 'country', label: 'Country', input: 'text', section: 'address' },
+    { name: 'phone', label: 'Phone', input: 'text', section: 'contact' },
+    { name: 'fax', label: 'Fax', input: 'text', section: 'contact' },
+    { name: 'whatsapp_phone', label: 'WhatsApp Phone', input: 'text', section: 'contact' },
+    { name: 'email', label: 'Email', input: 'email', section: 'contact' },
+    { name: 'website', label: 'Website', input: 'text', section: 'contact' },
+    { name: 'secondary_logo_url', label: 'Secondary Logo URL', input: 'text', section: 'logos' },
+    { name: 'accreditation_text', label: 'Accreditation Text', input: 'textarea', section: 'report' },
+    { name: 'report_footer_line', label: 'Report Footer Line', input: 'textarea', section: 'report' },
 ] as const;
+
+const SECTION_ORDER = [
+    { key: 'identity', title: 'Identity' },
+    { key: 'address', title: 'Address' },
+    { key: 'contact', title: 'Contact' },
+    { key: 'logos', title: 'Logos' },
+    { key: 'report', title: 'Report metadata' },
+] as const;
+
+function isValidImageUrl(value?: string) {
+    if (!value) return false;
+    try {
+        const url = new URL(value);
+        return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url.pathname);
+    } catch {
+        return false;
+    }
+}
 
 export default function EditHospitalPage() {
     const router = useRouter();
@@ -46,14 +65,12 @@ export default function EditHospitalPage() {
         defaultValues: Object.fromEntries(HOSPITAL_FIELD_CONFIG.map((field) => [field.name, ''])),
     });
 
+    const secondaryLogoUrl = form.watch('secondary_logo_url');
+
     useEffect(() => {
         if (data?.data) {
             const a = data.data.attributes;
-            form.reset(
-                Object.fromEntries(
-                    HOSPITAL_FIELD_CONFIG.map((field) => [field.name, a[field.name] ?? ''])
-                )
-            );
+            form.reset(Object.fromEntries(HOSPITAL_FIELD_CONFIG.map((field) => [field.name, a[field.name] ?? ''])));
         }
     }, [data, form]);
 
@@ -78,7 +95,7 @@ export default function EditHospitalPage() {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-24">
             <Breadcrumbs
                 items={[
                     { label: 'Dashboard', href: '/dashboard' },
@@ -87,50 +104,124 @@ export default function EditHospitalPage() {
                 ]}
             />
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader>
                     <CardTitle>Edit Hospital</CardTitle>
-                    <Button variant="destructive" onClick={onDelete} type="button">
-                        Delete
-                    </Button>
                 </CardHeader>
                 <CardContent>
-                    {data?.data && (
-                        <div className="mb-4 space-y-4">
-                            <HospitalAvatar
-                                name={data.data.attributes.name}
-                                logoUrl={data.data.attributes.logo_url}
-                            />
-                            <HospitalLogoUploader hospitalId={id} onUploaded={() => mutate()} />
-                        </div>
-                    )}
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            {HOSPITAL_FIELD_CONFIG.map((config) => (
-                                <FormField
-                                    key={config.name}
-                                    control={form.control}
-                                    name={config.name}
-                                    rules={
-                                        'required' in config && config.required
-                                            ? { required: `${config.label} is required` }
-                                            : undefined
-                                    }
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{config.label}</FormLabel>
-                                            <FormControl>
-                                                {config.input === 'textarea' ? (
-                                                    <Textarea {...field} />
-                                                ) : (
-                                                    <Input type={config.input} {...field} />
-                                                )}
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            ))}
-                            <Button type="submit">Save</Button>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            {SECTION_ORDER.map((section) => {
+                                if (section.key === 'logos') {
+                                    return (
+                                        <section key={section.key} className="space-y-4 rounded-lg border p-4">
+                                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                                {section.title}
+                                            </h3>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div className="space-y-3 rounded-md border p-3">
+                                                    <p className="text-sm font-medium">Primary logo</p>
+                                                    {data?.data && (
+                                                        <HospitalAvatar
+                                                            name={data.data.attributes.name}
+                                                            logoUrl={data.data.attributes.logo_url}
+                                                        />
+                                                    )}
+                                                    {data?.data?.attributes?.logo_url ? (
+                                                        <Input value={data.data.attributes.logo_url} readOnly />
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground">No primary logo set yet.</p>
+                                                    )}
+                                                    <HospitalLogoUploader hospitalId={id} onUploaded={() => mutate()} />
+                                                </div>
+                                                <div className="space-y-3 rounded-md border p-3">
+                                                    <p className="text-sm font-medium">Secondary logo</p>
+                                                    {isValidImageUrl(secondaryLogoUrl) ? (
+                                                        <Image
+                                                            src={secondaryLogoUrl}
+                                                            alt="Secondary logo preview"
+                                                            width={64}
+                                                            height={64}
+                                                            className="h-16 w-16 rounded-md border object-contain"
+                                                            unoptimized
+                                                        />
+                                                    ) : (
+                                                        <div className="grid h-16 w-16 place-items-center rounded-md border text-xs text-muted-foreground">
+                                                            No preview
+                                                        </div>
+                                                    )}
+                                                    {HOSPITAL_FIELD_CONFIG.filter((field) => field.name === 'secondary_logo_url').map((field) => (
+                                                        <FormField
+                                                            key={field.name}
+                                                            control={form.control}
+                                                            name={field.name}
+                                                            render={({ field: formField }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>{field.label}</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input type="text" {...formField} />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </section>
+                                    );
+                                }
+
+                                const fields = HOSPITAL_FIELD_CONFIG.filter((field) => field.section === section.key);
+                                return (
+                                    <section key={section.key} className="space-y-4 rounded-lg border p-4">
+                                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                            {section.title}
+                                        </h3>
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                            {fields.map((field) => (
+                                                <div
+                                                    key={field.name}
+                                                    className={field.input === 'textarea' ? 'md:col-span-2' : undefined}
+                                                >
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={field.name}
+                                                        rules={
+                                                            'required' in field && field.required
+                                                                ? { required: `${field.label} is required` }
+                                                                : undefined
+                                                        }
+                                                        render={({ field: formField }) => (
+                                                            <FormItem>
+                                                                <FormLabel>{field.label}</FormLabel>
+                                                                <FormControl>
+                                                                    {field.input === 'textarea' ? (
+                                                                        <Textarea {...formField} />
+                                                                    ) : (
+                                                                        <Input type={field.input} {...formField} />
+                                                                    )}
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                );
+                            })}
+
+                            <div className="sticky bottom-0 z-10 -mx-2 border-t bg-background/95 px-2 py-3 backdrop-blur">
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button variant="destructive" onClick={onDelete} type="button">
+                                        Delete
+                                    </Button>
+                                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                                        {form.formState.isSubmitting ? 'Saving...' : 'Save'}
+                                    </Button>
+                                </div>
+                            </div>
                         </form>
                     </Form>
                 </CardContent>
