@@ -35,6 +35,7 @@ class TemplateResource extends JsonResource
                 // Primary source for the report header (structured block config).
                 // Null => consumers fall back to legacy Header-section rendering.
                 'header_config' => $this->header_config,
+                'layout_config' => $this->layout_config,
             ],
             'relationships' => [
                 'user'       => $this->user_id       ? ['data' => ['type' => 'users',                'id' => (string) $this->user_id]]        : null,
