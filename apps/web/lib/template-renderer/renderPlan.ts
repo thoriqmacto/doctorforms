@@ -456,7 +456,6 @@ function buildGeneric(section: PlanSection): GenericSectionBlock {
  * Header source of truth, in order:
  *   1. templates.header_config (structured, from admin editor)
  *   2. legacy hardcoded header derived from hospital context
- *   3. fall back to the template's "Header" section (kept verbatim)
  */
 export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
     const {
@@ -492,21 +491,15 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
     if (headerConfig) {
         blocks.push(buildStructuredHeader(headerConfig, contexts));
     } else {
-        // 2. Legacy header derived from hospital context
         const legacy = buildLegacyHospitalHeader(hospital, secondaryLogoUrl);
-        if (legacy) {
-            blocks.push(legacy);
-        } else {
-            // 3. Template-declared Header section (last resort)
-            const templateHeader = sections.find((s) => kindOf(s) === 'header');
-            if (templateHeader && templateHeader.fields.length) {
-                blocks.push(buildGeneric({ ...templateHeader, section: templateHeader.section || 'Header' }));
-            }
-        }
+        if (legacy) blocks.push(legacy);
     }
 
-    blocks.push({ kind: 'report_title', text: viewModel.title });
+    const reportTitleText = nonEmpty(input.testName) ?? nonEmpty(test?.name) ?? viewModel.title;
+    blocks.push({ kind: 'report_title', text: reportTitleText });
 
+    // TODO: report_title and info_grid are still synthetic blocks built here.
+    // Move them into editor-controlled layout/system blocks so every rendered block is template-configurable.
     const infoGrid = buildInfoGrid(patient, report, operator);
     if (infoGrid) blocks.push(infoGrid);
 

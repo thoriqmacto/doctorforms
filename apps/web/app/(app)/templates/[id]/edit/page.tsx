@@ -251,6 +251,30 @@ function resolveApiAssetUrl(url: string) {
   return `${normalizedBase}${normalizedPath}`;
 }
 
+function EditorPanel({
+  title,
+  collapsed,
+  onToggle,
+  children,
+}: {
+  title: string;
+  collapsed: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <Button type="button" variant="ghost" size="sm" onClick={onToggle}>
+          {collapsed ? "Expand" : "Collapse"}
+        </Button>
+      </CardHeader>
+      {!collapsed ? <CardContent className="space-y-4">{children}</CardContent> : null}
+    </Card>
+  );
+}
+
 export default function EditTemplatePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -310,6 +334,9 @@ export default function EditTemplatePage() {
   const [draggedSectionOrder, setDraggedSectionOrder] = useState<number | null>(
     null,
   );
+  const [isTemplateDetailsCollapsed, setIsTemplateDetailsCollapsed] = useState(false);
+  const [isHeaderBlockCollapsed, setIsHeaderBlockCollapsed] = useState(false);
+  const [isHospitalAttrsCollapsed, setIsHospitalAttrsCollapsed] = useState(false);
 
   const groupedFields = useMemo(() => {
     const groups: {
@@ -484,7 +511,9 @@ export default function EditTemplatePage() {
       if (!templateResponse?.data) return;
       const a = templateResponse.data.attributes;
       const rels = templateResponse.data.relationships;
-      const grouped = templateResponse?.data?.meta?.grouped_sections ?? [];
+      const grouped = (templateResponse?.data?.meta?.grouped_sections ?? []).filter(
+        (section: any) => section?.section?.trim().toLowerCase() !== "header",
+      );
       const existing = grouped
         .flatMap((g: any) =>
           (g.items ?? []).map((f: any) => {
@@ -1013,11 +1042,11 @@ export default function EditTemplatePage() {
                 </p>
               ) : null}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Template Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <EditorPanel
+                title="Template Details"
+                collapsed={isTemplateDetailsCollapsed}
+                onToggle={() => setIsTemplateDetailsCollapsed((prev) => !prev)}
+              >
                   <FormField
                     control={form.control}
                     name="name"
@@ -1117,8 +1146,7 @@ export default function EditTemplatePage() {
                       )}
                     />
                   </div>
-                </CardContent>
-              </Card>
+              </EditorPanel>
 
               {/*
                 Header Block editor — writes to templates.header_config.
@@ -1127,11 +1155,12 @@ export default function EditTemplatePage() {
                 legacy static "Header" section as the render fallback.
               */}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Selected Hospital Attributes</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+              <EditorPanel
+                title="Selected Hospital Attributes"
+                collapsed={isHospitalAttrsCollapsed}
+                onToggle={() => setIsHospitalAttrsCollapsed((prev) => !prev)}
+              >
+                <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
                   <div className="md:col-span-2"><span className="font-medium">Hospital:</span> {String(selectedHospitalAttrs?.name ?? "Not set")}</div>
                   {[
                     "parent_org_line",
@@ -1154,50 +1183,56 @@ export default function EditTemplatePage() {
                       </div>
                     );
                   })}
-                </CardContent>
-              </Card>
+                </div>
+              </EditorPanel>
 
-              <HeaderConfigEditor
-                value={form.watch("header_config")}
-                hospitalAttributes={selectedHospitalAttrs}
-                onChange={(next) =>
-                  form.setValue("header_config", next, {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                  })
-                }
-              />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    form.setValue("header_config", null, {
+              <EditorPanel
+                title="Header Block"
+                collapsed={isHeaderBlockCollapsed}
+                onToggle={() => setIsHeaderBlockCollapsed((prev) => !prev)}
+              >
+                <HeaderConfigEditor
+                  value={form.watch("header_config")}
+                  hospitalAttributes={selectedHospitalAttrs}
+                  onChange={(next) =>
+                    form.setValue("header_config", next, {
                       shouldDirty: true,
                       shouldTouch: true,
                     })
                   }
-                  disabled={!form.watch("header_config")}
-                >
-                  Clear header (use legacy Header section)
-                </Button>
-                {!form.watch("header_config") ? (
+                />
+                <div className="flex justify-end">
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     onClick={() =>
-                      form.setValue("header_config", DEFAULT_HEADER_CONFIG, {
+                      form.setValue("header_config", null, {
                         shouldDirty: true,
                         shouldTouch: true,
                       })
                     }
+                    disabled={!form.watch("header_config")}
                   >
-                    Initialize from default
+                    Clear header (use legacy Header section)
                   </Button>
-                ) : null}
-              </div>
+                  {!form.watch("header_config") ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        form.setValue("header_config", DEFAULT_HEADER_CONFIG, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                        })
+                      }
+                    >
+                      Initialize from default
+                    </Button>
+                  ) : null}
+                </div>
+              </EditorPanel>
 
               <div className="space-y-4">
                 {groupedFields.map((group) => {
