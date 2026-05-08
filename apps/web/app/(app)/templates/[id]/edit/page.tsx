@@ -1192,6 +1192,7 @@ export default function EditTemplatePage() {
                 onToggle={() => setIsHeaderBlockCollapsed((prev) => !prev)}
               >
                 <HeaderConfigEditor
+                  embedded
                   value={form.watch("header_config")}
                   hospitalAttributes={selectedHospitalAttrs}
                   onChange={(next) =>
@@ -1214,7 +1215,7 @@ export default function EditTemplatePage() {
                     }
                     disabled={!form.watch("header_config")}
                   >
-                    Clear header (use legacy Header section)
+                    Clear header config and use hospital fallback
                   </Button>
                   {!form.watch("header_config") ? (
                     <Button

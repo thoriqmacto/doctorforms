@@ -35,6 +35,7 @@ type Props = {
     value: HeaderConfig | null;
     onChange: (next: HeaderConfig) => void;
     hospitalAttributes?: Record<string, unknown>;
+    embedded?: boolean;
 };
 
 const FONT_SIZES: FontSizeToken[] = ['xs', 'sm', 'md', 'lg', 'xl'];
@@ -59,7 +60,7 @@ export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
     divider: { visible: false, thicknessPt: 0.75 },
 };
 
-export default function HeaderConfigEditor({ value, onChange, hospitalAttributes }: Props) {
+export default function HeaderConfigEditor({ value, onChange, hospitalAttributes, embedded }: Props) {
     const config: HeaderConfig = value ?? DEFAULT_HEADER_CONFIG;
     const hospitalPaths = useMemo(() => bindingPathsFor('hospital'), []);
     const textLinePaths = useMemo(() => hospitalPaths.filter((p) => !p.includes('logo_url')), [hospitalPaths]);
@@ -97,15 +98,7 @@ export default function HeaderConfigEditor({ value, onChange, hospitalAttributes
         return text.trim();
     }
 
-    return <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-            <div>
-                <CardTitle className="text-base">Header Block</CardTitle>
-                <p className="text-xs text-muted-foreground">Structured report header from hospital attributes, template strings, and literal text.</p>
-            </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => onChange(DEFAULT_HEADER_CONFIG)}>Reset to RSUD Word-style header</Button>
-        </CardHeader>
-        <CardContent className="space-y-5">
+    const editorContent = <div className="space-y-5">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{(['left','right'] as const).map((slot)=>{const logo=config.logo[slot]; const path=logo?.binding?.source==='hospital'?logo.binding.path:''; return <div key={slot} className="space-y-2 rounded-md border p-3">
                 <div className="flex items-center justify-between"><Label className="font-medium capitalize">{slot} logo</Label><label className="inline-flex items-center gap-2 text-xs"><Checkbox checked={logo?.visible ?? false} onCheckedChange={(c)=>patchLogo(slot,{visible:c===true})}/>Visible</label></div>
                 <div><Label className="text-xs">Hospital attribute</Label><Select value={path} onValueChange={(v)=>patchLogo(slot,{binding:{source:'hospital',path:v}})}><SelectTrigger><SelectValue placeholder="Select attribute"/></SelectTrigger><SelectContent>{hospitalPaths.filter((p)=>p.includes('logo_url')).map((p)=><SelectItem key={p} value={p}>hospital.{p}</SelectItem>)}</SelectContent></Select></div>
@@ -134,6 +127,31 @@ export default function HeaderConfigEditor({ value, onChange, hospitalAttributes
             <Button type="button" variant="secondary" onClick={addLine}>Add line</Button></div>
             <div className="flex items-center gap-3 rounded-md border p-3"><label className="inline-flex items-center gap-2 text-sm"><Checkbox checked={!!config.divider?.visible} onCheckedChange={(c)=>patch({divider:{...(config.divider??{}),visible:c===true}})}/>Show divider under header</label></div>
             <p className="text-xs text-muted-foreground">Catalog: hospital attributes available to bindings — {ENTITY_BINDING_CATALOG.hospital.paths.length} paths</p>
+        </div>;
+
+    if (embedded === true) {
+        return <>
+            <div className="flex flex-row items-start justify-between gap-3">
+                <div>
+                    <CardTitle className="text-base">Header Block</CardTitle>
+                    <p className="text-xs text-muted-foreground">Structured report header from hospital attributes, template strings, and literal text.</p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => onChange(DEFAULT_HEADER_CONFIG)}>Reset to RSUD Word-style header</Button>
+            </div>
+            {editorContent}
+        </>;
+    }
+
+    return <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+                <CardTitle className="text-base">Header Block</CardTitle>
+                <p className="text-xs text-muted-foreground">Structured report header from hospital attributes, template strings, and literal text.</p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => onChange(DEFAULT_HEADER_CONFIG)}>Reset to RSUD Word-style header</Button>
+        </CardHeader>
+        <CardContent className="space-y-5">
+                {editorContent}
         </CardContent>
     </Card>;
 }
