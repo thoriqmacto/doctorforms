@@ -49,6 +49,9 @@ export default function Header() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem>{userRoleLabel}</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/me">My Account</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

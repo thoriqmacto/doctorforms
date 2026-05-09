@@ -21,6 +21,7 @@ type AuthUser = {
   name: string
   email: string
   role: 'admin' | 'doctor' | 'staff'
+  phone?: string | null
   position_title?: string | null
 }
 
@@ -34,6 +35,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   forgotPassword: (email: string) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
@@ -136,6 +138,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await forgotPasswordApi({ email })
   }
 
+  const refreshUser = async () => {
+    const res = await meApi()
+    const fresh = (res?.data ?? null) as AuthUser | null
+    setUser(fresh)
+    if (fresh) {
+      const stored = window.localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ ...parsed, user: fresh }),
+          )
+        } catch {
+          // ignore corrupted storage; AuthUser state is the source of truth
+        }
+      }
+    }
+  }
+
   const handleReauthenticate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setReauthError(null)
@@ -154,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <AuthContext.Provider value={{ user, token, loading, status, login, logout, forgotPassword }}>
+      <AuthContext.Provider value={{ user, token, loading, status, login, logout, forgotPassword, refreshUser }}>
         {children}
       </AuthContext.Provider>
       <Dialog open={status === 'expired'}>
