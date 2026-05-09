@@ -80,6 +80,13 @@ type Props = {
     autosaveDraftKey?: string;
     autosaveIntervalMs?: number;
     /**
+     * When true, BSA is auto-calculated from Height/Weight fields once the
+     * user edits either of them. Defaults to false because in the report
+     * edit flow height/weight are patient-level data and BSA should not be
+     * recomputed inside the report form.
+     */
+    enableBsaAutoCalc?: boolean;
+    /**
      * Entity contexts for resolving options.binding on bound fields
      * (patient/user/hospital/...). When a field carries a binding, its
      * rendered value is resolved from these contexts rather than report
@@ -268,6 +275,7 @@ export default function TemplateFormRenderer({
     warnOnLeaveWithUnsavedChanges = false,
     autosaveDraftKey,
     autosaveIntervalMs = 15000,
+    enableBsaAutoCalc = false,
     contexts,
 }: Props) {
     const schema = useMemo(() => {
@@ -305,10 +313,15 @@ export default function TemplateFormRenderer({
     const initialValuesHash = useMemo(() => JSON.stringify(initialValues ?? {}), [initialValues]);
     const lastInitialValuesHashRef = useRef<string>(initialValuesHash);
 
+    // Tracks the last successful localStorage draft write (autosave only,
+    // not a backend save). Cleared whenever we re-hydrate from server.
+    const [lastDraftSavedAt, setLastDraftSavedAt] = useState<Date | null>(null);
+
     useEffect(() => {
         if (initialValuesHash === lastInitialValuesHashRef.current) return;
         lastInitialValuesHashRef.current = initialValuesHash;
         reset(initialValues ?? {});
+        setLastDraftSavedAt(null);
     }, [initialValues, initialValuesHash, reset]);
 
     useEffect(() => {
@@ -345,12 +358,14 @@ export default function TemplateFormRenderer({
 
         const interval = window.setInterval(() => {
             if (!isDirty) return;
+            const now = new Date();
             const payload = {
-                savedAt: new Date().toISOString(),
+                savedAt: now.toISOString(),
                 values: getValues(),
             };
             try {
                 window.localStorage.setItem(autosaveDraftKey, JSON.stringify(payload));
+                setLastDraftSavedAt(now);
             } catch (error) {
                 console.error("Failed to autosave draft", error);
             }
@@ -366,6 +381,16 @@ export default function TemplateFormRenderer({
             Object.fromEntries(sorted.map((_section, idx) => [idx, idx !== 0]))
         );
     }, [enableSectionControls, sectionLayoutKey, sorted]);
+
+    const dirtyStatusLabel = useMemo(() => {
+        if (!isDirty) return "All changes saved";
+        if (lastDraftSavedAt) {
+            const hh = String(lastDraftSavedAt.getHours()).padStart(2, "0");
+            const mm = String(lastDraftSavedAt.getMinutes()).padStart(2, "0");
+            return `Draft saved locally ${hh}:${mm}`;
+        }
+        return "Unsaved changes";
+    }, [isDirty, lastDraftSavedAt]);
 
     const fieldGroups = useMemo(() => {
         const map = new Map<number, Field[]>();
@@ -409,6 +434,7 @@ export default function TemplateFormRenderer({
     }, [dobVal, fAge, fDOB, setValue]);
 
     useEffect(() => {
+        if (!enableBsaAutoCalc) return;
         if (!fBSA || !fHt || !fWt) return;
         // Only auto-calculate BSA when the user has actually edited height
         // or weight in this session. Otherwise this effect would fire on
@@ -419,7 +445,7 @@ export default function TemplateFormRenderer({
         if (!userTouchedHeight && !userTouchedWeight) return;
         const bsa = duboisBSA(Number(htVal), Number(wtVal));
         if (typeof bsa === "number") setValue(fBSA, String(bsa), { shouldValidate: false, shouldDirty: true });
-    }, [htVal, wtVal, fBSA, fHt, fWt, setValue, dirtyFields]);
+    }, [enableBsaAutoCalc, htVal, wtVal, fBSA, fHt, fWt, setValue, dirtyFields]);
 
     const autoResultGroups = useMemo(() => {
         const groups: AutoResultGroup[] = [];
@@ -508,22 +534,63 @@ export default function TemplateFormRenderer({
         });
     }, [autoResultGroups, autoResultSourceValsByGroup, getValues, setValue]);
 
-    function renderSectionHeader(title: string | null | undefined, idx: number, collapsed: boolean) {
+    function clearSection(items: Field[]) {
+        items.forEach((f) => {
+            const name = `f_${f.id}`;
+            const t = f.attributes.type;
+            if (t === "title") return;
+            if (t === "checkbox_group") {
+                setValue(name, [], { shouldDirty: true, shouldValidate: false });
+                return;
+            }
+            if (t === "bullseye") {
+                setValue(name, makeDefaultBullseye(), { shouldDirty: true, shouldValidate: false });
+                return;
+            }
+            setValue(name, "", { shouldDirty: true, shouldValidate: false });
+        });
+    }
+
+    function renderSectionHeader(
+        title: string | null | undefined,
+        idx: number,
+        collapsed: boolean,
+        items: Field[],
+    ) {
         if (!title) return null;
         const displayTitle = formatSectionTitle(title);
         return (
             <div className="sticky top-0 z-10 -mx-4 mb-2 flex items-center justify-between gap-2 bg-background/80 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:relative print:top-auto print:-mx-0 print:px-0">
                 <h2 className="text-lg font-semibold tracking-wide">{displayTitle}</h2>
                 {enableSectionControls && (
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCollapsedSections((prev) => ({ ...prev, [idx]: !collapsed }))}
-                        className="print:hidden"
-                    >
-                        {collapsed ? "Expand" : "Collapse"}
-                    </Button>
+                    <div className="flex items-center gap-2 print:hidden">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                if (
+                                    typeof window !== "undefined" &&
+                                    !window.confirm(
+                                        `Clear all fields in "${displayTitle}"? This cannot be undone before saving.`,
+                                    )
+                                ) {
+                                    return;
+                                }
+                                clearSection(items);
+                            }}
+                        >
+                            Clear section
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCollapsedSections((prev) => ({ ...prev, [idx]: !collapsed }))}
+                        >
+                            {collapsed ? "Expand" : "Collapse"}
+                        </Button>
+                    </div>
                 )}
             </div>
         );
@@ -820,7 +887,8 @@ export default function TemplateFormRenderer({
     function renderSectionCard(
         title: string | null | undefined,
         idx: number,
-        children: React.ReactNode
+        children: React.ReactNode,
+        items: Field[],
     ) {
         const hintCols = title ? layoutHints?.sectionCols?.[title] : undefined;
         const cols = hintCols ?? gridColsFor(title);
@@ -831,7 +899,7 @@ export default function TemplateFormRenderer({
                 id={sectionDomId(title, idx)}
                 className="scroll-mt-24 rounded-xl border p-4 shadow-sm print:shadow-none"
             >
-                {renderSectionHeader(title, idx, collapsed)}
+                {renderSectionHeader(title, idx, collapsed, items)}
                 {!collapsed && <div className={cx("grid gap-3", cols)}>{children}</div>}
             </section>
         );
@@ -862,7 +930,8 @@ export default function TemplateFormRenderer({
         return renderSectionCard(
             sec.section,
             idx,
-            prioritized.map((f) => renderField(f))
+            prioritized.map((f) => renderField(f)),
+            sec.items,
         );
     }
 
@@ -900,7 +969,8 @@ export default function TemplateFormRenderer({
             <>
                 {rows}
                 {rest.map((f) => renderField(f))}
-            </>
+            </>,
+            sec.items,
         );
     }
 
@@ -909,7 +979,8 @@ export default function TemplateFormRenderer({
         return renderSectionCard(
             sec.section,
             idx,
-            items.map((f) => renderField(f))
+            items.map((f) => renderField(f)),
+            sec.items,
         );
     }
 
@@ -938,7 +1009,7 @@ export default function TemplateFormRenderer({
                     <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
                         {showDirtyState && (
                             <div className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                                {isDirty ? "Unsaved changes" : "All changes saved"}
+                                {dirtyStatusLabel}
                             </div>
                         )}
                         {showRefreshButton && (
