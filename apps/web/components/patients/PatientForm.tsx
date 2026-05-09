@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FormLabel } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { type PatientPayload } from '@/lib/api';
 
@@ -151,21 +151,21 @@ export default function PatientForm({
       {error && <p className='text-sm text-destructive'>{error}</p>}
       <div className='grid gap-3 md:grid-cols-2'>
         <div className='space-y-1'>
-          <FormLabel>
+          <Label>
             MRN <Required />
-          </FormLabel>
+          </Label>
           <Input disabled={submitting} value={values.mrn} onChange={(e) => setField('mrn', e.target.value)} />
         </div>
         <div className='space-y-1'>
-          <FormLabel>
+          <Label>
             Name <Required />
-          </FormLabel>
+          </Label>
           <Input disabled={submitting} value={values.name} onChange={(e) => setField('name', e.target.value)} />
         </div>
         <div className='space-y-1'>
-          <FormLabel>
+          <Label>
             Gender <Required />
-          </FormLabel>
+          </Label>
           <select
             className={SELECT_CLASS}
             disabled={submitting}
@@ -177,7 +177,7 @@ export default function PatientForm({
           </select>
         </div>
         <div className='space-y-1'>
-          <FormLabel>Date of birth</FormLabel>
+          <Label>Date of birth</Label>
           <Input
             disabled={submitting}
             type='date'
@@ -186,7 +186,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Date of service/study</FormLabel>
+          <Label>Date of service/study</Label>
           <Input
             disabled={submitting}
             type='date'
@@ -195,7 +195,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Age</FormLabel>
+          <Label>Age</Label>
           <Input
             disabled={submitting}
             type='number'
@@ -204,7 +204,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Height cm</FormLabel>
+          <Label>Height cm</Label>
           <Input
             disabled={submitting}
             type='number'
@@ -213,7 +213,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Weight kg</FormLabel>
+          <Label>Weight kg</Label>
           <Input
             disabled={submitting}
             type='number'
@@ -222,7 +222,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>BSA</FormLabel>
+          <Label>BSA</Label>
           <Input
             disabled={submitting}
             type='number'
@@ -232,7 +232,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Blood pressure</FormLabel>
+          <Label>Blood pressure</Label>
           <Input
             disabled={submitting}
             value={values.blood_pressure}
@@ -240,7 +240,7 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>Referring physician</FormLabel>
+          <Label>Referring physician</Label>
           <Input
             disabled={submitting}
             value={values.referring_physician}
@@ -248,9 +248,9 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <FormLabel>
+          <Label>
             Hospital <Required />
-          </FormLabel>
+          </Label>
           <select
             className={SELECT_CLASS}
             disabled={submitting || validHospitals.length === 0}
@@ -266,9 +266,9 @@ export default function PatientForm({
           </select>
         </div>
         <div className='space-y-1'>
-          <FormLabel>
+          <Label>
             User / Doctor <Required />
-          </FormLabel>
+          </Label>
           {singleUser ? (
             <Input disabled readOnly value={`${singleUser.name} (${singleUser.role ?? 'user'})`} />
           ) : (
@@ -289,7 +289,7 @@ export default function PatientForm({
         </div>
       </div>
       <div className='space-y-1'>
-        <FormLabel>Diagnosis brief</FormLabel>
+        <Label>Diagnosis brief</Label>
         <Textarea
           disabled={submitting}
           value={values.diagnosis_brief}

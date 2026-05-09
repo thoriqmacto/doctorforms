@@ -13,8 +13,8 @@ import {
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const SELECT_CLASS =
   'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
@@ -187,7 +187,7 @@ export default function DoctorSignatorySection({
         )}
 
         <div className='space-y-2'>
-          <FormLabel>Hospital</FormLabel>
+          <Label>Hospital</Label>
           <select
             className={SELECT_CLASS}
             value={hospitalId}
