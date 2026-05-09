@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import RedirectWhenAuthenticated from '@/components/auth/redirect-when-authenticated'
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
   const { forgotPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -51,5 +52,13 @@ export default function ForgotPasswordPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <RedirectWhenAuthenticated>
+      <ForgotPasswordForm />
+    </RedirectWhenAuthenticated>
   )
 }
