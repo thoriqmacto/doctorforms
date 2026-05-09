@@ -5,6 +5,7 @@ namespace App\Http\Resources\Api\V1;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\Api\V1\ReportFieldResource;
 use App\Http\Resources\Api\V1\MeasurementResource;
+use App\Http\Resources\Api\V1\HospitalSignatoryResource;
 
 class ReportResource extends JsonResource
 {
@@ -29,7 +30,9 @@ class ReportResource extends JsonResource
                     'data' => ['type' => 'users', 'id' => (string) $this->user_id],
                 ] : null,
                 'signatory' => $this->signatory_id ? [
-                    'data' => ['type' => 'hospital_signatories', 'id' => (string) $this->signatory_id],
+                    'data' => $this->relationLoaded('signatory') && $this->signatory
+                        ? (new HospitalSignatoryResource($this->signatory))->resolve()
+                        : ['type' => 'hospital_signatories', 'id' => (string) $this->signatory_id],
                 ] : null,
                 'hospital' => $this->hospital_id ? [
                     'data' => ['type' => 'hospitals', 'id' => (string) $this->hospital_id],

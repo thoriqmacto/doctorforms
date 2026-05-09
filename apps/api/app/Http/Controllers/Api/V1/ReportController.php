@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\ReportResource;
+use App\Models\HospitalSignatory;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -13,7 +14,7 @@ class ReportController extends Controller
     // GET /api/v1/reports
     public function index(Request $request)
     {
-        $reports = Report::with(['patient', 'fields.templateField', 'measurements'])
+        $reports = Report::with(['patient', 'fields.templateField', 'measurements', 'signatory'])
             ->orderByDesc('id')
             ->paginate($request->integer('page.size', 25))
             ->appends($request->query());
@@ -24,7 +25,7 @@ class ReportController extends Controller
     // GET /api/v1/reports/{report}
     public function show(Report $report)
     {
-        $report->load(['patient', 'fields.templateField', 'measurements']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
 
         return new ReportResource($report);
     }
@@ -56,6 +57,14 @@ class ReportController extends Controller
             'measurements.*.category'     => ['sometimes','nullable','string','max:50'],
         ]);
 
+        $v->after(function ($validator) use ($request) {
+            $this->validateSignatoryBelongsToHospital(
+                $validator,
+                $request->input('signatory_id'),
+                $request->input('hospital_id'),
+            );
+        });
+
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
@@ -72,7 +81,7 @@ class ReportController extends Controller
             $report->measurements()->createMany($data['measurements']);
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
 
         return (new ReportResource($report))
             ->additional(['meta' => ['status' => 'created']])
@@ -107,6 +116,18 @@ class ReportController extends Controller
             'measurements.*.category'     => ['sometimes','nullable','string','max:50'],
         ]);
 
+        $v->after(function ($validator) use ($request, $report) {
+            if (!$request->has('signatory_id')) {
+                return;
+            }
+            $hospitalId = $request->input('hospital_id', $report->hospital_id);
+            $this->validateSignatoryBelongsToHospital(
+                $validator,
+                $request->input('signatory_id'),
+                $hospitalId,
+            );
+        });
+
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
@@ -129,9 +150,30 @@ class ReportController extends Controller
             }
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
 
         return new ReportResource($report);
+    }
+
+    private function validateSignatoryBelongsToHospital($validator, $signatoryId, $hospitalId): void
+    {
+        if (!$signatoryId) {
+            return;
+        }
+
+        $signatory = HospitalSignatory::find($signatoryId);
+        if (!$signatory) {
+            return; // exists rule will catch missing ids
+        }
+
+        if ($hospitalId && (int) $signatory->hospital_id !== (int) $hospitalId) {
+            $validator->errors()->add('signatory_id', 'Selected signatory does not belong to this hospital.');
+            return;
+        }
+
+        if (!$signatory->active) {
+            $validator->errors()->add('signatory_id', 'Selected signatory is inactive.');
+        }
     }
 
     // DELETE /api/v1/reports/{report}

@@ -28,9 +28,9 @@ Route::post('hospitals/{hospital}/secondary-logo', [HospitalLogoController::clas
 Route::delete('hospitals/{hospital}/secondary-logo', [HospitalLogoController::class, 'destroySecondary'])->middleware('role:admin');
 
 
-Route::get('hospitals/{hospital}/signatories', [HospitalSignatoryController::class, 'index'])->middleware('role:admin');
+Route::get('hospitals/{hospital}/signatories', [HospitalSignatoryController::class, 'index']);
 Route::post('hospitals/{hospital}/signatories', [HospitalSignatoryController::class, 'store'])->middleware('role:admin');
-Route::get('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'show'])->middleware('role:admin');
+Route::get('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'show']);
 Route::patch('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'update'])->middleware('role:admin');
 Route::delete('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'destroy'])->middleware('role:admin');
 Route::post('hospital-signatories/{hospitalSignatory}/signature-image', [HospitalSignatoryController::class, 'uploadSignatureImage'])->middleware('role:admin');

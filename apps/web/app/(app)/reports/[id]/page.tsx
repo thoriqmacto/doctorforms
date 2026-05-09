@@ -7,7 +7,6 @@ import {
     getReport,
     getPatient,
     getHospital,
-    getHospitalSignatories,
     getTests,
     getTemplate,
     getUser,
@@ -45,7 +44,7 @@ export default function ReportDetailPage() {
 
     const { data, isLoading } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields,template,measurements' }).then((r: any) => r)
+        () => getReport(id, { include: 'fields,template,measurements,signatory' }).then((r: any) => r)
     );
 
     const report = data?.data;
@@ -67,7 +66,8 @@ export default function ReportDetailPage() {
     const hospitalId = report?.relationships?.hospital?.data?.id;
     const testId = report?.relationships?.test?.data?.id;
     const userId = report?.relationships?.user?.data?.id;
-    const signatoryId = report?.relationships?.signatory?.data?.id;
+    const signatoryRelData = report?.relationships?.signatory?.data;
+    const signatoryAttrs = signatoryRelData?.attributes ?? undefined;
 
     const { data: patientRes } = useSWR(
         patientId ? ['/patients', patientId] : null,
@@ -76,10 +76,6 @@ export default function ReportDetailPage() {
     const { data: hospitalRes } = useSWR(
         hospitalId ? ['/hospitals', hospitalId] : null,
         () => getHospital(hospitalId as string).then((r: any) => r)
-    );
-    const { data: hospitalWithSignatoriesRes } = useSWR(
-        hospitalId && signatoryId ? ['/hospitals/signatories', hospitalId] : null,
-        () => getHospitalSignatories(hospitalId as string).then((r: any) => r)
     );
     const { data: userRes } = useSWR(
         userId ? ['/users', userId] : null,
@@ -138,16 +134,6 @@ export default function ReportDetailPage() {
     const patientAttrs = patientRes?.data?.attributes;
     const userAttrs = userRes?.data?.attributes;
     const headerConfig = (template?.attributes?.header_config ?? null) as HeaderConfig | null;
-
-    // Signatory lookup: the hospital resource with include=signatories
-    // returns them in relationships.signatories.data[].attributes.
-    const signatoryAttrs = (() => {
-        if (!signatoryId) return undefined;
-        const bag = hospitalWithSignatoriesRes?.data?.relationships?.signatories?.data;
-        if (!Array.isArray(bag)) return undefined;
-        const found = bag.find((s: any) => String(s?.id) === String(signatoryId));
-        return found?.attributes;
-    })();
 
     const renderContexts: RenderContexts = {
         hospital: hospitalAttrs

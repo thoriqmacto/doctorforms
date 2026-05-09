@@ -7,6 +7,7 @@ import { createReport, getHospital, getPatient, getTemplate } from '@/lib/api';
 import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
+import SignatorySelector from '@/components/form/SignatorySelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const toValidId = (value: string | null) => {
@@ -19,6 +20,7 @@ function NewReportPageContent() {
   const router = useRouter();
   const sp = useSearchParams();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [signatoryId, setSignatoryId] = useState<number | null>(null);
 
   const templateIdNum = toValidId(sp.get('templateId'));
   const patientIdNum = toValidId(sp.get('patientId'));
@@ -129,6 +131,7 @@ function NewReportPageContent() {
         hospital_id: derivedHospitalId,
         test_id: derivedTestId,
         user_id: user.id,
+        signatory_id: signatoryId,
         title: reportTitle,
         fields,
         measurements,
@@ -222,14 +225,25 @@ function NewReportPageContent() {
           {templateLoading || hospitalLoading || patientLoading ? (
             'Loading…'
           ) : (
-            <div className="page-a4 rounded-xl shadow-md">
-              <TemplateFormRenderer
-                groupedSections={reportFormSections}
-                onSubmit={onSubmit}
-                initialValues={initialValues}
-                enableSectionControls
-                showPrintButton
+            <div className="space-y-4">
+              <SignatorySelector
+                hospitalId={derivedHospitalId}
+                value={signatoryId}
+                onChange={setSignatoryId}
+                patientUserId={patientRes?.data?.relationships?.user?.data?.id
+                  ? Number(patientRes.data.relationships.user.data.id)
+                  : null}
+                helperText="The selected doctor's signature will be embedded into the report header/footer."
               />
+              <div className="page-a4 rounded-xl shadow-md">
+                <TemplateFormRenderer
+                  groupedSections={reportFormSections}
+                  onSubmit={onSubmit}
+                  initialValues={initialValues}
+                  enableSectionControls
+                  showPrintButton
+                />
+              </div>
             </div>
           )}
         </CardContent>
