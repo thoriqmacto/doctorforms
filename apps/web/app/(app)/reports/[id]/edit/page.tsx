@@ -191,6 +191,10 @@ export default function EditReportPage() {
             });
 
             await updateReport(id, { fields, measurements, signatory_id: signatoryId });
+            // Surface success immediately, before the (potentially slow)
+            // revalidate/rehydrate cycle so the toast doesn't get lost
+            // behind a re-render or appear delayed.
+            toast.success('Report saved successfully.');
             // Drop any autosave draft for this report before rehydrating so
             // TemplateFormRenderer's draft-restore effect doesn't overwrite
             // freshly persisted server values with a stale local draft.
@@ -209,7 +213,6 @@ export default function EditReportPage() {
             signatoryHydrated.current = false;
             setInitialValues(null);
             await mutateReport(undefined, { revalidate: true });
-            toast.success('Report saved successfully.');
         } catch (e) {
             console.error(e);
             toast.error('Failed to save report.');
@@ -234,15 +237,6 @@ export default function EditReportPage() {
                         'Loading…'
                     ) : (
                         <div className="mx-auto w-full max-w-6xl space-y-4">
-                            <SignatorySelector
-                                hospitalId={hospitalId ? Number(hospitalId) : null}
-                                value={signatoryId}
-                                onChange={setSignatoryId}
-                                patientUserId={patientRes?.data?.relationships?.user?.data?.id
-                                    ? Number(patientRes.data.relationships.user.data.id)
-                                    : null}
-                                helperText="Update the doctor whose signature will be embedded in this report."
-                            />
                             <div className="rounded-xl border bg-white shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={editableSections}
@@ -255,6 +249,7 @@ export default function EditReportPage() {
                                 warnOnLeaveWithUnsavedChanges
                                 autosaveDraftKey={`report-edit-draft:${id}`}
                                 showPrintButton={false}
+                                enableBsaAutoCalc={false}
                                 contexts={contexts}
                                 viewLinks={[
                                     { href: buildReportModeHref(id, 'html'), label: 'View HTML' },
@@ -262,6 +257,15 @@ export default function EditReportPage() {
                                 ]}
                             />
                             </div>
+                            <SignatorySelector
+                                hospitalId={hospitalId ? Number(hospitalId) : null}
+                                value={signatoryId}
+                                onChange={setSignatoryId}
+                                patientUserId={patientRes?.data?.relationships?.user?.data?.id
+                                    ? Number(patientRes.data.relationships.user.data.id)
+                                    : null}
+                                helperText="Update the doctor whose signature will be embedded in this report."
+                            />
                         </div>
                     )}
                 </CardContent>
