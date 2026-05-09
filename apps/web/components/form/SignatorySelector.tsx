@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
 import { getHospitalSignatories } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/assetUrl';
 
 export type SignatoryOption = {
     id: number;
@@ -24,16 +25,6 @@ type Props = {
     label?: string;
     helperText?: string;
 };
-
-function isAbsoluteUrl(value: string | null | undefined): value is string {
-    if (!value) return false;
-    try {
-        const url = new URL(value);
-        return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-        return false;
-    }
-}
 
 function buildLabel(s: SignatoryOption): string {
     return [s.name?.trim(), s.position_title?.trim(), s.sip_number ? `SIP ${s.sip_number}` : null]
@@ -69,6 +60,13 @@ export default function SignatorySelector({
         () => signatories.find((s) => s.id === value) ?? null,
         [signatories, value],
     );
+
+    const signatureSrc = resolveAssetUrl(selected?.signature_image_url);
+    const [signatureBroken, setSignatureBroken] = useState(false);
+
+    useEffect(() => {
+        setSignatureBroken(false);
+    }, [signatureSrc]);
 
     useEffect(() => {
         if (!hospitalId) return;
@@ -118,15 +116,18 @@ export default function SignatorySelector({
             </select>
             {selected ? (
                 <div className="flex items-start gap-3 rounded-md bg-slate-50 p-2 text-xs">
-                    {isAbsoluteUrl(selected.signature_image_url) ? (
+                    {signatureSrc && !signatureBroken ? (
                         <Image
-                            src={selected.signature_image_url}
+                            src={signatureSrc}
                             alt="Signature preview"
                             width={120}
                             height={48}
                             unoptimized
+                            onError={() => setSignatureBroken(true)}
                             className="h-12 w-auto object-contain"
                         />
+                    ) : signatureSrc && signatureBroken ? (
+                        <div className="text-slate-500">Signature image could not be loaded.</div>
                     ) : (
                         <div className="text-slate-500">
                             Selected signatory has no uploaded signature.

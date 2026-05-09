@@ -20,6 +20,7 @@ import {
     IMAGE_SIZE_PX,
     SPACING_HTML_CLASS,
 } from '@/lib/template-renderer/schema';
+import { resolveAssetUrl } from '@/lib/assetUrl';
 
 type Props = {
     plan: ReportRenderPlan;
@@ -258,12 +259,13 @@ function Conclusion({ block }: { block: ConclusionBlock }) {
 }
 
 function Signature({ block }: { block: SignatureBlock }) {
-    if (!block.name && !block.subtitle && !block.signatureImageUrl) return null;
+    if (!block.name && !block.subtitle && !block.signatureImageUrl && !block.sipNumber) return null;
+    const signatureSrc = resolveAssetUrl(block.signatureImageUrl);
     return (
         <section className="mt-8 break-inside-avoid px-2 text-right text-[11px]">
-            {block.signatureImageUrl && isAbsoluteUrl(block.signatureImageUrl) ? (
+            {signatureSrc ? (
                 <Image
-                    src={block.signatureImageUrl}
+                    src={signatureSrc}
                     alt="Signature"
                     width={120}
                     height={48}
