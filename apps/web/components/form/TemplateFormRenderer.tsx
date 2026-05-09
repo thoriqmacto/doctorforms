@@ -296,7 +296,7 @@ export default function TemplateFormRenderer({
         [sorted]
     );
 
-    const { control, handleSubmit, setValue, reset, getValues, formState: { isDirty } } = useForm({
+    const { control, handleSubmit, setValue, reset, getValues, formState: { isDirty, dirtyFields } } = useForm({
         resolver: zodResolver(schema),
         defaultValues: initialValues || {},
         mode: "onChange",
@@ -409,11 +409,17 @@ export default function TemplateFormRenderer({
     }, [dobVal, fAge, fDOB, setValue]);
 
     useEffect(() => {
-        if (fBSA && fHt && fWt) {
-            const bsa = duboisBSA(Number(htVal), Number(wtVal));
-            if (typeof bsa === "number") setValue(fBSA, String(bsa), { shouldValidate: false, shouldDirty: true });
-        }
-    }, [htVal, wtVal, fBSA, fHt, fWt, setValue]);
+        if (!fBSA || !fHt || !fWt) return;
+        // Only auto-calculate BSA when the user has actually edited height
+        // or weight in this session. Otherwise this effect would fire on
+        // every reset/hydration and overwrite a persisted BSA with the
+        // formula value.
+        const userTouchedHeight = !!dirtyFields[fHt];
+        const userTouchedWeight = !!dirtyFields[fWt];
+        if (!userTouchedHeight && !userTouchedWeight) return;
+        const bsa = duboisBSA(Number(htVal), Number(wtVal));
+        if (typeof bsa === "number") setValue(fBSA, String(bsa), { shouldValidate: false, shouldDirty: true });
+    }, [htVal, wtVal, fBSA, fHt, fWt, setValue, dirtyFields]);
 
     const autoResultGroups = useMemo(() => {
         const groups: AutoResultGroup[] = [];
