@@ -191,6 +191,14 @@ export default function EditReportPage() {
             });
 
             await updateReport(id, { fields, measurements, signatory_id: signatoryId });
+            // Drop any autosave draft for this report before rehydrating so
+            // TemplateFormRenderer's draft-restore effect doesn't overwrite
+            // freshly persisted server values with a stale local draft.
+            try {
+                window.localStorage.removeItem(`report-edit-draft:${id}`);
+            } catch {
+                // ignore storage failures; the rehydrate path still wins
+            }
             // Template structure is unchanged by a report save, so we keep
             // groupedSections/groupedHydrated. Resetting them here without
             // also calling mutateTemplate() leaves the form stuck on
