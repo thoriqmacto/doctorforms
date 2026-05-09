@@ -58,9 +58,10 @@ class HospitalSignatoryController extends Controller
         }
 
         $path = $file->storeAs("hospital-signatories/{$hospitalSignatory->id}", 'signature.png', 'public');
-        $hospitalSignatory->update(['signature_image_path' => $path]);
+        $hospitalSignatory->forceFill(['signature_image_path' => $path])->save();
+        $hospitalSignatory->refresh()->load(['user', 'hospital']);
 
-        return new HospitalSignatoryResource($hospitalSignatory->load(['user', 'hospital']));
+        return new HospitalSignatoryResource($hospitalSignatory);
     }
 
     public function deleteSignatureImage(HospitalSignatory $hospitalSignatory)
@@ -69,7 +70,7 @@ class HospitalSignatoryController extends Controller
             Storage::disk('public')->delete($hospitalSignatory->signature_image_path);
         }
 
-        $hospitalSignatory->update(['signature_image_path' => null]);
+        $hospitalSignatory->forceFill(['signature_image_path' => null])->save();
 
         return response()->json(['meta' => ['status' => 'signature_deleted']], 200);
     }

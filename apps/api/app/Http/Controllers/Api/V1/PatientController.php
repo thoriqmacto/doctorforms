@@ -70,25 +70,12 @@ class PatientController extends Controller
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
 
-        // Normalize gender to lowercase for SQLite CHECK
-        $gender = strtolower((string) $request->input('gender'));
+        $payload = $v->validated();
+        $payload['gender'] = strtolower((string) $payload['gender']);
+        $payload['mrn']    = (string) $payload['mrn'];
+        $payload['name']   = (string) $payload['name'];
 
-        $patient = Patient::create([
-            'mrn'                 => $request->string('mrn'),
-            'name'                => $request->string('name'),
-            'gender'              => $gender,
-            'dob'                 => $request->input('dob'),
-            'dos'                 => $request->input('dos'),
-            'age'                 => $request->input('age'),
-            'height_cm'           => $request->input('height_cm'),
-            'weight_kg'           => $request->input('weight_kg'),
-            'bsa'                 => $request->input('bsa'),
-            'blood_pressure'      => $request->input('blood_pressure'),
-            'diagnosis_brief'     => $request->input('diagnosis_brief'),
-            'referring_physician' => $request->input('referring_physician'),
-            'hospital_id'         => $request->input('hospital_id'),
-            'user_id'             => $request->input('user_id'),
-        ]);
+        $patient = Patient::create($payload);
 
         return (new PatientResource($patient))
             ->additional(['meta' => ['status' => 'created']])

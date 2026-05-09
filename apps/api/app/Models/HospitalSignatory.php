@@ -28,7 +28,7 @@ class HospitalSignatory extends Model
     public function getSignatureImageUrlAttribute(): ?string
     {
         $path = $this->attributes['signature_image_path'] ?? null;
-        return $path ? Storage::url($path) : null;
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 
     public function hospital()
