@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { getHospital, getPatient, getReport, getTemplate, getUser, updateReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
+import SignatorySelector from '@/components/form/SignatorySelector';
 import type { RenderContexts } from '@/lib/template-renderer/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -25,7 +26,7 @@ export default function EditReportPage() {
 
     const { data: reportRes, isLoading, mutate: mutateReport } = useSWR(
         id ? ['/reports', id] : null,
-        () => getReport(id, { include: 'fields,template,measurements,patient,user,hospital' }),
+        () => getReport(id, { include: 'fields,template,measurements,patient,user,hospital,signatory' }),
         swrOpts
     );
 
@@ -35,6 +36,18 @@ export default function EditReportPage() {
     const patientId = report?.relationships?.patient?.data?.id;
     const hospitalId = report?.relationships?.hospital?.data?.id;
     const userId = report?.relationships?.user?.data?.id;
+    const initialSignatoryId = report?.relationships?.signatory?.data?.id
+        ? Number(report.relationships.signatory.data.id)
+        : null;
+    const [signatoryId, setSignatoryId] = useState<number | null>(null);
+    const signatoryHydrated = useRef(false);
+
+    useEffect(() => {
+        if (!signatoryHydrated.current && reportRes) {
+            setSignatoryId(initialSignatoryId);
+            signatoryHydrated.current = true;
+        }
+    }, [reportRes, initialSignatoryId]);
 
     const { data: patientRes } = useSWR(
         patientId ? ['/patients', patientId] : null,
@@ -178,7 +191,7 @@ export default function EditReportPage() {
                 });
             });
 
-            await updateReport(id, { fields, measurements });
+            await updateReport(id, { fields, measurements, signatory_id: signatoryId });
             toast.success('Report saved successfully.');
             setTimeout(() => {
                 router.push('/reports');
@@ -206,7 +219,17 @@ export default function EditReportPage() {
                     {isLoading || !groupedSections || !initialValues ? (
                         'Loading…'
                     ) : (
-                        <div className="mx-auto w-full max-w-6xl rounded-xl border bg-white shadow-md">
+                        <div className="mx-auto w-full max-w-6xl space-y-4">
+                            <SignatorySelector
+                                hospitalId={hospitalId ? Number(hospitalId) : null}
+                                value={signatoryId}
+                                onChange={setSignatoryId}
+                                patientUserId={patientRes?.data?.relationships?.user?.data?.id
+                                    ? Number(patientRes.data.relationships.user.data.id)
+                                    : null}
+                                helperText="Update the doctor whose signature will be embedded in this report."
+                            />
+                            <div className="rounded-xl border bg-white shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={editableSections}
                                 initialValues={initialValues}
@@ -224,6 +247,7 @@ export default function EditReportPage() {
                                     { href: buildReportModeHref(id, 'pdf'), label: 'View PDF' },
                                 ]}
                             />
+                            </div>
                         </div>
                     )}
                 </CardContent>
