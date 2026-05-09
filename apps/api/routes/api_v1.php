@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\HospitalController;
 use App\Http\Controllers\Api\V1\HospitalLogoController;
 use App\Http\Controllers\Api\V1\HospitalSignatoryController;
+use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TemplateController;
@@ -35,6 +36,10 @@ Route::patch('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryContr
 Route::delete('hospital-signatories/{hospitalSignatory}', [HospitalSignatoryController::class, 'destroy'])->middleware('role:admin');
 Route::post('hospital-signatories/{hospitalSignatory}/signature-image', [HospitalSignatoryController::class, 'uploadSignatureImage'])->middleware('role:admin');
 Route::delete('hospital-signatories/{hospitalSignatory}/signature-image', [HospitalSignatoryController::class, 'deleteSignatureImage'])->middleware('role:admin');
+
+Route::get('me/profile', [MeController::class, 'profile']);
+Route::patch('me/profile', [MeController::class, 'updateProfile']);
+Route::patch('me/password', [MeController::class, 'updatePassword']);
 
 Route::post('feedback', [FeedbackController::class, 'store']);
 Route::get('feedback', [FeedbackController::class, 'index'])->middleware('role:admin');

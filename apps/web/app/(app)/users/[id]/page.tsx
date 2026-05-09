@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { deleteUser, getUser, updateUser } from '@/lib/api';
+import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +47,8 @@ const parseErr = async (err: any, fallback: string) => {
 export default function EditUserPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
+  const { user: authedUser, refreshUser } = useAuth();
+  const { mutate } = useSWRConfig();
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -123,7 +127,13 @@ export default function EditUserPage() {
       const payload: any = { ...v };
       if (!payload.password) delete payload.password;
       await updateUser(id, payload);
-      router.push('/users');
+      await Promise.all([mutate(['/users', id]), mutate(['/users'])]);
+      // If the admin edited their own record, refresh the cached auth user.
+      if (authedUser?.id != null && String(authedUser.id) === String(id)) {
+        await refreshUser();
+      }
+      form.setValue('password', '');
+      toast.success('User saved.');
     } catch (e: any) {
       setError(await parseErr(e, 'Failed to save user.'));
     } finally {

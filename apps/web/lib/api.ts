@@ -141,8 +141,30 @@ export type AuthUser = {
     name: string;
     email: string;
     role: 'admin' | 'doctor' | 'staff';
+    phone?: string | null;
     position_title?: string | null;
 };
+
+export type MeProfilePayload = {
+    name?: string;
+    email?: string;
+    phone?: string | null;
+    position_title?: string | null;
+};
+
+export type MePasswordPayload = {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+};
+
+export const getMyProfile = () => api.get('me/profile').json<any>();
+
+export const updateMyProfile = (payload: MeProfilePayload) =>
+    api.patch('me/profile', { json: payload }).json<any>();
+
+export const changeMyPassword = (payload: MePasswordPayload) =>
+    api.patch('me/password', { json: payload }).json<any>();
 
 export type AuthPayload = {
     token_id: string | number;

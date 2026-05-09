@@ -191,11 +191,15 @@ export default function EditReportPage() {
             });
 
             await updateReport(id, { fields, measurements, signatory_id: signatoryId });
+            // Template structure is unchanged by a report save, so we keep
+            // groupedSections/groupedHydrated. Resetting them here without
+            // also calling mutateTemplate() leaves the form stuck on
+            // "Loading…" and a subsequent save would post empty
+            // fields/measurements arrays, which the backend treats as a
+            // wipe.
             initHydrated.current = false;
-            groupedHydrated.current = false;
             signatoryHydrated.current = false;
             setInitialValues(null);
-            setGroupedSections(null);
             await mutateReport(undefined, { revalidate: true });
             toast.success('Report saved successfully.');
         } catch (e) {

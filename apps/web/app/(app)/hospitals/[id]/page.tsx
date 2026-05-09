@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { getHospital, updateHospital, deleteHospital } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,10 +63,11 @@ export default function EditHospitalPage() {
     async function onSubmit(values: any) {
         try {
             await updateHospital(id, values);
-            router.push('/hospitals');
+            await mutate();
+            toast.success('Hospital saved.');
         } catch (e) {
             console.error(e);
-            alert('Failed to save');
+            toast.error('Failed to save hospital.');
         }
     }
 
