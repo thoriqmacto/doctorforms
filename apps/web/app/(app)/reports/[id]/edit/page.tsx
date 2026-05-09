@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -14,7 +14,6 @@ import { buildReportModeHref } from '@/lib/reportViewModes';
 
 export default function EditReportPage() {
     const { id } = useParams<{ id: string }>();
-    const router = useRouter();
 
     // 1) Calm SWR down while editing
     const swrOpts = {
@@ -192,13 +191,16 @@ export default function EditReportPage() {
             });
 
             await updateReport(id, { fields, measurements, signatory_id: signatoryId });
+            initHydrated.current = false;
+            groupedHydrated.current = false;
+            signatoryHydrated.current = false;
+            setInitialValues(null);
+            setGroupedSections(null);
+            await mutateReport(undefined, { revalidate: true });
             toast.success('Report saved successfully.');
-            setTimeout(() => {
-                router.push('/reports');
-            }, 700);
         } catch (e) {
             console.error(e);
-            alert('Failed to save');
+            toast.error('Failed to save report.');
         }
     }
 

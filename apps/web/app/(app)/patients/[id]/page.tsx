@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
-import useSWR from 'swr';
+import { useMemo, useState } from 'react';
+import useSWR, { useSWRConfig } from 'swr';
 import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PatientForm, { type PatientFormValues } from '@/components/patients/PatientForm';
@@ -17,6 +18,8 @@ export default function PatientDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { mutate } = useSWRConfig();
+  const [saveCount, setSaveCount] = useState(0);
 
   const { data, error: patientError, isLoading: patientLoading } = useSWR(
     params?.id ? ['/patients', params.id] : null,
@@ -162,7 +165,7 @@ export default function PatientDetailPage() {
               : 'Patient remains assigned to its current user.'}
           </p>
           <PatientForm
-            resetKey={`edit-${params.id}-${users.length}`}
+            resetKey={`edit-${params.id}-${users.length}-${saveCount}`}
             initialValues={initial}
             hospitals={hospitals}
             users={users}
@@ -170,7 +173,12 @@ export default function PatientDetailPage() {
             onSubmit={async (payload) => {
               try {
                 await updatePatient(params.id, payload);
-                router.push('/patients');
+                await Promise.all([
+                  mutate(['/patients', params.id]),
+                  mutate(['/patients']),
+                ]);
+                setSaveCount((n) => n + 1);
+                toast.success('Patient saved.');
               } catch (err: any) {
                 throw new Error(await parseApiError(err, 'Failed to update patient.'));
               }
