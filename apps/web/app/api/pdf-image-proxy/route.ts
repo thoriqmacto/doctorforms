@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg']);
 const LOCAL_ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1']);
-const URL_ENV_KEYS = ['NEXT_PUBLIC_API_URL', 'NEXT_PUBLIC_BACKEND_URL', 'API_URL'] as const;
+const URL_ENV_KEYS = [
+    'NEXT_PUBLIC_API_BASE_URL',
+    'NEXT_PUBLIC_API_URL',
+    'NEXT_PUBLIC_BACKEND_URL',
+    'NEXT_PUBLIC_ASSET_BASE_URL',
+    'API_URL',
+] as const;
 
 function normalizeContentType(value: string | null): string {
     return (value ?? '').split(';', 1)[0].trim().toLowerCase();

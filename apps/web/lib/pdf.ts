@@ -18,6 +18,7 @@ import {
     IMAGE_SIZE_PT,
     SPACING_PT,
 } from '@/lib/template-renderer/schema';
+import { resolveAssetUrl } from '@/lib/assetUrl';
 
 const { colors } = reportLayout;
 const TEXT = rgb(...colors.text);
@@ -95,7 +96,13 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 async function embedLogo(doc: PDFDocument, url?: string): Promise<PDFImage | null> {
     if (!url) return null;
 
-    const proxiedUrl = `/api/pdf-image-proxy?url=${encodeURIComponent(url)}`;
+    const resolved = resolveAssetUrl(url);
+    if (!resolved || !/^https?:\/\//i.test(resolved)) {
+        console.error('PDF logo skipped: could not resolve to absolute URL', { logoUrl: url });
+        return null;
+    }
+
+    const proxiedUrl = `/api/pdf-image-proxy?url=${encodeURIComponent(resolved)}`;
 
     try {
         const response = await fetch(proxiedUrl);

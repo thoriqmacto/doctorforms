@@ -36,6 +36,19 @@ function withoutHeaderSection(sections: any[]) {
     return sections.filter((section) => section?.section?.trim().toLowerCase() !== 'header');
 }
 
+function extractSignatoryAttributes(report: any): any | undefined {
+    const data = report?.relationships?.signatory?.data;
+    if (!data) return undefined;
+
+    // Embedded shape: { type, id, attributes: { ... } }
+    if (data.attributes) return data.attributes;
+
+    // JSON:API shape with nested data: { data: { type, id, attributes } }
+    if (data.data?.attributes) return data.data.attributes;
+
+    return undefined;
+}
+
 export default function ReportDetailPage() {
     const params = useParams<{ id: string }>();
     const searchParams = useSearchParams();
@@ -66,8 +79,7 @@ export default function ReportDetailPage() {
     const hospitalId = report?.relationships?.hospital?.data?.id;
     const testId = report?.relationships?.test?.data?.id;
     const userId = report?.relationships?.user?.data?.id;
-    const signatoryRelData = report?.relationships?.signatory?.data;
-    const signatoryAttrs = signatoryRelData?.attributes ?? undefined;
+    const signatoryAttrs = extractSignatoryAttributes(report);
 
     const { data: patientRes } = useSWR(
         patientId ? ['/patients', patientId] : null,

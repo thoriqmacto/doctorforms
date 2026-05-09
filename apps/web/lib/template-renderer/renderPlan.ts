@@ -540,7 +540,13 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
     // Ensure a signature block closes the report even when the template
     // didn't declare one. Uses signatory > operator > report.operator.
     const hasSignature = blocks.some((b) => b.kind === 'signature');
-    if (!hasSignature && (signatory?.name || operator?.name || report?.operator)) {
+    if (
+        !hasSignature &&
+        (signatory?.name ||
+            signatory?.signature_image_url ||
+            operator?.name ||
+            report?.operator)
+    ) {
         blocks.push({
             kind: 'signature',
             name:
