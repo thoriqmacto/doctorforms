@@ -44,7 +44,13 @@ export default function PatientDetailPage() {
   const users = useMemo(() => {
     if (effectiveUserId > 0) {
       const isCurrent = user?.id != null && Number(user.id) === effectiveUserId;
-      const name = isCurrent ? (user?.name ?? `User ${effectiveUserId}`) : 'Assigned User';
+      const rawName = isCurrent ? user?.name : null;
+      const name =
+        typeof rawName === 'string' && rawName.trim().length > 0
+          ? rawName
+          : isCurrent
+            ? `User ${effectiveUserId}`
+            : 'Assigned User';
       const role = isCurrent ? (user?.role ?? 'user') : 'user';
       return [{ id: effectiveUserId, name, role }];
     }
@@ -83,6 +89,10 @@ export default function PatientDetailPage() {
 
   if (hospitalsError) {
     return wrap(<p className='text-sm text-destructive'>Unable to load hospitals.</p>);
+  }
+
+  if (effectiveUserId <= 0) {
+    return wrap(<p className='text-sm text-destructive'>Assigned user is unavailable.</p>);
   }
 
   const initial: PatientFormValues = {

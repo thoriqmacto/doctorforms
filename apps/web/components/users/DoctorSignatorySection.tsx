@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const SELECT_CLASS =
+  'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
 function getApiOrigin(): string | null {
   const base = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -28,21 +30,29 @@ function getApiOrigin(): string | null {
 }
 
 function resolveAssetUrl(url?: string | null): string | null {
-  if (!url) return null;
-  if (/^https?:\/\//i.test(url)) return url;
-  const origin = getApiOrigin();
-  if (url.startsWith('/storage') || url.startsWith('/api')) return origin ? `${origin}${url}` : url;
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!base) return url;
+  if (!url || typeof url !== 'string') return null;
   try {
-    return new URL(url, base.endsWith('/') ? base : `${base}/`).toString();
+    if (/^https?:\/\//i.test(url)) return url;
+    const origin = getApiOrigin();
+    if (url.startsWith('/storage') || url.startsWith('/api')) {
+      return origin ? `${origin}${url}` : url;
+    }
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!base) return url;
+    try {
+      return new URL(url, base.endsWith('/') ? base : `${base}/`).toString();
+    } catch {
+      return url;
+    }
   } catch {
-    return url;
+    return url ?? null;
   }
 }
 
 const parseErr = async (err: any, fallback: string) => {
-  if (err?.response?.status === 403) return 'You do not have permission to manage signatories.';
+  if (err?.response?.status === 403) {
+    return 'You do not have permission to manage signatories.';
+  }
   if (!err?.response) return fallback;
   try {
     const r = await err.response.json();
@@ -68,50 +78,79 @@ export default function DoctorSignatorySection({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState({
-    name: userName,
-    position_title: positionTitle,
+    name: userName ?? '',
+    position_title: positionTitle ?? '',
     sip_number: '',
     active: true,
   });
   const [file, setFile] = useState<File | null>(null);
   const [signatureLoadFailed, setSignatureLoadFailed] = useState(false);
 
+  const userIdNumber = Number(userId);
+  const userIdValid = Number.isFinite(userIdNumber) && userIdNumber > 0;
+
   const { data: hRes, error: hErr, isLoading: hLoad } = useSWR('/hospitals', () => getHospitals());
   const { data: sRes, error: sErr, mutate, isLoading: signatoryLoading } = useSWR(
-    hospitalId ? ['hospital-signatories', hospitalId, userId] : null,
+    hospitalId && userIdValid ? ['hospital-signatories', hospitalId, userId] : null,
     () => getHospitalSignatories(hospitalId),
   );
 
   const hospitalsPermissionDenied = (hErr as any)?.response?.status === 403;
   const signatoriesPermissionDenied = (sErr as any)?.response?.status === 403;
 
-  const hospitals: Hospital[] = useMemo(() => {
-    const raw = Array.isArray(hRes?.data) ? hRes!.data : [];
-    return raw
+  const validHospitals: Hospital[] = useMemo(() => {
+    const hospitalsRaw = Array.isArray(hRes?.data) ? hRes!.data : [];
+    return hospitalsRaw
       .map((h: any) => {
         const id = Number(h?.id);
-        const name = typeof h?.attributes?.name === 'string' ? h.attributes.name : `Hospital ${h?.id ?? ''}`;
+        const rawName = h?.attributes?.name;
+        const name =
+          typeof rawName === 'string' && rawName.trim().length > 0
+            ? rawName
+            : `Hospital ${Number.isFinite(id) ? id : ''}`;
         return { id, name };
       })
-      .filter((h: Hospital) => Number.isFinite(h.id) && h.id > 0 && typeof h.name === 'string' && h.name.trim().length > 0);
+      .filter(
+        (h: Hospital) =>
+          Number.isFinite(h.id) && h.id > 0 && typeof h.name === 'string' && h.name.trim().length > 0,
+      );
   }, [hRes]);
 
-  const signatoriesRaw = useMemo(() => (Array.isArray(sRes?.data) ? sRes!.data : []), [sRes]);
-  const selected = useMemo(
-    () => signatoriesRaw.find((i: any) => Number(i?.attributes?.user_id) === Number(userId)) ?? null,
-    [signatoriesRaw, userId],
+  const signatoriesRaw = useMemo(
+    () => (Array.isArray(sRes?.data) ? sRes!.data : []),
+    [sRes],
   );
+
+  const selected = useMemo(() => {
+    if (!userIdValid) return null;
+    try {
+      return (
+        signatoriesRaw.find((i: any) => {
+          const sigUserId = Number(i?.attributes?.user_id);
+          return Number.isFinite(sigUserId) && sigUserId === userIdNumber;
+        }) ?? null
+      );
+    } catch {
+      return null;
+    }
+  }, [signatoriesRaw, userIdNumber, userIdValid]);
 
   useEffect(() => {
     if (selected) {
+      const a = selected.attributes ?? {};
       setForm({
-        name: selected.attributes?.name ?? '',
-        position_title: selected.attributes?.position_title ?? '',
-        sip_number: selected.attributes?.sip_number ?? '',
-        active: Boolean(selected.attributes?.active),
+        name: typeof a.name === 'string' ? a.name : '',
+        position_title: typeof a.position_title === 'string' ? a.position_title : '',
+        sip_number: typeof a.sip_number === 'string' ? a.sip_number : '',
+        active: Boolean(a.active),
       });
     } else {
-      setForm({ name: userName, position_title: positionTitle, sip_number: '', active: true });
+      setForm({
+        name: userName ?? '',
+        position_title: positionTitle ?? '',
+        sip_number: '',
+        active: true,
+      });
     }
     setSignatureLoadFailed(false);
   }, [selected, userName, positionTitle]);
@@ -124,7 +163,8 @@ export default function DoctorSignatorySection({
     }
   }, [selected]);
 
-  const hasHospitals = hospitals.length > 0;
+  const hasHospitals = validHospitals.length > 0;
+  const saveDisabled = !userIdValid || !hasHospitals;
 
   return (
     <Card>
@@ -132,11 +172,12 @@ export default function DoctorSignatorySection({
         <CardTitle>Doctor Signature / Signatory</CardTitle>
       </CardHeader>
       <CardContent className='space-y-3'>
+        {!userIdValid && <p className='text-sm text-destructive'>Invalid doctor user id.</p>}
         {msg && <p className='text-sm text-emerald-700'>{msg}</p>}
         {err && <p className='text-sm text-destructive'>{err}</p>}
         {hLoad && <p className='text-sm text-muted-foreground'>Loading hospitals...</p>}
         {hospitalsPermissionDenied && (
-          <p className='text-sm text-destructive'>You do not have permission to view hospitals.</p>
+          <p className='text-sm text-destructive'>You do not have permission to manage signatories.</p>
         )}
         {hErr && !hospitalsPermissionDenied && (
           <p className='text-sm text-destructive'>Unable to load hospitals for signatory setup.</p>
@@ -147,35 +188,30 @@ export default function DoctorSignatorySection({
 
         <div className='space-y-2'>
           <FormLabel>Hospital</FormLabel>
-          <Select
+          <select
+            className={SELECT_CLASS}
             value={hospitalId}
-            onValueChange={(value) => {
+            onChange={(event) => {
               setErr(null);
               setMsg(null);
-              setHospitalId(value);
+              setHospitalId(event.target.value);
             }}
-            disabled={!hasHospitals}
+            disabled={hLoad || !hasHospitals || !userIdValid}
           >
-            <SelectTrigger>
-              <SelectValue placeholder='Select hospital' />
-            </SelectTrigger>
-            {hasHospitals ? (
-              <SelectContent>
-                {hospitals.map((h) => (
-                  <SelectItem key={h.id} value={String(h.id)}>
-                    {h.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            ) : null}
-          </Select>
+            <option value=''>Select hospital</option>
+            {validHospitals.map((h) => (
+              <option key={h.id} value={String(h.id)}>
+                {h.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {hospitalId && signatoryLoading && (
           <p className='text-sm text-muted-foreground'>Loading signatories...</p>
         )}
         {hospitalId && signatoriesPermissionDenied && (
-          <p className='text-sm text-destructive'>You do not have permission to view signatories.</p>
+          <p className='text-sm text-destructive'>You do not have permission to manage signatories.</p>
         )}
         {hospitalId && sErr && !signatoriesPermissionDenied && (
           <p className='text-sm text-destructive'>Unable to load signatories for this hospital.</p>
@@ -208,14 +244,15 @@ export default function DoctorSignatorySection({
         <div className='flex gap-2'>
           <Button
             type='button'
-            disabled={!hasHospitals}
+            disabled={saveDisabled}
             onClick={async () => {
               setErr(null);
               setMsg(null);
+              if (!userIdValid) return setErr('Invalid doctor user id.');
               if (!hospitalId) return setErr('Please select a hospital first.');
               if (!form.name.trim()) return setErr('Signatory name is required.');
               const payload = {
-                user_id: Number(userId),
+                user_id: userIdNumber,
                 name: form.name.trim(),
                 position_title: form.position_title,
                 sip_number: form.sip_number,
@@ -231,7 +268,13 @@ export default function DoctorSignatorySection({
                 setMsg('Signatory saved successfully.');
               } catch (e: any) {
                 setErr(await parseErr(e, 'Failed to save signatory.'));
-                if (e?.response?.status === 422) await mutate();
+                if (e?.response?.status === 422) {
+                  try {
+                    await mutate();
+                  } catch {
+                    /* ignore */
+                  }
+                }
               }
             }}
           >

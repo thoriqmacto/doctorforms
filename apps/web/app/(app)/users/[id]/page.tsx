@@ -11,13 +11,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type UserRole = 'admin' | 'doctor' | 'staff';
+
+function normalizeRole(value: unknown): UserRole {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'admin' || normalized === 'doctor' || normalized === 'staff') {
+    return normalized;
+  }
+  return 'staff';
+}
 
 type UserFormValues = {
   name: string;
   email: string;
   phone: string;
-  role: 'admin' | 'doctor' | 'staff';
+  role: UserRole;
   position_title: string;
   password: string;
 };
@@ -59,7 +68,7 @@ export default function EditUserPage() {
       name: a.name ?? '',
       email: a.email ?? '',
       phone: a.phone ?? '',
-      role: a.role ?? 'staff',
+      role: normalizeRole(a.role),
       position_title: a.positionTitle ?? a.position_title ?? '',
       password: '',
     });
@@ -220,18 +229,17 @@ export default function EditUserPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value='admin'>admin</SelectItem>
-                        <SelectItem value='doctor'>doctor</SelectItem>
-                        <SelectItem value='staff'>staff</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <select
+                        className='border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+                        value={field.value}
+                        onChange={(event) => field.onChange(normalizeRole(event.target.value))}
+                      >
+                        <option value='admin'>admin</option>
+                        <option value='doctor'>doctor</option>
+                        <option value='staff'>staff</option>
+                      </select>
+                    </FormControl>
                   </FormItem>
                 )}
               />

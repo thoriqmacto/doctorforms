@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormLabel } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type PatientPayload } from '@/lib/api';
+
+const SELECT_CLASS =
+  'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
 export type PatientFormValues = {
   mrn: string;
@@ -68,32 +70,45 @@ export default function PatientForm({
 
   useEffect(() => {
     setValues(initialValues);
+    setError(null);
     // Intentionally only depending on resetKey to avoid resets when parent recreates initialValues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
-  const validHospitals = useMemo(
-    () =>
-      (Array.isArray(hospitals) ? hospitals : [])
-        .map((h) => ({ ...h, id: Number(h.id) }))
-        .filter(
-          (h) =>
-            Number.isFinite(h.id) && h.id > 0 && typeof h.name === 'string' && h.name.trim().length > 0,
-        ),
-    [hospitals],
-  );
+  const validHospitals = useMemo(() => {
+    const raw = Array.isArray(hospitals) ? hospitals : [];
+    return raw
+      .map((h) => {
+        const id = Number(h?.id);
+        const name =
+          typeof h?.name === 'string' && h.name.trim().length > 0
+            ? h.name
+            : `Hospital ${Number.isFinite(id) ? id : ''}`;
+        return { ...h, id, name };
+      })
+      .filter(
+        (h) =>
+          Number.isFinite(h.id) && h.id > 0 && typeof h.name === 'string' && h.name.trim().length > 0,
+      );
+  }, [hospitals]);
 
-  const validUsers = useMemo(
-    () =>
-      (Array.isArray(users) ? users : [])
-        .map((u) => ({ ...u, id: Number(u.id) }))
-        .filter(
-          (u) =>
-            Number.isFinite(u.id) && u.id > 0 && typeof u.name === 'string' && u.name.trim().length > 0,
-        )
-        .sort((a, b) => Number(b.role === 'doctor') - Number(a.role === 'doctor')),
-    [users],
-  );
+  const validUsers = useMemo(() => {
+    const raw = Array.isArray(users) ? users : [];
+    return raw
+      .map((u) => {
+        const id = Number(u?.id);
+        const name =
+          typeof u?.name === 'string' && u.name.trim().length > 0
+            ? u.name
+            : `User ${Number.isFinite(id) ? id : ''}`;
+        return { ...u, id, name };
+      })
+      .filter(
+        (u) =>
+          Number.isFinite(u.id) && u.id > 0 && typeof u.name === 'string' && u.name.trim().length > 0,
+      )
+      .sort((a, b) => Number(b.role === 'doctor') - Number(a.role === 'doctor'));
+  }, [users]);
 
   const setField = (k: keyof PatientFormValues, v: string) =>
     setValues((p) => ({ ...p, [k]: v }));
@@ -120,7 +135,7 @@ export default function PatientForm({
     try {
       await onSubmit(normalizePatientPayload(values));
     } catch (err: any) {
-      setError(err?.message ?? 'Unable to save patient.');
+      setError(err?.message || String(err) || 'Unable to save patient.');
     } finally {
       setSubmitting(false);
     }
@@ -129,6 +144,7 @@ export default function PatientForm({
   const singleUser = validUsers.length === 1 ? validUsers[0] : null;
   const hospitalValue = values.hospital_id ?? '';
   const userValue = values.user_id ?? '';
+  const genderValue = values.gender || 'male';
 
   return (
     <form onSubmit={submit} className='space-y-3'>
@@ -150,27 +166,42 @@ export default function PatientForm({
           <FormLabel>
             Gender <Required />
           </FormLabel>
-          <Select value={values.gender} onValueChange={(v) => setField('gender', v as 'male' | 'female')}>
-            <SelectTrigger disabled={submitting}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='male'>male</SelectItem>
-              <SelectItem value='female'>female</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            className={SELECT_CLASS}
+            disabled={submitting}
+            value={genderValue}
+            onChange={(e) => setField('gender', e.target.value === 'female' ? 'female' : 'male')}
+          >
+            <option value='male'>male</option>
+            <option value='female'>female</option>
+          </select>
         </div>
         <div className='space-y-1'>
           <FormLabel>Date of birth</FormLabel>
-          <Input disabled={submitting} type='date' value={values.dob} onChange={(e) => setField('dob', e.target.value)} />
+          <Input
+            disabled={submitting}
+            type='date'
+            value={values.dob}
+            onChange={(e) => setField('dob', e.target.value)}
+          />
         </div>
         <div className='space-y-1'>
           <FormLabel>Date of service/study</FormLabel>
-          <Input disabled={submitting} type='date' value={values.dos} onChange={(e) => setField('dos', e.target.value)} />
+          <Input
+            disabled={submitting}
+            type='date'
+            value={values.dos}
+            onChange={(e) => setField('dos', e.target.value)}
+          />
         </div>
         <div className='space-y-1'>
           <FormLabel>Age</FormLabel>
-          <Input disabled={submitting} type='number' value={values.age} onChange={(e) => setField('age', e.target.value)} />
+          <Input
+            disabled={submitting}
+            type='number'
+            value={values.age}
+            onChange={(e) => setField('age', e.target.value)}
+          />
         </div>
         <div className='space-y-1'>
           <FormLabel>Height cm</FormLabel>
@@ -220,46 +251,40 @@ export default function PatientForm({
           <FormLabel>
             Hospital <Required />
           </FormLabel>
-          <Select value={hospitalValue} onValueChange={(v) => setField('hospital_id', v)}>
-            <SelectTrigger disabled={submitting || validHospitals.length === 0}>
-              <SelectValue placeholder='Select hospital' />
-            </SelectTrigger>
-            {validHospitals.length > 0 ? (
-              <SelectContent>
-                {validHospitals.map((h) => (
-                  <SelectItem key={h.id} value={String(h.id)}>
-                    {h.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            ) : null}
-          </Select>
+          <select
+            className={SELECT_CLASS}
+            disabled={submitting || validHospitals.length === 0}
+            value={hospitalValue}
+            onChange={(e) => setField('hospital_id', e.target.value)}
+          >
+            <option value=''>Select hospital</option>
+            {validHospitals.map((h) => (
+              <option key={h.id} value={String(h.id)}>
+                {h.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className='space-y-1'>
           <FormLabel>
             User / Doctor <Required />
           </FormLabel>
           {singleUser ? (
-            <Input
-              disabled
-              readOnly
-              value={`${singleUser.name} (${singleUser.role ?? 'user'})`}
-            />
+            <Input disabled readOnly value={`${singleUser.name} (${singleUser.role ?? 'user'})`} />
           ) : (
-            <Select value={userValue} onValueChange={(v) => setField('user_id', v)}>
-              <SelectTrigger disabled={submitting || validUsers.length === 0}>
-                <SelectValue placeholder='Select user' />
-              </SelectTrigger>
-              {validUsers.length > 0 ? (
-                <SelectContent>
-                  {validUsers.map((u) => (
-                    <SelectItem key={u.id} value={String(u.id)}>
-                      {u.name} ({u.role ?? 'user'})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              ) : null}
-            </Select>
+            <select
+              className={SELECT_CLASS}
+              disabled={submitting || validUsers.length === 0}
+              value={userValue}
+              onChange={(e) => setField('user_id', e.target.value)}
+            >
+              <option value=''>Select user</option>
+              {validUsers.map((u) => (
+                <option key={u.id} value={String(u.id)}>
+                  {u.name} ({u.role ?? 'user'})
+                </option>
+              ))}
+            </select>
           )}
         </div>
       </div>
