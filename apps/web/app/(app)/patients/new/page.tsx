@@ -6,18 +6,27 @@ import useSWR from 'swr';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PatientForm, { type PatientFormValues } from '@/components/patients/PatientForm';
-import { createPatient, getHospitals } from '@/lib/api';
+import { createPatient, getHospitals, getUsers } from '@/lib/api';
+import { parseApiError } from '@/lib/parseApiError';
 import { useAuth } from '@/components/auth-provider';
 
 type Hospital = { id: number; name: string };
+type UserOption = { id: number; name: string; role: string };
 
 export default function NewPatientPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
+  const isAdmin = user?.role === 'admin';
+
   const { data: hospitalsRes, error: hospitalsError, isLoading: hospitalsLoading } = useSWR(
     '/hospitals',
     () => getHospitals(),
+  );
+
+  const { data: usersRes, isLoading: usersLoading } = useSWR(
+    isAdmin ? '/users' : null,
+    () => getUsers(),
   );
 
   const hospitals: Hospital[] = useMemo(() => {
@@ -62,8 +71,8 @@ export default function NewPatientPage() {
     );
   }
 
-  if (hospitalsLoading) {
-    return wrap(<p className='text-sm text-muted-foreground'>Loading hospitals…</p>);
+  if (hospitalsLoading || (isAdmin && usersLoading)) {
+    return wrap(<p className='text-sm text-muted-foreground'>Loading…</p>);
   }
 
   if (hospitalsError) {
@@ -72,6 +81,43 @@ export default function NewPatientPage() {
 
   if (hospitals.length === 0) {
     return wrap(<p className='text-sm text-muted-foreground'>No hospitals available.</p>);
+  }
+
+  const safeCurrentUserName =
+    typeof user.name === 'string' && user.name.trim().length > 0 ? user.name : `User ${user.id}`;
+
+  let users: UserOption[] = [
+    { id: Number(user.id), name: safeCurrentUserName, role: user.role ?? 'user' },
+  ];
+  let defaultUserId = Number(user.id);
+
+  if (isAdmin) {
+    const rawUsers = Array.isArray(usersRes?.data) ? usersRes!.data : [];
+    const adminUsers: UserOption[] = rawUsers
+      .map((u: any) => {
+        const id = Number(u?.id);
+        const rawName = u?.attributes?.name;
+        const name =
+          typeof rawName === 'string' && rawName.trim().length > 0
+            ? rawName
+            : `User ${Number.isFinite(id) ? id : ''}`;
+        const role =
+          typeof u?.attributes?.role === 'string' && u.attributes.role.trim().length > 0
+            ? u.attributes.role
+            : 'user';
+        return { id, name, role };
+      })
+      .filter(
+        (u: UserOption) =>
+          Number.isFinite(u.id) && u.id > 0 && typeof u.name === 'string' && u.name.trim().length > 0,
+      );
+
+    if (adminUsers.length > 0) {
+      users = adminUsers;
+      const firstDoctor = adminUsers.find((u) => u.role === 'doctor');
+      const self = adminUsers.find((u) => u.id === Number(user.id));
+      defaultUserId = (self ?? firstDoctor ?? adminUsers[0]).id;
+    }
   }
 
   const initial: PatientFormValues = {
@@ -88,12 +134,8 @@ export default function NewPatientPage() {
     diagnosis_brief: '',
     referring_physician: '',
     hospital_id: '',
-    user_id: String(user.id),
+    user_id: String(defaultUserId),
   };
-
-  const safeUserName =
-    typeof user.name === 'string' && user.name.trim().length > 0 ? user.name : `User ${user.id}`;
-  const users = [{ id: Number(user.id), name: safeUserName, role: user.role ?? 'user' }];
 
   return (
     <div className='space-y-4'>
@@ -104,10 +146,12 @@ export default function NewPatientPage() {
         </CardHeader>
         <CardContent className='space-y-3'>
           <p className='text-xs text-muted-foreground'>
-            Patient will be assigned to the current user. Admin reassignment can be added later.
+            {isAdmin
+              ? 'Admins may assign this patient to any user/doctor.'
+              : 'Patient will be assigned to the current user.'}
           </p>
           <PatientForm
-            resetKey={`new-${user.id}`}
+            resetKey={`new-${user.id}-${users.length}`}
             initialValues={initial}
             hospitals={hospitals}
             users={users}
@@ -116,13 +160,7 @@ export default function NewPatientPage() {
                 await createPatient(payload);
                 router.push('/patients');
               } catch (err: any) {
-                const msg = err?.response
-                  ? await err.response
-                      .json()
-                      .then((r: any) => Object.values(r?.errors ?? {}).flat().join(' '))
-                      .catch(() => null)
-                  : null;
-                throw new Error(msg || 'Failed to create patient.');
+                throw new Error(await parseApiError(err, 'Failed to create patient.'));
               }
             }}
             submitLabel='Create Patient'

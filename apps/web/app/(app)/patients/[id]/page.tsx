@@ -6,10 +6,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PatientForm, { type PatientFormValues } from '@/components/patients/PatientForm';
-import { deletePatient, getHospitals, getPatient, updatePatient } from '@/lib/api';
+import { deletePatient, getHospitals, getPatient, getUsers, updatePatient } from '@/lib/api';
+import { parseApiError } from '@/lib/parseApiError';
 import { useAuth } from '@/components/auth-provider';
 
 type Hospital = { id: number; name: string };
+type UserOption = { id: number; name: string; role: string };
 
 export default function PatientDetailPage() {
   const params = useParams<{ id: string }>();
@@ -20,9 +22,16 @@ export default function PatientDetailPage() {
     params?.id ? ['/patients', params.id] : null,
     () => getPatient(params.id),
   );
+  const isAdmin = user?.role === 'admin';
+
   const { data: hospitalsRes, error: hospitalsError, isLoading: hospitalsLoading } = useSWR(
     '/hospitals',
     () => getHospitals(),
+  );
+
+  const { data: usersRes, isLoading: usersLoading } = useSWR(
+    isAdmin ? '/users' : null,
+    () => getUsers(),
   );
 
   const p = data?.data;
@@ -41,7 +50,34 @@ export default function PatientDetailPage() {
   const patientUserId = Number(p?.relationships?.user?.data?.id ?? 0);
   const effectiveUserId = patientUserId > 0 ? patientUserId : Number(user?.id ?? 0);
 
-  const users = useMemo(() => {
+  const users = useMemo<UserOption[]>(() => {
+    if (isAdmin) {
+      const rawUsers = Array.isArray(usersRes?.data) ? usersRes!.data : [];
+      const adminUsers: UserOption[] = rawUsers
+        .map((u: any) => {
+          const id = Number(u?.id);
+          const rawName = u?.attributes?.name;
+          const name =
+            typeof rawName === 'string' && rawName.trim().length > 0
+              ? rawName
+              : `User ${Number.isFinite(id) ? id : ''}`;
+          const role =
+            typeof u?.attributes?.role === 'string' && u.attributes.role.trim().length > 0
+              ? u.attributes.role
+              : 'user';
+          return { id, name, role };
+        })
+        .filter(
+          (u: UserOption) =>
+            Number.isFinite(u.id) && u.id > 0 && typeof u.name === 'string' && u.name.trim().length > 0,
+        );
+      if (adminUsers.length > 0) {
+        if (effectiveUserId > 0 && !adminUsers.some((u) => u.id === effectiveUserId)) {
+          adminUsers.push({ id: effectiveUserId, name: 'Assigned User', role: 'user' });
+        }
+        return adminUsers;
+      }
+    }
     if (effectiveUserId > 0) {
       const isCurrent = user?.id != null && Number(user.id) === effectiveUserId;
       const rawName = isCurrent ? user?.name : null;
@@ -55,7 +91,7 @@ export default function PatientDetailPage() {
       return [{ id: effectiveUserId, name, role }];
     }
     return [];
-  }, [effectiveUserId, user]);
+  }, [effectiveUserId, user, isAdmin, usersRes]);
 
   const breadcrumbs = (
     <Breadcrumbs
@@ -79,7 +115,7 @@ export default function PatientDetailPage() {
     </div>
   );
 
-  if (authLoading || patientLoading || hospitalsLoading) {
+  if (authLoading || patientLoading || hospitalsLoading || (isAdmin && usersLoading)) {
     return wrap(<p className='text-sm text-muted-foreground'>Loading…</p>);
   }
 
@@ -121,10 +157,12 @@ export default function PatientDetailPage() {
         </CardHeader>
         <CardContent className='space-y-3'>
           <p className='text-xs text-muted-foreground'>
-            Patient remains assigned to its current user. Admin reassignment can be added later.
+            {isAdmin
+              ? 'Admins may reassign this patient to any user/doctor.'
+              : 'Patient remains assigned to its current user.'}
           </p>
           <PatientForm
-            resetKey={`edit-${params.id}`}
+            resetKey={`edit-${params.id}-${users.length}`}
             initialValues={initial}
             hospitals={hospitals}
             users={users}
@@ -134,13 +172,7 @@ export default function PatientDetailPage() {
                 await updatePatient(params.id, payload);
                 router.push('/patients');
               } catch (err: any) {
-                const msg = err?.response
-                  ? await err.response
-                      .json()
-                      .then((r: any) => Object.values(r?.errors ?? {}).flat().join(' '))
-                      .catch(() => null)
-                  : null;
-                throw new Error(msg || 'Failed to update patient.');
+                throw new Error(await parseApiError(err, 'Failed to update patient.'));
               }
             }}
             onDelete={async () => {

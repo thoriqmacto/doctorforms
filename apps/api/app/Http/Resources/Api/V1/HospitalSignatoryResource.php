@@ -18,6 +18,7 @@ class HospitalSignatoryResource extends JsonResource
                 'position_title' => $this->position_title,
                 'sip_number' => $this->sip_number,
                 'active' => (bool) $this->active,
+                'signature_image_path' => $this->signature_image_path,
                 'signature_image_url' => $this->signature_image_url,
                 'created_at' => $this->created_at,
                 'updated_at' => $this->updated_at,
