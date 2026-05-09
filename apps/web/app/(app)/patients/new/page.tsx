@@ -52,8 +52,14 @@ export default function NewPatientPage() {
     </div>
   );
 
-  if (authLoading || !user?.id) {
+  if (authLoading) {
     return wrap(<p className='text-sm text-muted-foreground'>Loading user…</p>);
+  }
+
+  if (!user?.id) {
+    return wrap(
+      <p className='text-sm text-destructive'>Authenticated user is unavailable. Please sign in again.</p>,
+    );
   }
 
   if (hospitalsLoading) {
@@ -85,7 +91,9 @@ export default function NewPatientPage() {
     user_id: String(user.id),
   };
 
-  const users = [{ id: Number(user.id), name: user.name ?? `User ${user.id}`, role: user.role ?? 'user' }];
+  const safeUserName =
+    typeof user.name === 'string' && user.name.trim().length > 0 ? user.name : `User ${user.id}`;
+  const users = [{ id: Number(user.id), name: safeUserName, role: user.role ?? 'user' }];
 
   return (
     <div className='space-y-4'>
