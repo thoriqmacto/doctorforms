@@ -15,15 +15,21 @@ export default function RedirectWhenAuthenticated({
   fallback = '/dashboard',
   honorNextParam = false,
 }: Props) {
+  if (honorNextParam) {
+    return <RedirectWithNext fallback={fallback}>{children}</RedirectWithNext>
+  }
+  return <RedirectToTarget target={fallback}>{children}</RedirectToTarget>
+}
+
+function RedirectToTarget({
+  target,
+  children,
+}: {
+  target: string
+  children: React.ReactNode
+}) {
   const { status, loading } = useAuth()
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  const target = (() => {
-    if (!honorNextParam) return fallback
-    const next = searchParams?.get('next')
-    return next && next.startsWith('/') ? next : fallback
-  })()
 
   useEffect(() => {
     if (!loading && status === 'authenticated') {
@@ -36,4 +42,17 @@ export default function RedirectWhenAuthenticated({
   }
 
   return <>{children}</>
+}
+
+function RedirectWithNext({
+  fallback,
+  children,
+}: {
+  fallback: string
+  children: React.ReactNode
+}) {
+  const searchParams = useSearchParams()
+  const next = searchParams?.get('next')
+  const target = next && next.startsWith('/') ? next : fallback
+  return <RedirectToTarget target={target}>{children}</RedirectToTarget>
 }
