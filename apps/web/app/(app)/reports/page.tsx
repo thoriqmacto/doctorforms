@@ -10,9 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuth } from '@/components/auth-provider';
 
 export default function ReportsPage() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === 'admin';
   const { data, isLoading, mutate } = useSWR(['/reports'], () => getReports().then((r: any) => r));
   const { data: hospitalsData } = useSWR(['/hospitals'], () => getHospitals().then((r: any) => r));
   const { data: templatesData } = useSWR(['/templates'], () => getTemplates().then((r: any) => r));
@@ -54,7 +57,12 @@ export default function ReportsPage() {
   const patientDisplayName =
     selectedPatient?.attributes?.name ?? selectedPatient?.attributes?.values?.patient_name ?? '';
 
-  const canCreate = Boolean(patientId && templateId && derivedHospitalId && derivedTestId);
+  const selectedTemplateDisabled =
+    selectedTemplate?.attributes?.is_enabled === false;
+  const templateBlocked = selectedTemplateDisabled && !isAdmin;
+  const canCreate =
+    Boolean(patientId && templateId && derivedHospitalId && derivedTestId) &&
+    !templateBlocked;
 
   const newReportHref = useMemo(() => {
     if (!canCreate) return '';
@@ -113,11 +121,25 @@ export default function ReportsPage() {
                 <SelectValue placeholder="Select template" />
               </SelectTrigger>
               <SelectContent>
-                {templates.map((template: any) => (
-                  <SelectItem key={template.id} value={String(template.id)}>
-                    {template.attributes?.name}
-                  </SelectItem>
-                ))}
+                {templates
+                  .filter((template: any) => {
+                    // Backend already hides disabled templates from non-admin
+                    // users, but the cached SWR list could be stale. Filter
+                    // defensively.
+                    if (template.attributes?.is_enabled === false && !isAdmin) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((template: any) => {
+                    const disabled = template.attributes?.is_enabled === false;
+                    const baseName = template.attributes?.name ?? `Template #${template.id}`;
+                    return (
+                      <SelectItem key={template.id} value={String(template.id)}>
+                        {disabled ? `${baseName} (Disabled)` : baseName}
+                      </SelectItem>
+                    );
+                  })}
               </SelectContent>
             </Select>
 
@@ -127,6 +149,11 @@ export default function ReportsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3 p-4">
+          {templateBlocked && (
+            <p className="text-sm text-destructive">
+              Selected template is disabled. Ask an administrator to enable it before creating a new report.
+            </p>
+          )}
           {templateId && !derivedHospitalId && (
             <p className="text-sm text-destructive">Selected template is missing hospital relationship.</p>
           )}

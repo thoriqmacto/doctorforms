@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Validator;
 
 class TemplateController extends Controller
 {
+    private function isAdmin(Request $request): bool
+    {
+        return ($request->user()?->role ?? null) === 'admin';
+    }
+
     // GET /api/v1/templates
     public function index(Request $request)
     {
@@ -23,6 +28,11 @@ class TemplateController extends Controller
         }
         if ($request->filled('filter.user_id')) {
             $query->where('user_id', $request->input('filter.user_id'));
+        }
+
+        // Non-admin users only see published templates.
+        if (!$this->isAdmin($request)) {
+            $query->where('is_enabled', true);
         }
 
         $includeFields = str_contains((string) $request->query('include'), 'fields');
@@ -48,6 +58,14 @@ class TemplateController extends Controller
     // GET /api/v1/templates/{template}
     public function show(Request $request, Template $template)
     {
+        if (!$template->is_enabled && !$this->isAdmin($request)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Forbidden',
+                'errors'  => ['template' => ['This template is not available.']],
+            ], 403);
+        }
+
         $include = collect(explode(',', (string) $request->query('include')))
             ->map(fn ($item) => trim($item))
             ->filter();
@@ -80,13 +98,21 @@ class TemplateController extends Controller
             // Legacy templates without it fall back to the hardcoded buildHospitalHeader.
             'header_config' => ['sometimes', 'nullable', 'array'],
             'layout_config' => ['sometimes', 'nullable', 'array'],
+            'is_enabled'    => ['sometimes', 'boolean'],
         ]);
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
 
-        $template = Template::create($v->validated());
+        $payload = $v->validated();
+        // Only admins can choose the publishing state on create. Non-admins
+        // always create enabled templates (matches existing default).
+        if (!$this->isAdmin($request)) {
+            unset($payload['is_enabled']);
+        }
+
+        $template = Template::create($payload);
 
         return (new TemplateResource($template))
             ->additional(['meta' => ['status' => 'created']])
@@ -106,13 +132,40 @@ class TemplateController extends Controller
             'department_id' => ['sometimes', 'nullable', 'exists:hospital_departments,id'],
             'header_config' => ['sometimes', 'nullable', 'array'],
             'layout_config' => ['sometimes', 'nullable', 'array'],
+            'is_enabled'    => ['sometimes', 'boolean'],
         ]);
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
 
-        $template->update($v->validated());
+        // Disabled templates are admin-only territory: a non-admin cannot
+        // edit a disabled template at all, and cannot toggle is_enabled
+        // on any template.
+        if (!$this->isAdmin($request)) {
+            if (!$template->is_enabled) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Forbidden',
+                    'errors'  => ['template' => ['This template is not available.']],
+                ], 403);
+            }
+            if ($request->has('is_enabled')) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => [
+                        'is_enabled' => ['Only an administrator can change the publishing status.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        $payload = $v->validated();
+        if (!$this->isAdmin($request)) {
+            unset($payload['is_enabled']);
+        }
+
+        $template->update($payload);
 
         return (new TemplateResource($template))
             ->additional(['meta' => ['status' => 'updated']]);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\ReportResource;
 use App\Models\HospitalSignatory;
 use App\Models\Report;
+use App\Models\Template;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -63,6 +64,11 @@ class ReportController extends Controller
                 $request->input('signatory_id'),
                 $request->input('hospital_id'),
             );
+            $this->validateTemplateIsAvailable(
+                $validator,
+                $request,
+                $request->input('template_id'),
+            );
         });
 
         if ($v->fails()) {
@@ -117,15 +123,26 @@ class ReportController extends Controller
         ]);
 
         $v->after(function ($validator) use ($request, $report) {
-            if (!$request->has('signatory_id')) {
-                return;
+            if ($request->has('signatory_id')) {
+                $hospitalId = $request->input('hospital_id', $report->hospital_id);
+                $this->validateSignatoryBelongsToHospital(
+                    $validator,
+                    $request->input('signatory_id'),
+                    $hospitalId,
+                );
             }
-            $hospitalId = $request->input('hospital_id', $report->hospital_id);
-            $this->validateSignatoryBelongsToHospital(
-                $validator,
-                $request->input('signatory_id'),
-                $hospitalId,
-            );
+
+            // Only re-check publishing status when template_id is being
+            // changed. Existing reports that still reference a now-disabled
+            // template can keep being edited (matches the "do not break
+            // old reports" requirement).
+            if ($request->has('template_id')) {
+                $this->validateTemplateIsAvailable(
+                    $validator,
+                    $request,
+                    $request->input('template_id'),
+                );
+            }
         });
 
         if ($v->fails()) {
@@ -153,6 +170,26 @@ class ReportController extends Controller
         $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
 
         return new ReportResource($report);
+    }
+
+    private function validateTemplateIsAvailable($validator, Request $request, $templateId): void
+    {
+        if (!$templateId) {
+            return;
+        }
+        if (($request->user()?->role ?? null) === 'admin') {
+            return;
+        }
+        $template = Template::find($templateId);
+        if (!$template) {
+            return; // exists rule will catch missing ids
+        }
+        if (!$template->is_enabled) {
+            $validator->errors()->add(
+                'template_id',
+                'Template is disabled and cannot be used to create or update a report.'
+            );
+        }
     }
 
     private function validateSignatoryBelongsToHospital($validator, $signatoryId, $hospitalId): void

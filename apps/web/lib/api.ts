@@ -183,6 +183,10 @@ export interface TemplatePayload {
     department_id?: number | null;
     /** Structured header block definition. Null to clear. */
     header_config?: Record<string, unknown> | null;
+    /** Layout configuration (page setup). Null to clear. */
+    layout_config?: Record<string, unknown> | null;
+    /** Publishing status. Admin-only on create/update. */
+    is_enabled?: boolean;
 }
 
 export interface TemplateFieldPayload {

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
@@ -151,6 +152,9 @@ export default function TemplatesPage() {
                 user_id: Number(rels?.user?.data?.id ?? 1),
                 test_id: Number(rels?.test?.data?.id ?? 0),
                 hospital_id: Number(rels?.hospital?.data?.id ?? 0),
+                // Always start a duplicate as Disabled so a publish action
+                // is required before doctors/staff can pick it up.
+                is_enabled: false,
             });
 
             const newTemplateId = Number(newTemplate?.data?.id ?? newTemplate?.id);
@@ -232,6 +236,7 @@ export default function TemplatesPage() {
                                     </TableHead>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Test Method</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -254,6 +259,15 @@ export default function TemplatesPage() {
                                             </TableCell>
                                             <TableCell>{t.attributes.name}</TableCell>
                                             <TableCell>{testName}</TableCell>
+                                            <TableCell>
+                                                {t.attributes.is_enabled === false ? (
+                                                    <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground">
+                                                        Disabled
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="secondary">Enabled</Badge>
+                                                )}
+                                            </TableCell>
                                             <TableCell>{t.attributes.description}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
