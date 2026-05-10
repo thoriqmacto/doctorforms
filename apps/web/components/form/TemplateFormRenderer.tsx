@@ -102,12 +102,23 @@ type FieldOptionMeta = {
     static: boolean;
     textareaMode: "free" | "result";
     style: Record<string, string>;
+    /** Separator inserted between source-field parts when generating a textarea_result. */
+    resultJoiner: string;
+    /** Separator inserted between checkbox values when joining a checkbox_group source. */
+    checkboxJoiner: string;
+    /** Whether to trim/collapse trailing whitespace on the generated textarea_result. */
+    trimResult: boolean;
+    /** Whether the generated textarea_result should be user-editable. */
+    editableResult: boolean;
 };
 
 type AutoResultGroup = {
     textareaName: string;
     inputFields: Field[];
     inputFieldNames: string[];
+    resultJoiner: string;
+    checkboxJoiner: string;
+    trimResult: boolean;
 };
 
 function cx(...xs: (string | false | null | undefined)[]) {
@@ -128,6 +139,9 @@ function optionList(value: unknown): string[] {
     return [];
 }
 
+const RESULT_JOINER_DEFAULT = " ";
+const CHECKBOX_JOINER_DEFAULT = ", ";
+
 function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         return {
@@ -136,6 +150,10 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
             static: false,
             textareaMode: "free",
             style: {},
+            resultJoiner: RESULT_JOINER_DEFAULT,
+            checkboxJoiner: CHECKBOX_JOINER_DEFAULT,
+            trimResult: true,
+            editableResult: false,
         };
     }
 
@@ -145,6 +163,10 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
         static?: unknown;
         textarea_mode?: unknown;
         style?: unknown;
+        result_joiner?: unknown;
+        checkbox_joiner?: unknown;
+        trim_result?: unknown;
+        editable_result?: unknown;
     };
 
     return {
@@ -158,6 +180,12 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
                     Object.entries(options.style as Record<string, unknown>).map(([k, v]) => [k, String(v)])
                 )
                 : {},
+        resultJoiner:
+            typeof options.result_joiner === "string" ? options.result_joiner : RESULT_JOINER_DEFAULT,
+        checkboxJoiner:
+            typeof options.checkbox_joiner === "string" ? options.checkbox_joiner : CHECKBOX_JOINER_DEFAULT,
+        trimResult: options.trim_result === undefined ? true : !!options.trim_result,
+        editableResult: !!options.editable_result,
     };
 }
 
@@ -483,10 +511,15 @@ export default function TemplateFormRenderer({
                     return (a.attributes.order ?? 0) - (b.attributes.order ?? 0);
                 });
 
+            const resultMeta = parseFieldOptionMeta(resultTextarea.attributes.options);
+
             groups.push({
                 textareaName: `f_${resultTextarea.id}`,
                 inputFields,
                 inputFieldNames: inputFields.map((field) => `f_${field.id}`),
+                resultJoiner: resultMeta.resultJoiner,
+                checkboxJoiner: resultMeta.checkboxJoiner,
+                trimResult: resultMeta.trimResult,
             });
         });
         return groups;
@@ -513,13 +546,19 @@ export default function TemplateFormRenderer({
             group.inputFields.forEach((field, inputIndex) => {
                 const val = Array.isArray(watchedValues) ? watchedValues[inputIndex] : undefined;
                 if (Array.isArray(val)) {
-                    if (val.length) parts.push(`${val.join(", ")}`);
+                    if (val.length) parts.push(val.join(group.checkboxJoiner));
                 } else if (val !== undefined && val !== null && String(val).trim() !== "") {
                     parts.push(`${val}`);
                 }
             });
-            // const sentence = parts.join(" ") + (parts.length ? "." : "");
-            const sentence = parts.join(" ");
+            let sentence = parts.join(group.resultJoiner);
+            if (group.trimResult) {
+                // Collapse runs of whitespace and trim ends, but only when
+                // trimResult is enabled. With a non-whitespace joiner the
+                // collapse is harmless; with an empty joiner it preserves
+                // intentional concatenation.
+                sentence = sentence.replace(/[ \t]+/g, " ").trim();
+            }
             const curr = getValues(group.textareaName);
             const lastAutoSentence = lastAutoSentenceByFieldRef.current[group.textareaName] ?? "";
             const userHasEdited =
@@ -773,14 +812,16 @@ export default function TemplateFormRenderer({
 
         if (t === "textarea") {
             const isTextareaResult = optionMeta.textareaMode === "result";
+            const isResultLocked = isTextareaResult && !optionMeta.editableResult;
             return (
-                <div
-                    key={name}
-                    className="space-y-1 col-span-full"
-                    // onFocus={() => console.log("focus:", name)}
-                >
+                <div key={name} className="space-y-1 col-span-full">
                     <Label htmlFor={fieldInputId}>{label}</Label>
                     {showValidationHints()}
+                    {isTextareaResult && optionMeta.editableResult ? (
+                        <p className="text-xs text-muted-foreground">
+                            Auto-generated; you can edit and your edits will be preserved.
+                        </p>
+                    ) : null}
                     <Controller
                         control={control}
                         name={name}
@@ -790,7 +831,7 @@ export default function TemplateFormRenderer({
                                 {...field}
                                 value={(field.value as string | undefined) ?? ""}
                                 rows={3}
-                                disabled={isTextareaResult}
+                                disabled={isResultLocked}
                             />
                         )}
                     />

@@ -65,6 +65,11 @@ type TemplateFieldForm = {
   measurement_name: string;
   measurement_unit: string;
   measurement_category: string;
+  // textarea_result-only options. Defaults match TemplateFormRenderer.
+  result_joiner: string;
+  checkbox_joiner: string;
+  trim_result: boolean;
+  editable_result: boolean;
 };
 
 /*
@@ -130,43 +135,41 @@ function buildUniqueName(section: string, label: string) {
   return `${sectionSlug}.${labelSlug}`;
 }
 
+const RESULT_JOINER_DEFAULT = " ";
+const CHECKBOX_JOINER_DEFAULT = ", ";
+
+function emptyNormalizedOptions() {
+  return {
+    values: [] as string[],
+    default: "",
+    required: false,
+    static: false,
+    title_tag: "h2",
+    image_url: "",
+    image_align: "center" as "left" | "center" | "right",
+    show_section_name: true,
+    measurement_name: "",
+    measurement_unit: "",
+    measurement_category: "",
+    textarea_mode: "free" as "free" | "result",
+    result_joiner: RESULT_JOINER_DEFAULT,
+    checkbox_joiner: CHECKBOX_JOINER_DEFAULT,
+    trim_result: true,
+    editable_result: false,
+  };
+}
+
 function normalizeOptions(raw: unknown) {
   if (typeof raw === "string") {
     try {
       return normalizeOptions(JSON.parse(raw));
     } catch {
-      return {
-        values: [],
-        default: "",
-        required: false,
-        static: false,
-        title_tag: "h2",
-        image_url: "",
-        image_align: "center",
-        show_section_name: true,
-        measurement_name: "",
-        measurement_unit: "",
-        measurement_category: "",
-        textarea_mode: "free",
-      };
+      return emptyNormalizedOptions();
     }
   }
 
   if (Array.isArray(raw)) {
-    return {
-      values: raw.map((v) => String(v)),
-      default: "",
-      required: false,
-      static: false,
-      title_tag: "h2",
-      image_url: "",
-      image_align: "center",
-      show_section_name: true,
-      measurement_name: "",
-      measurement_unit: "",
-      measurement_category: "",
-      textarea_mode: "free",
-    };
+    return { ...emptyNormalizedOptions(), values: raw.map((v) => String(v)) };
   }
 
   if (raw && typeof raw === "object") {
@@ -218,23 +221,21 @@ function normalizeOptions(raw: unknown) {
         : "",
       textarea_mode:
         obj.textarea_mode === "result" ? "result" : "free",
+      result_joiner:
+        typeof obj.result_joiner === "string"
+          ? (obj.result_joiner as string)
+          : RESULT_JOINER_DEFAULT,
+      checkbox_joiner:
+        typeof obj.checkbox_joiner === "string"
+          ? (obj.checkbox_joiner as string)
+          : CHECKBOX_JOINER_DEFAULT,
+      trim_result:
+        obj.trim_result === undefined ? true : !!obj.trim_result,
+      editable_result: !!obj.editable_result,
     };
   }
 
-  return {
-    values: [],
-    default: "",
-    required: false,
-    static: false,
-    title_tag: "h2",
-    image_url: "",
-    image_align: "center",
-    show_section_name: true,
-    measurement_name: "",
-    measurement_unit: "",
-    measurement_category: "",
-    textarea_mode: "free",
-  };
+  return emptyNormalizedOptions();
 }
 
 function resolveApiAssetUrl(url: string) {
@@ -580,6 +581,10 @@ export default function EditTemplatePage() {
               measurement_name: options.measurement_name,
               measurement_unit: options.measurement_unit,
               measurement_category: options.measurement_category,
+              result_joiner: options.result_joiner,
+              checkbox_joiner: options.checkbox_joiner,
+              trim_result: options.trim_result,
+              editable_result: options.editable_result,
             };
           }),
         )
@@ -727,6 +732,19 @@ export default function EditTemplatePage() {
                 f.type === "textarea_result" ? "result" : "free";
               if (f.default_value) {
                 baseOptions.default = f.default_value;
+              }
+              if (f.type === "textarea_result") {
+                // Persist joiners as raw strings (admin may legitimately
+                // choose " ", "", ", ", etc.). trim_result/editable_result
+                // are stored as booleans.
+                baseOptions.result_joiner =
+                  typeof f.result_joiner === "string" ? f.result_joiner : " ";
+                baseOptions.checkbox_joiner =
+                  typeof f.checkbox_joiner === "string"
+                    ? f.checkbox_joiner
+                    : ", ";
+                baseOptions.trim_result = !!f.trim_result;
+                baseOptions.editable_result = !!f.editable_result;
               }
             } else if (f.type === "title") {
               baseOptions.title_tag = f.title_tag || "h2";
@@ -1905,6 +1923,97 @@ export default function EditTemplatePage() {
                                 </>
                               ) : null}
 
+                              {fieldType === "textarea_result" ? (
+                                <>
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.result_joiner`}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2"
+                                        data-field-path={`fields.${index}.result_joiner`}
+                                      >
+                                        <FormLabel>Result joiner</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder='e.g. " " or ", "'
+                                            value={field.value ?? ""}
+                                            onChange={field.onChange}
+                                          />
+                                        </FormControl>
+                                        <p className="text-xs text-muted-foreground">
+                                          Separator placed between source-field parts. Defaults to a single space.
+                                        </p>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.checkbox_joiner`}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2"
+                                        data-field-path={`fields.${index}.checkbox_joiner`}
+                                      >
+                                        <FormLabel>Checkbox joiner</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder='e.g. ", " or " "'
+                                            value={field.value ?? ""}
+                                            onChange={field.onChange}
+                                          />
+                                        </FormControl>
+                                        <p className="text-xs text-muted-foreground">
+                                          Separator placed between selected checkbox values. Defaults to a comma followed by a space.
+                                        </p>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.trim_result`}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2 flex flex-row items-center gap-2 space-y-0"
+                                        data-field-path={`fields.${index}.trim_result`}
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={!!field.value}
+                                            onCheckedChange={(v) => field.onChange(v === true)}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">
+                                          Trim and collapse whitespace
+                                        </FormLabel>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.editable_result`}
+                                    render={({ field }) => (
+                                      <FormItem
+                                        className="md:col-span-2 flex flex-row items-center gap-2 space-y-0"
+                                        data-field-path={`fields.${index}.editable_result`}
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={!!field.value}
+                                            onCheckedChange={(v) => field.onChange(v === true)}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">
+                                          Allow doctor to edit generated result
+                                        </FormLabel>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </>
+                              ) : null}
+
                               {fieldType === "title" ? (
                                 <FormField
                                   control={form.control}
@@ -1987,6 +2096,10 @@ export default function EditTemplatePage() {
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
+                              result_joiner: " ",
+                              checkbox_joiner: ", ",
+                              trim_result: true,
+                              editable_result: false,
                             })
                           }
                           disabled={isProcessing}
@@ -2026,6 +2139,10 @@ export default function EditTemplatePage() {
                       measurement_name: "",
                       measurement_unit: "",
                       measurement_category: "",
+                      result_joiner: " ",
+                      checkbox_joiner: ", ",
+                      trim_result: true,
+                      editable_result: false,
                     })
                   }
                   disabled={isProcessing}
