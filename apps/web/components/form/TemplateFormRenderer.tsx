@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { useForm, Controller, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -285,8 +286,15 @@ export default function TemplateFormRenderer({
                 const name = `f_${f.id}`;
                 const t = f.attributes.type;
                 if (t === "number") baseShape[name] = z.coerce.number().optional();
-                else if (t === "checkbox_group") baseShape[name] = z.array(z.string()).optional();
-                else if (t === "bullseye") baseShape[name] = z.any().optional();
+                else if (t === "checkbox_group") {
+                    // Legacy reports stored checkbox group values as a
+                    // comma-joined string (see edit page payload). Accept
+                    // either array or string so silent validation failures
+                    // can't block submit on rehydrated data.
+                    baseShape[name] = z
+                        .union([z.array(z.string()), z.string(), z.null()])
+                        .optional();
+                } else if (t === "bullseye") baseShape[name] = z.any().optional();
                 else baseShape[name] = z.string().optional();
             });
         });
@@ -1002,8 +1010,38 @@ export default function TemplateFormRenderer({
           ? [{ href: viewHref, label: viewLabel }]
           : [];
 
+    const formId = useMemo(
+        () => `template-form-${Math.random().toString(36).slice(2, 10)}`,
+        [],
+    );
+
+    function describeFirstError(errors: FieldErrors): string | null {
+        const entries = Object.entries(errors ?? {});
+        if (entries.length === 0) return null;
+        const [name, err] = entries[0];
+        const msg = (err as { message?: unknown } | undefined)?.message;
+        return typeof msg === "string" && msg.length > 0 ? `${name}: ${msg}` : name;
+    }
+
+    const handleInvalidSubmit = (errors: FieldErrors) => {
+        const firstError = describeFirstError(errors);
+        toast.error(
+            firstError
+                ? `Please fix validation errors before saving (${firstError}).`
+                : "Please fix validation errors before saving.",
+        );
+        if (typeof window !== "undefined") {
+            // Surface details for the developer console; keeps the toast short.
+            console.warn("Form submit blocked by validation errors", errors);
+        }
+    };
+
     return (
-        <form onSubmit={handleSubmit((vals) => onSubmit(vals))} className="space-y-4 print:space-y-2">
+        <form
+            id={formId}
+            onSubmit={handleSubmit((vals) => onSubmit(vals), handleInvalidSubmit)}
+            className="space-y-4 print:space-y-2"
+        >
             <div className="mx-auto w-full max-w-[1100px] space-y-4 p-2 md:p-4 print:max-w-[210mm]">
                 {enableSectionControls && (
                     <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
@@ -1017,7 +1055,7 @@ export default function TemplateFormRenderer({
                                 Refresh
                             </Button>
                         )}
-                        {showSubmitButton && <Button type="submit">Save</Button>}
+                        {showSubmitButton && <Button type="submit" form={formId}>Save</Button>}
                         {showRefreshButton && lastRefreshedAt && (
                             <span className="text-xs text-muted-foreground">
                                 Last refreshed: {lastRefreshedAt.toLocaleString()}
