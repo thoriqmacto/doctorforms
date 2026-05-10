@@ -37,7 +37,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { useAuth } from "@/components/auth-provider";
 import HeaderConfigEditor, {
   DEFAULT_HEADER_CONFIG,
 } from "@/components/template-builder/HeaderConfigEditor";
@@ -102,6 +104,7 @@ type EditTemplateFormValues = {
   test_id: string;
   hospital_id: string;
   header_config: HeaderConfig | null;
+  is_enabled: boolean;
   fields: TemplateFieldForm[];
 };
 
@@ -279,6 +282,8 @@ function EditorPanel({
 export default function EditTemplatePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === "admin";
 
   const {
     data,
@@ -303,6 +308,7 @@ export default function EditTemplatePage() {
       test_id: "",
       hospital_id: "",
       header_config: null,
+      is_enabled: true,
       fields: [],
     },
   });
@@ -605,6 +611,7 @@ export default function EditTemplatePage() {
         // a.header_config is a plain JSON object from the API. Null preserves
         // the back-compat fallback (legacy "Header" section is rendered).
         header_config: (a.header_config ?? null) as HeaderConfig | null,
+        is_enabled: a.is_enabled !== false,
         fields: existing,
       });
     },
@@ -682,6 +689,10 @@ export default function EditTemplatePage() {
         header_config: values.header_config as unknown as
           | Record<string, unknown>
           | null,
+        // Backend ignores is_enabled from non-admin users. Sending it
+        // unconditionally keeps the client simple; the admin gate is
+        // enforced server-side.
+        is_enabled: values.is_enabled,
       });
 
       if (values.fields?.length) {
@@ -1089,6 +1100,49 @@ export default function EditTemplatePage() {
                           <Textarea {...field} />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="is_enabled"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <FormControl>
+                          {isAdmin ? (
+                            <Select
+                              value={field.value ? "enabled" : "disabled"}
+                              onValueChange={(value) =>
+                                field.onChange(value === "enabled")
+                              }
+                            >
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="enabled">Enabled</SelectItem>
+                                <SelectItem value="disabled">Disabled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="text-sm">
+                              {field.value ? (
+                                <Badge variant="secondary">Enabled</Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="border-muted-foreground/40 text-muted-foreground"
+                                >
+                                  Disabled
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Disabled templates are admin-only. Doctors and staff cannot see, view, or use disabled templates to create reports.
+                        </p>
                       </FormItem>
                     )}
                   />

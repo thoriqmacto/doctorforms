@@ -63,6 +63,9 @@ function NewReportPageContent() {
   ].filter(Boolean) as string[];
 
   const hasContextError = missingContext.length > 0;
+  const isAdmin = user?.role === 'admin';
+  const templateDisabled = template?.attributes?.is_enabled === false;
+  const templateBlocked = templateDisabled && !isAdmin;
 
   async function onSubmit(values: Record<string, any>) {
     setSubmitError(null);
@@ -74,6 +77,13 @@ function NewReportPageContent() {
 
     if (!patientIdNum) {
       setSubmitError('Please return to Reports and select a patient before creating a report.');
+      return;
+    }
+
+    if (templateBlocked) {
+      setSubmitError(
+        'Selected template is disabled. Ask an administrator to enable it before creating a new report.',
+      );
       return;
     }
 
@@ -215,6 +225,11 @@ function NewReportPageContent() {
           {!patientIdNum && name && (
             <div className="mt-3 rounded-md border border-destructive p-3 text-sm text-destructive">
               Patient ID is required. Please return to Reports and select a patient.
+            </div>
+          )}
+          {templateBlocked && (
+            <div className="mt-3 rounded-md border border-destructive p-3 text-sm text-destructive">
+              Selected template is disabled. Ask an administrator to enable it before creating a new report.
             </div>
           )}
           {submitError && (

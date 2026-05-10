@@ -18,12 +18,14 @@ class Template extends Model
         'department_id',
         'header_config',
         'layout_config',
+        'is_enabled',
     ];
 
     protected $casts = [
         // Structured header block definition. See HeaderConfig schema on the web side.
         'header_config' => 'array',
         'layout_config' => 'array',
+        'is_enabled'    => 'boolean',
     ];
 
     // timestamps (created_at, updated_at)

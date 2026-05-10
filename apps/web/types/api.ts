@@ -34,6 +34,7 @@ export type TemplateResource = {
     attributes: {
         name: string;
         description: string | null;
+        is_enabled?: boolean;
     };
     relationships?: {
         test?: { data: { type: 'tests'; id: string } | null };

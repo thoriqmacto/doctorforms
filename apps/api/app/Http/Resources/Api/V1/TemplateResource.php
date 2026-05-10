@@ -36,6 +36,9 @@ class TemplateResource extends JsonResource
                 // Null => consumers fall back to legacy Header-section rendering.
                 'header_config' => $this->header_config,
                 'layout_config' => $this->layout_config,
+                // Publishing flag: only enabled templates are visible/usable
+                // by non-admin users. Admin always sees the real value.
+                'is_enabled'    => (bool) $this->is_enabled,
             ],
             'relationships' => [
                 'user'       => $this->user_id       ? ['data' => ['type' => 'users',                'id' => (string) $this->user_id]]        : null,
