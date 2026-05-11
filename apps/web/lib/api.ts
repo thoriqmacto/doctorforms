@@ -220,7 +220,7 @@ export const updateTemplate = (
 export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
 export const getTests = (params?: Record<string, any>) =>
-    api.get('tests', { searchParams: params }).json();
+    api.get('tests', { searchParams: params }).json<any>();
 
 export type TestPayload = {
     code?: string | null;
@@ -317,6 +317,9 @@ export const updateReport = (id: string | number, payload: any) =>
     api.put(`reports/${id}`, { json: payload }).json<any>();
 export const createReport = (payload: any) =>
     api.post('reports', { json: payload }).json<any>();
+/** Toggle the "mark complete" flag on a report. Doctors and admins both allowed. */
+export const setReportCompletion = (id: string | number, isCompleted: boolean) =>
+    api.patch(`reports/${id}`, { json: { is_completed: isCompleted } }).json<any>();
 
 // Feedback
 export const createFeedback = (payload: { message: string; page_url?: string }) =>

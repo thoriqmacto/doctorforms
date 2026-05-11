@@ -15,8 +15,84 @@ class ReportController extends Controller
     // GET /api/v1/reports
     public function index(Request $request)
     {
-        $reports = Report::with(['patient', 'fields.templateField', 'measurements', 'signatory'])
-            ->orderByDesc('id')
+        $query = Report::with([
+            'patient',
+            'hospital',
+            'user',
+            'template.fields',
+            'fields.templateField',
+            'measurements',
+            'signatory',
+        ]);
+
+        // Accept both `filter[xxx]` (idiomatic Laravel bracket syntax) and
+        // the legacy `filter.xxx` flat key style that some existing callers
+        // pass. PHP's parse_str rewrites the literal dot in the query
+        // string to an underscore, so the legacy style lands in the input
+        // bag as `filter_xxx`.
+        $f = function (string $key) use ($request) {
+            $bracket = $request->input("filter.$key");
+            if ($bracket !== null && $bracket !== '') {
+                return $bracket;
+            }
+            $flat = $request->input("filter_$key");
+            if ($flat !== null && $flat !== '') {
+                return $flat;
+            }
+            return null;
+        };
+        $fHas = function (string $key) use ($request) {
+            return $request->has("filter.$key") || $request->has("filter_$key");
+        };
+
+        if (!is_null($f('hospital_id'))) {
+            $query->where('hospital_id', (int) $f('hospital_id'));
+        }
+        if (!is_null($f('patient_id'))) {
+            $query->where('patient_id', (int) $f('patient_id'));
+        }
+        if (!is_null($f('template_id'))) {
+            $query->where('template_id', (int) $f('template_id'));
+        }
+        if (!is_null($f('user_id'))) {
+            $query->where('user_id', (int) $f('user_id'));
+        }
+        if ($fHas('is_completed')) {
+            $raw = strtolower((string) $f('is_completed'));
+            $bool = in_array($raw, ['1', 'true', 'yes', 'on'], true);
+            $query->where('is_completed', $bool);
+        }
+        if (!is_null($f('q'))) {
+            $q = trim((string) $f('q'));
+            if ($q !== '') {
+                $query->where(function ($w) use ($q) {
+                    $w->where('title', 'like', "%{$q}%")
+                        ->orWhere('operator', 'like', "%{$q}%")
+                        ->orWhere('supervisor', 'like', "%{$q}%")
+                        ->orWhere('device', 'like', "%{$q}%")
+                        ->orWhereHas('patient', function ($p) use ($q) {
+                            $p->where('name', 'like', "%{$q}%")
+                                ->orWhere('mrn', 'like', "%{$q}%");
+                        })
+                        ->orWhereHas('hospital', fn ($h) => $h->where('name', 'like', "%{$q}%"))
+                        ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$q}%"));
+                });
+            }
+        }
+
+        // Sort. Default to most-recently-updated (matches "Last modified"
+        // column in the list table).
+        $sort = (string) $request->input('sort', '-updated_at');
+        $allowed = ['id', 'title', 'updated_at', 'created_at', 'is_completed'];
+        $field = ltrim($sort, '-');
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+        if (!in_array($field, $allowed, true)) {
+            $field = 'updated_at';
+            $direction = 'desc';
+        }
+        $query->orderBy($field, $direction);
+
+        $reports = $query
             ->paginate($request->integer('page.size', 25))
             ->appends($request->query());
 
@@ -26,7 +102,7 @@ class ReportController extends Controller
     // GET /api/v1/reports/{report}
     public function show(Report $report)
     {
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
 
         return new ReportResource($report);
     }
@@ -97,7 +173,7 @@ class ReportController extends Controller
             $report->measurements()->createMany($data['measurements']);
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
 
         return (new ReportResource($report))
             ->additional(['meta' => ['status' => 'created']])
@@ -136,6 +212,7 @@ class ReportController extends Controller
             'patient_id'   => ['sometimes','integer','exists:patients,id'],
             'template_id'  => ['sometimes','integer','exists:templates,id'],
             'test_id'      => ['sometimes','integer','exists:tests,id'],
+            'is_completed' => ['sometimes', 'boolean'],
             'fields'                      => ['sometimes','array'],
             'fields.*.template_field_id'  => ['required_with:fields','integer','exists:template_fields,id'],
             'fields.*.value'              => ['required_with:fields','string'],
@@ -175,6 +252,18 @@ class ReportController extends Controller
 
         $data = $v->validated();
 
+        // Keep completed_at in sync with is_completed so the column can be
+        // surfaced in the list without a per-row event log.
+        if (array_key_exists('is_completed', $data)) {
+            if ($data['is_completed']) {
+                if (!$report->completed_at) {
+                    $data['completed_at'] = now();
+                }
+            } else {
+                $data['completed_at'] = null;
+            }
+        }
+
         $report->update(collect($data)->except(['fields', 'measurements'])->toArray());
 
         if (array_key_exists('fields', $data)) {
@@ -191,7 +280,7 @@ class ReportController extends Controller
             }
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
 
         return new ReportResource($report);
     }
