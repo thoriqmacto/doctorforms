@@ -45,7 +45,8 @@ const REPORT_COLUMNS: ColumnDef[] = [
   { key: 'title', label: 'Name', defaultVisible: true },
   { key: 'patient', label: 'Patient', defaultVisible: true },
   { key: 'hospital', label: 'Hospital', defaultVisible: true },
-  { key: 'operator', label: 'User', defaultVisible: true },
+  { key: 'owner', label: 'Owner', defaultVisible: true },
+  { key: 'operator', label: 'Operator', defaultVisible: false },
   { key: 'template', label: 'Template', defaultVisible: false },
   { key: 'test', label: 'Test', defaultVisible: false },
   { key: 'completion', label: 'Completion', defaultVisible: true },
@@ -297,6 +298,10 @@ export default function ReportsPage() {
         );
       case 'hospital':
         return <TableCell key={col.key}>{hospital?.attributes?.name ?? '-'}</TableCell>;
+      case 'owner': {
+        const ownerName = rels?.user?.data?.attributes?.name;
+        return <TableCell key={col.key}>{ownerName ?? 'Unassigned'}</TableCell>;
+      }
       case 'operator':
         return <TableCell key={col.key}>{a.operator ?? '-'}</TableCell>;
       case 'template':

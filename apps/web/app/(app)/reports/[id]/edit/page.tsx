@@ -4,13 +4,15 @@ import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { getHospital, getPatient, getReport, getTemplate, getUser, updateReport } from '@/lib/api';
+import { getHospital, getPatient, getReport, getTemplate, getUser, getUsers, updateReport } from '@/lib/api';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import SignatorySelector from '@/components/form/SignatorySelector';
 import type { RenderContexts } from '@/lib/template-renderer/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { buildReportModeHref } from '@/lib/reportViewModes';
 
@@ -30,6 +32,8 @@ const EMPTY_METADATA: ReportMetadata = {
 
 export default function EditReportPage() {
     const { id } = useParams<{ id: string }>();
+    const { user: authUser } = useAuth();
+    const isAdmin = authUser?.role === 'admin';
 
     // 1) Calm SWR down while editing
     const swrOpts = {
@@ -59,6 +63,8 @@ export default function EditReportPage() {
 
     const [metadata, setMetadata] = useState<ReportMetadata>(EMPTY_METADATA);
     const metadataHydrated = useRef(false);
+    const [assignedUserId, setAssignedUserId] = useState<string>('unassigned');
+    const ownerHydrated = useRef(false);
 
     useEffect(() => {
         if (!signatoryHydrated.current && reportRes) {
@@ -80,6 +86,14 @@ export default function EditReportPage() {
         }
     }, [report]);
 
+
+    useEffect(() => {
+        if (!ownerHydrated.current && reportRes) {
+            const ownerId = report?.relationships?.user?.data?.id;
+            setAssignedUserId(ownerId ? String(ownerId) : 'unassigned');
+            ownerHydrated.current = true;
+        }
+    }, [reportRes, report]);
     const setMetadataField = (key: keyof ReportMetadata) =>
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const value = e.target.value;
@@ -102,6 +116,14 @@ export default function EditReportPage() {
         swrOpts
     );
 
+
+    const { data: usersRes } = useSWR(
+        isAdmin ? ['/users', 'owner-select'] : null,
+        () => getUsers(),
+        swrOpts
+    );
+
+    const ownerOptions = usersRes?.data ?? [];
     const contexts: RenderContexts = {
         hospital: hospitalRes?.data?.attributes,
         patient: patientRes?.data?.attributes,
@@ -238,6 +260,9 @@ export default function EditReportPage() {
                 fields,
                 measurements,
                 signatory_id: signatoryId,
+                ...(isAdmin
+                    ? { user_id: assignedUserId === 'unassigned' ? null : Number(assignedUserId) }
+                    : {}),
             });
             // Surface success immediately, before the (potentially slow)
             // revalidate/rehydrate cycle so the toast doesn't get lost
@@ -260,6 +285,7 @@ export default function EditReportPage() {
             initHydrated.current = false;
             signatoryHydrated.current = false;
             metadataHydrated.current = false;
+            ownerHydrated.current = false;
             setInitialValues(null);
             await mutateReport(undefined, { revalidate: true });
         } catch (e) {
@@ -319,6 +345,24 @@ export default function EditReportPage() {
                                 placeholder="e.g. GE Vivid E95"
                             />
                         </div>
+                        {isAdmin && (
+                            <div className="space-y-1 md:col-span-2">
+                                <Label htmlFor="report-owner">Assigned user</Label>
+                                <Select value={assignedUserId} onValueChange={setAssignedUserId}>
+                                    <SelectTrigger id="report-owner">
+                                        <SelectValue placeholder="Unassigned" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                                        {ownerOptions.map((owner: any) => (
+                                            <SelectItem key={owner.id} value={String(owner.id)}>
+                                                {owner.attributes?.name ?? `User #${owner.id}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
                         Metadata is saved together with the rest of the report. Patient, template, hospital, and test cannot be changed here.

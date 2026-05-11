@@ -255,15 +255,6 @@ function NewReportPageContent() {
             'Loading…'
           ) : (
             <div className="space-y-4">
-              <SignatorySelector
-                hospitalId={derivedHospitalId}
-                value={signatoryId}
-                onChange={setSignatoryId}
-                patientUserId={patientRes?.data?.relationships?.user?.data?.id
-                  ? Number(patientRes.data.relationships.user.data.id)
-                  : null}
-                helperText="The selected doctor's signature will be embedded into the report header/footer."
-              />
               <div className="page-a4 rounded-xl shadow-md">
                 <TemplateFormRenderer
                   groupedSections={reportFormSections}
@@ -273,6 +264,15 @@ function NewReportPageContent() {
                   showPrintButton
                 />
               </div>
+              <SignatorySelector
+                hospitalId={derivedHospitalId}
+                value={signatoryId}
+                onChange={setSignatoryId}
+                patientUserId={patientRes?.data?.relationships?.user?.data?.id
+                  ? Number(patientRes.data.relationships.user.data.id)
+                  : null}
+                helperText="The selected doctor's signature will be embedded into the report header/footer."
+              />
             </div>
           )}
         </CardContent>

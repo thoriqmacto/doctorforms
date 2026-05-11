@@ -173,3 +173,127 @@ it('keeps existing reports against now-disabled templates editable for non-admin
         ->assertStatus(200)
         ->assertJsonPath('data.attributes.title', 'Edited after template disable');
 });
+
+it('forces non-admin report ownership to authenticated user on create without user_id', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    Sanctum::actingAs($doctor);
+
+    $ctx = makeReportContext();
+
+    $this->postJson('/api/v1/reports', [
+        'title' => 'Owned by creator',
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+    ])->assertStatus(201)
+      ->assertJsonPath('data.relationships.user.data.id', (string) $doctor->id);
+});
+
+it('ignores spoofed user_id for non-admin report create', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $other = User::factory()->create();
+    Sanctum::actingAs($doctor);
+
+    $ctx = makeReportContext();
+
+    $this->postJson('/api/v1/reports', [
+        'title' => 'Owned by creator',
+        'user_id' => $other->id,
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+    ])->assertStatus(201)
+      ->assertJsonPath('data.relationships.user.data.id', (string) $doctor->id);
+});
+
+it('defaults admin report ownership to admin on create without user_id', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Sanctum::actingAs($admin);
+
+    $ctx = makeReportContext();
+
+    $this->postJson('/api/v1/reports', [
+        'title' => 'Admin owned',
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+    ])->assertStatus(201)
+      ->assertJsonPath('data.relationships.user.data.id', (string) $admin->id);
+});
+
+it('allows admin to set explicit owner on create and reassign on update', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $ownerA = User::factory()->create();
+    $ownerB = User::factory()->create();
+    Sanctum::actingAs($admin);
+
+    $ctx = makeReportContext();
+
+    $create = $this->postJson('/api/v1/reports', [
+        'title' => 'Admin assigned',
+        'user_id' => $ownerA->id,
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+    ])->assertStatus(201)
+      ->assertJsonPath('data.relationships.user.data.id', (string) $ownerA->id);
+
+    $id = $create->json('data.id');
+
+    $this->patchJson('/api/v1/reports/'.$id, ['user_id' => $ownerB->id])
+        ->assertStatus(200)
+        ->assertJsonPath('data.relationships.user.data.id', (string) $ownerB->id);
+});
+
+it('allows admin to assign previously unassigned report and non-admin cannot change owner', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $targetOwner = User::factory()->create();
+
+    $ctx = makeReportContext();
+    $report = Report::create([
+        'user_id' => null,
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+        'title' => 'Legacy unassigned',
+    ]);
+
+    Sanctum::actingAs($admin);
+    $this->patchJson('/api/v1/reports/'.$report->id, ['user_id' => $targetOwner->id])
+        ->assertStatus(200)
+        ->assertJsonPath('data.relationships.user.data.id', (string) $targetOwner->id);
+
+    Sanctum::actingAs($doctor);
+    $this->patchJson('/api/v1/reports/'.$report->id, ['user_id' => $doctor->id])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.user_id.0', 'Only an administrator can change report ownership.');
+});
+
+it('keeps unassigned reports readable and returns null user relationship', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Sanctum::actingAs($admin);
+
+    $ctx = makeReportContext();
+    $report = Report::create([
+        'user_id' => null,
+        'hospital_id' => $ctx['hospital']->id,
+        'patient_id' => $ctx['patient']->id,
+        'template_id' => $ctx['template']->id,
+        'test_id' => $ctx['test']->id,
+        'title' => 'Legacy unassigned',
+    ]);
+
+    $this->getJson('/api/v1/reports/'.$report->id)
+        ->assertStatus(200)
+        ->assertJsonPath('data.relationships.user.data', null);
+
+    $this->patchJson('/api/v1/reports/'.$report->id, ['title' => 'Still editable'])
+        ->assertStatus(200)
+        ->assertJsonPath('data.attributes.title', 'Still editable');
+});
