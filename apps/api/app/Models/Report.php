@@ -22,6 +22,13 @@ class Report extends Model
         'supervisor',
         'device',
         'pdf_url',
+        'is_completed',
+        'completed_at',
+    ];
+
+    protected $casts = [
+        'is_completed' => 'boolean',
+        'completed_at' => 'datetime',
     ];
 
     public $timestamps = true;

@@ -13,27 +13,60 @@ class PatientController extends Controller
     // GET /api/v1/patients
     public function index(Request $request)
     {
-        $q = Patient::query();
+        $q = Patient::query()->with(['hospital', 'user']);
 
-        // Simple filters
-        if ($request->filled('filter.hospital_id')) {
-            $q->where('hospital_id', $request->integer('filter.hospital_id'));
+        // Accept both `filter[xxx]` and the legacy flat-key `filter.xxx`
+        // style. See ReportController for the reasoning.
+        $f = function (string $key) use ($request) {
+            $bracket = $request->input("filter.$key");
+            if ($bracket !== null && $bracket !== '') {
+                return $bracket;
+            }
+            $flat = $request->input("filter_$key");
+            if ($flat !== null && $flat !== '') {
+                return $flat;
+            }
+            return null;
+        };
+
+        if (!is_null($f('hospital_id'))) {
+            $q->where('hospital_id', (int) $f('hospital_id'));
         }
-        if ($request->filled('filter.user_id')) {
-            $q->where('user_id', $request->integer('filter.user_id'));
+        if (!is_null($f('user_id'))) {
+            $q->where('user_id', (int) $f('user_id'));
         }
-        if ($request->filled('filter.mrn')) {
-            $q->where('mrn', 'like', '%'.$request->input('filter.mrn').'%');
+        if (!is_null($f('mrn'))) {
+            $q->where('mrn', 'like', '%'.$f('mrn').'%');
         }
-        if ($request->filled('filter.name')) {
-            $q->where('name', 'like', '%'.$request->input('filter.name').'%');
+        if (!is_null($f('name'))) {
+            $q->where('name', 'like', '%'.$f('name').'%');
         }
-        if ($request->filled('filter.gender')) {
-            // your SQLite CHECK likely expects lowercase
-            $q->where('gender', strtolower($request->input('filter.gender')));
+        if (!is_null($f('gender'))) {
+            $q->where('gender', strtolower((string) $f('gender')));
+        }
+        if (!is_null($f('q'))) {
+            $needle = trim((string) $f('q'));
+            if ($needle !== '') {
+                $q->where(function ($w) use ($needle) {
+                    $w->where('name', 'like', "%{$needle}%")
+                        ->orWhere('mrn', 'like', "%{$needle}%")
+                        ->orWhereHas('hospital', fn ($h) => $h->where('name', 'like', "%{$needle}%"))
+                        ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$needle}%"));
+                });
+            }
         }
 
-        $patients = $q->orderByDesc('id')
+        $sort = (string) $request->input('sort', '-updated_at');
+        $allowed = ['id', 'name', 'mrn', 'updated_at', 'created_at', 'dos'];
+        $field = ltrim($sort, '-');
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+        if (!in_array($field, $allowed, true)) {
+            $field = 'updated_at';
+            $direction = 'desc';
+        }
+        $q->orderBy($field, $direction);
+
+        $patients = $q
             ->paginate($request->integer('page.size', 25))
             ->appends($request->query());
 
