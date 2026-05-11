@@ -77,6 +77,16 @@ class ReportController extends Controller
 
         $data = $v->validated();
 
+        // Default the operator to the current user's name on create when the
+        // client did not supply one. Edit-form metadata can still override
+        // this later. Admin and non-admin alike get the auto-fill.
+        if (empty($data['operator'])) {
+            $authedName = $request->user()?->name;
+            if (is_string($authedName) && trim($authedName) !== '') {
+                $data['operator'] = $authedName;
+            }
+        }
+
         $report = Report::create(collect($data)->except(['fields', 'measurements'])->toArray());
 
         if (!empty($data['fields'])) {
@@ -98,6 +108,20 @@ class ReportController extends Controller
     // PUT/PATCH /api/v1/reports/{report}
     public function update(Request $request, Report $report)
     {
+        // Relationship FKs (patient/template/test/hospital) are immutable
+        // for non-admin users. Reject the whole request if any of those is
+        // present in the payload to keep the contract explicit.
+        if (($request->user()?->role ?? null) !== 'admin') {
+            $lockedKeys = ['patient_id', 'template_id', 'test_id', 'hospital_id'];
+            $blocked = collect($lockedKeys)->filter(fn ($key) => $request->has($key))->all();
+            if (!empty($blocked)) {
+                $errors = collect($blocked)->mapWithKeys(fn ($key) => [
+                    $key => ['Only an administrator can change this relationship after the report has been created.'],
+                ])->all();
+                return response()->json(['status' => 'error', 'errors' => $errors], 422);
+            }
+        }
+
         $v = Validator::make($request->all(), [
             'title'       => ['sometimes','string','max:255'],
             'findings'    => ['sometimes','nullable','string','max:255'],

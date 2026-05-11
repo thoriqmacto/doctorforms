@@ -66,17 +66,27 @@ export default function ReportsPage() {
 
   const newReportHref = useMemo(() => {
     if (!canCreate) return '';
+    // Default title format requested by spec: "[test.code] Report - [patient.name]"
+    // e.g. "TTE Report - Suhaicih Orin". Falls back to patient name when
+    // the code or the patient name is missing.
+    const testCode = (selectedTest?.attributes?.code ?? '').trim();
+    const trimmedName = (patientDisplayName ?? '').trim();
+    const defaultTitle =
+      testCode && trimmedName ? `${testCode} Report - ${trimmedName}` : trimmedName;
     const params = new URLSearchParams({
       patientId,
       templateId,
       hospitalId: derivedHospitalId,
       testId: derivedTestId,
-      name: patientDisplayName,
+      name: defaultTitle,
       hospitalName: selectedHospital?.attributes?.name ?? '',
       templateName: selectedTemplate?.attributes?.name ?? '',
     });
     if (selectedTest?.attributes?.name) {
       params.set('testName', selectedTest.attributes.name);
+    }
+    if (testCode) {
+      params.set('testCode', testCode);
     }
     return `/reports/new?${params.toString()}`;
   }, [canCreate, patientId, templateId, derivedHospitalId, derivedTestId, patientDisplayName, selectedHospital, selectedTemplate, selectedTest]);

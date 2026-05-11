@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { createReport, getHospital, getPatient, getTemplate } from '@/lib/api';
+import { createReport, getHospital, getPatient, getTemplate, getTest } from '@/lib/api';
 import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
@@ -30,6 +30,7 @@ function NewReportPageContent() {
   const name = sp.get('name');
   const hospitalName = sp.get('hospitalName');
   const templateNameParam = sp.get('templateName');
+  const testCodeParam = sp.get('testCode');
 
   const { data: templateRes, isLoading: templateLoading } = useSWR(
     templateIdNum ? ['/templates', templateIdNum] : null,
@@ -47,6 +48,10 @@ function NewReportPageContent() {
   const { data: patientRes, isLoading: patientLoading } = useSWR(
     patientIdNum ? ['/patients', patientIdNum] : null,
     () => getPatient(patientIdNum!),
+  );
+  const { data: testRes } = useSWR(
+    derivedTestId ? ['/tests', derivedTestId] : null,
+    () => getTest(derivedTestId!),
   );
 
   const groupedSections = useMemo(() => template?.meta?.grouped_sections ?? [], [template]);
@@ -128,9 +133,14 @@ function NewReportPageContent() {
       });
     });
 
+    const testCode = (testCodeParam ?? testRes?.data?.attributes?.code ?? '').trim();
+    const patientName = (patientRes?.data?.attributes?.name ?? '').trim();
+    const canonicalTitle = testCode && patientName ? `${testCode} Report - ${patientName}` : '';
+
     const reportTitle =
+      canonicalTitle ||
       name?.trim() ||
-      patientRes?.data?.attributes?.name?.trim() ||
+      patientName ||
       [templateNameParam ?? template?.attributes?.name, `Test #${derivedTestId}`].filter(Boolean).join(' - ') ||
       'Untitled Report';
 
@@ -143,6 +153,10 @@ function NewReportPageContent() {
         user_id: user.id,
         signatory_id: signatoryId,
         title: reportTitle,
+        // Operator defaults to the logged-in user's name. Backend also
+        // auto-fills if this is omitted, but sending it here keeps the
+        // created report consistent with what we render on the edit form.
+        operator: typeof user.name === 'string' ? user.name : undefined,
         fields,
         measurements,
       });

@@ -9,8 +9,24 @@ import TemplateFormRenderer from '@/components/form/TemplateFormRenderer';
 import SignatorySelector from '@/components/form/SignatorySelector';
 import type { RenderContexts } from '@/lib/template-renderer/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { buildReportModeHref } from '@/lib/reportViewModes';
+
+type ReportMetadata = {
+    title: string;
+    operator: string;
+    supervisor: string;
+    device: string;
+};
+
+const EMPTY_METADATA: ReportMetadata = {
+    title: '',
+    operator: '',
+    supervisor: '',
+    device: '',
+};
 
 export default function EditReportPage() {
     const { id } = useParams<{ id: string }>();
@@ -41,12 +57,34 @@ export default function EditReportPage() {
     const [signatoryId, setSignatoryId] = useState<number | null>(null);
     const signatoryHydrated = useRef(false);
 
+    const [metadata, setMetadata] = useState<ReportMetadata>(EMPTY_METADATA);
+    const metadataHydrated = useRef(false);
+
     useEffect(() => {
         if (!signatoryHydrated.current && reportRes) {
             setSignatoryId(initialSignatoryId);
             signatoryHydrated.current = true;
         }
     }, [reportRes, initialSignatoryId]);
+
+    useEffect(() => {
+        if (!metadataHydrated.current && report) {
+            const attrs = report?.attributes ?? {};
+            setMetadata({
+                title: typeof attrs.title === 'string' ? attrs.title : '',
+                operator: typeof attrs.operator === 'string' ? attrs.operator : '',
+                supervisor: typeof attrs.supervisor === 'string' ? attrs.supervisor : '',
+                device: typeof attrs.device === 'string' ? attrs.device : '',
+            });
+            metadataHydrated.current = true;
+        }
+    }, [report]);
+
+    const setMetadataField = (key: keyof ReportMetadata) =>
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const value = e.target.value;
+            setMetadata((prev) => ({ ...prev, [key]: value }));
+        };
 
     const { data: patientRes } = useSWR(
         patientId ? ['/patients', patientId] : null,
@@ -69,10 +107,10 @@ export default function EditReportPage() {
         patient: patientRes?.data?.attributes,
         user: userRes?.data?.attributes,
         report: {
-            title: report?.attributes?.title,
-            operator: report?.attributes?.operator,
-            supervisor: report?.attributes?.supervisor,
-            device: report?.attributes?.device,
+            title: metadata.title || report?.attributes?.title,
+            operator: metadata.operator || report?.attributes?.operator,
+            supervisor: metadata.supervisor || report?.attributes?.supervisor,
+            device: metadata.device || report?.attributes?.device,
         },
     };
 
@@ -140,6 +178,8 @@ export default function EditReportPage() {
     async function onRefresh() {
         initHydrated.current = false;
         groupedHydrated.current = false;
+        signatoryHydrated.current = false;
+        metadataHydrated.current = false;
         setInitialValues(null);
         setGroupedSections(null);
         await Promise.all([
@@ -190,7 +230,15 @@ export default function EditReportPage() {
                 });
             });
 
-            await updateReport(id, { fields, measurements, signatory_id: signatoryId });
+            await updateReport(id, {
+                title: metadata.title,
+                operator: metadata.operator,
+                supervisor: metadata.supervisor,
+                device: metadata.device,
+                fields,
+                measurements,
+                signatory_id: signatoryId,
+            });
             // Surface success immediately, before the (potentially slow)
             // revalidate/rehydrate cycle so the toast doesn't get lost
             // behind a re-render or appear delayed.
@@ -211,6 +259,7 @@ export default function EditReportPage() {
             // wipe.
             initHydrated.current = false;
             signatoryHydrated.current = false;
+            metadataHydrated.current = false;
             setInitialValues(null);
             await mutateReport(undefined, { revalidate: true });
         } catch (e) {
@@ -228,6 +277,54 @@ export default function EditReportPage() {
                     { label: `Edit ${title}` },
                 ]}
             />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Report metadata</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1 md:col-span-2">
+                            <Label htmlFor="report-title">Title</Label>
+                            <Input
+                                id="report-title"
+                                value={metadata.title}
+                                onChange={setMetadataField('title')}
+                                placeholder="Report title"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="report-operator">Operator</Label>
+                            <Input
+                                id="report-operator"
+                                value={metadata.operator}
+                                onChange={setMetadataField('operator')}
+                                placeholder="Operator name"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="report-supervisor">Supervisor</Label>
+                            <Input
+                                id="report-supervisor"
+                                value={metadata.supervisor}
+                                onChange={setMetadataField('supervisor')}
+                                placeholder="Supervisor name"
+                            />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <Label htmlFor="report-device">Device</Label>
+                            <Input
+                                id="report-device"
+                                value={metadata.device}
+                                onChange={setMetadataField('device')}
+                                placeholder="e.g. GE Vivid E95"
+                            />
+                        </div>
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                        Metadata is saved together with the rest of the report. Patient, template, hospital, and test cannot be changed here.
+                    </p>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Edit {title}</CardTitle>
