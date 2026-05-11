@@ -118,7 +118,7 @@ class ReportController extends Controller
             'supervisor'  => ['sometimes','nullable','string','max:255'],
             'device'      => ['sometimes','nullable','string','max:255'],
             'pdf_url'     => ['sometimes','nullable','string','max:255'],
-            'user_id'      => ['required','integer','exists:users,id'],
+            'user_id'      => ['sometimes','nullable','integer','exists:users,id'],
             'signatory_id' => ['sometimes','nullable','integer','exists:hospital_signatories,id'],
             'hospital_id'  => ['required','integer','exists:hospitals,id'],
             'patient_id'   => ['required','integer','exists:patients,id'],
@@ -152,6 +152,19 @@ class ReportController extends Controller
         }
 
         $data = $v->validated();
+
+        $authUser = $request->user();
+        if (!$authUser) {
+            return response()->json(['status' => 'error', 'message' => 'Authenticated user is required to create a report.'], 401);
+        }
+
+        if (($authUser->role ?? null) === 'admin') {
+            $data['user_id'] = array_key_exists('user_id', $data) && $data['user_id'] !== null
+                ? $data['user_id']
+                : $authUser->id;
+        } else {
+            $data['user_id'] = $authUser->id;
+        }
 
         // Default the operator to the current user's name on create when the
         // client did not supply one. Edit-form metadata can still override
@@ -188,11 +201,13 @@ class ReportController extends Controller
         // for non-admin users. Reject the whole request if any of those is
         // present in the payload to keep the contract explicit.
         if (($request->user()?->role ?? null) !== 'admin') {
-            $lockedKeys = ['patient_id', 'template_id', 'test_id', 'hospital_id'];
+            $lockedKeys = ['patient_id', 'template_id', 'test_id', 'hospital_id', 'user_id'];
             $blocked = collect($lockedKeys)->filter(fn ($key) => $request->has($key))->all();
             if (!empty($blocked)) {
                 $errors = collect($blocked)->mapWithKeys(fn ($key) => [
-                    $key => ['Only an administrator can change this relationship after the report has been created.'],
+                    $key => [$key === 'user_id'
+                        ? 'Only an administrator can change report ownership.'
+                        : 'Only an administrator can change this relationship after the report has been created.'],
                 ])->all();
                 return response()->json(['status' => 'error', 'errors' => $errors], 422);
             }
@@ -206,7 +221,7 @@ class ReportController extends Controller
             'supervisor'  => ['sometimes','nullable','string','max:255'],
             'device'      => ['sometimes','nullable','string','max:255'],
             'pdf_url'     => ['sometimes','nullable','string','max:255'],
-            'user_id'      => ['sometimes','integer','exists:users,id'],
+            'user_id'      => ['sometimes','nullable','integer','exists:users,id'],
             'signatory_id' => ['sometimes','nullable','integer','exists:hospital_signatories,id'],
             'hospital_id'  => ['sometimes','integer','exists:hospitals,id'],
             'patient_id'   => ['sometimes','integer','exists:patients,id'],
