@@ -55,7 +55,7 @@ function HospitalHeader({ block }: { block: HospitalHeaderBlock }) {
                     />
                 ) : null}
             </div>
-            <div className="space-y-0.5 text-center font-['Times_New_Roman']">
+            <div className="space-y-0.5 text-center">
                 {block.topLine ? (
                     <p className="text-[11px] font-bold uppercase leading-tight text-slate-900">{block.topLine}</p>
                 ) : null}
@@ -110,7 +110,7 @@ function StructuredHospitalHeader({ header }: { header: StructuredHeader }) {
                     />
                 ) : null}
             </div>
-            <div className="font-['Times_New_Roman']">
+            <div>
                 {header.lines.map((line, idx) => (
                     <p
                         key={idx}
@@ -147,7 +147,7 @@ function StructuredHospitalHeader({ header }: { header: StructuredHeader }) {
 
 function ReportTitle({ block }: { block: ReportTitleBlock }) {
     return (
-        <h2 className="my-2 text-center font-['Times_New_Roman'] text-[16px] font-bold leading-tight text-slate-900">
+        <h2 className="my-2 text-center text-[16px] font-bold leading-tight text-slate-900">
             {block.text}
         </h2>
     );
@@ -327,7 +327,16 @@ function renderBlock(block: RenderBlock, key: string | number) {
 
 export default function HtmlView({ plan }: Props) {
     return (
-        <article className="page-a4 mx-auto space-y-2 overflow-hidden border border-slate-400 bg-white !pt-[8mm] !pl-[6mm] !pr-[6mm] text-slate-900 shadow-sm">
+        <article
+            className="page-a4 mx-auto space-y-2 overflow-hidden border border-slate-400 bg-white !pt-[6mm] !pl-[6mm] !pr-[6mm] text-slate-900 shadow-sm"
+            // Calibri is the requested report font. It ships natively on
+            // Windows/Office machines; on macOS/Linux browsers will fall
+            // back to Carlito (an open Calibri-metric substitute) when
+            // installed, then Arial / Helvetica. The PDF view ships with
+            // the closest standard PDF font (Helvetica) because pdf-lib
+            // cannot embed Calibri without a proprietary TTF.
+            style={{ fontFamily: 'Calibri, Carlito, Arial, Helvetica, sans-serif' }}
+        >
             {plan.blocks.map((block, idx) => renderBlock(block, `${block.kind}-${idx}`))}
         </article>
     );
