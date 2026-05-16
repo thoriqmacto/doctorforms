@@ -42,6 +42,12 @@ type Ctx = {
     pageWidth: number;
     pageHeight: number;
     margin: number;
+    /**
+     * Sync repaint of the hospital header on the current page. Set after
+     * the first header is drawn so ensureSpace() can replay it on each
+     * page break. Images are embedded once and cached inside the closure.
+     */
+    repeatHeader?: (ctx: Ctx) => void;
 };
 
 function createPage(doc: PDFDocument): PDFPage {
@@ -52,6 +58,12 @@ function ensureSpace(ctx: Ctx, required: number): void {
     if (ctx.cursorY - required < ctx.margin) {
         ctx.page = createPage(ctx.doc);
         ctx.cursorY = ctx.pageHeight - ctx.margin;
+        // Repaint the hospital header at the top of every new page so a
+        // multi-page report keeps its letterhead. The painter is sync and
+        // does not call ensureSpace, so this can't recurse.
+        if (ctx.repeatHeader) {
+            ctx.repeatHeader(ctx);
+        }
     }
 }
 
@@ -200,9 +212,10 @@ async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise
         return;
     }
 
-    // Legacy path — driven by the hospital context only.
+    // Legacy path — driven by the hospital context only. Logos are
+    // embedded once here, then a closure replays the header on every
+    // subsequent page break.
     const { logoSizePt, titleFontPt, lineFontPt, cityFontPt } = reportLayout.hospitalHeader;
-    const startY = ctx.cursorY;
     const contentLeft = ctx.margin + logoSizePt + 8;
     const contentRight = ctx.margin + ctx.contentWidth - logoSizePt - 8;
 
@@ -226,41 +239,43 @@ async function drawHospitalHeader(ctx: Ctx, block: HospitalHeaderBlock): Promise
         for (const w of wrapped) wrappedLines.push({ text: w, size: line.size, font: line.font });
     }
     const totalTextHeight = wrappedLines.reduce((sum, l) => sum + l.size + lineGap, 0);
-
     const blockHeight = Math.max(totalTextHeight, logoSizePt) + 8;
+
+    const paint = (c: Ctx) => {
+        const startY = c.cursorY;
+        const firstLineHeight = wrappedLines[0]?.size ?? 0;
+        let textY = startY - firstLineHeight;
+        for (const line of wrappedLines) {
+            drawCenteredText(c, line.text, line.font, line.size, textY, TEXT, contentLeft, contentRight);
+            textY -= line.size + lineGap;
+        }
+        const logoY = startY - (blockHeight + logoSizePt) / 2;
+        if (leftImg) {
+            drawContainedImage(c.page, leftImg, c.margin, logoY, logoSizePt, logoSizePt);
+        }
+        if (rightImg) {
+            drawContainedImage(
+                c.page,
+                rightImg,
+                c.margin + c.contentWidth - logoSizePt,
+                logoY,
+                logoSizePt,
+                logoSizePt,
+            );
+        }
+        c.cursorY = startY - blockHeight;
+        c.page.drawLine({
+            start: { x: c.margin, y: c.cursorY + 2 },
+            end: { x: c.margin + c.contentWidth, y: c.cursorY + 2 },
+            thickness: 0.75,
+            color: BORDER,
+        });
+        c.cursorY -= 6;
+    };
+
     ensureSpace(ctx, blockHeight);
-
-    const firstLineHeight = wrappedLines[0]?.size ?? 0;
-    let textY = startY - firstLineHeight;
-    for (const line of wrappedLines) {
-        drawCenteredText(ctx, line.text, line.font, line.size, textY, TEXT, contentLeft, contentRight);
-        textY -= line.size + lineGap;
-    }
-
-    const logoY = startY - (blockHeight + logoSizePt) / 2;
-    if (leftImg) {
-        drawContainedImage(ctx.page, leftImg, ctx.margin, logoY, logoSizePt, logoSizePt);
-    }
-    if (rightImg) {
-        drawContainedImage(
-            ctx.page,
-            rightImg,
-            ctx.margin + ctx.contentWidth - logoSizePt,
-            logoY,
-            logoSizePt,
-            logoSizePt
-        );
-    }
-
-    ctx.cursorY = startY - blockHeight;
-    // Draw separator line under header
-    ctx.page.drawLine({
-        start: { x: ctx.margin, y: ctx.cursorY + 2 },
-        end: { x: ctx.margin + ctx.contentWidth, y: ctx.cursorY + 2 },
-        thickness: 0.75,
-        color: BORDER,
-    });
-    ctx.cursorY -= 6;
+    paint(ctx);
+    ctx.repeatHeader = paint;
 }
 
 /**
@@ -273,7 +288,6 @@ async function drawStructuredHospitalHeader(ctx: Ctx, header: StructuredHeader):
     const leftSize = header.leftLogo ? IMAGE_SIZE_PT[header.leftLogo.size] : 0;
     const rightSize = header.rightLogo ? IMAGE_SIZE_PT[header.rightLogo.size] : 0;
     const maxLogoSize = Math.max(leftSize, rightSize);
-    const startY = ctx.cursorY;
     const contentLeft = ctx.margin + leftSize + (leftSize > 0 ? 8 : 0);
     const contentRight = ctx.margin + ctx.contentWidth - rightSize - (rightSize > 0 ? 8 : 0);
     const usable = contentRight - contentLeft;
@@ -305,60 +319,66 @@ async function drawStructuredHospitalHeader(ctx: Ctx, header: StructuredHeader):
     const lineGap = 2;
     const totalTextHeight = wrappedLines.reduce((sum, l) => sum + l.size + lineGap + l.marginTop, 0);
     const blockHeight = Math.max(totalTextHeight, maxLogoSize) + 8;
-    ensureSpace(ctx, blockHeight);
 
-    let textY = startY - (wrappedLines[0]?.size ?? 0);
-    for (const line of wrappedLines) {
-        textY -= line.marginTop;
-        if (line.align === 'left') {
-            ctx.page.drawText(line.text, {
-                x: contentLeft,
-                y: textY,
-                size: line.size,
-                font: line.font,
-                color: TEXT,
-            });
-        } else if (line.align === 'right') {
-            const width = line.font.widthOfTextAtSize(line.text, line.size);
-            ctx.page.drawText(line.text, {
-                x: contentRight - width,
-                y: textY,
-                size: line.size,
-                font: line.font,
-                color: TEXT,
-            });
-        } else {
-            drawCenteredText(ctx, line.text, line.font, line.size, textY, TEXT, contentLeft, contentRight);
+    const paint = (c: Ctx) => {
+        const startY = c.cursorY;
+        let textY = startY - (wrappedLines[0]?.size ?? 0);
+        for (const line of wrappedLines) {
+            textY -= line.marginTop;
+            if (line.align === 'left') {
+                c.page.drawText(line.text, {
+                    x: contentLeft,
+                    y: textY,
+                    size: line.size,
+                    font: line.font,
+                    color: TEXT,
+                });
+            } else if (line.align === 'right') {
+                const width = line.font.widthOfTextAtSize(line.text, line.size);
+                c.page.drawText(line.text, {
+                    x: contentRight - width,
+                    y: textY,
+                    size: line.size,
+                    font: line.font,
+                    color: TEXT,
+                });
+            } else {
+                drawCenteredText(c, line.text, line.font, line.size, textY, TEXT, contentLeft, contentRight);
+            }
+            textY -= line.size + lineGap;
         }
-        textY -= line.size + lineGap;
-    }
 
-    const logoBoxY = startY - (blockHeight + maxLogoSize) / 2;
-    if (leftImg && leftSize > 0) {
-        const leftLogoY = logoBoxY + (maxLogoSize - leftSize) / 2;
-        drawContainedImage(ctx.page, leftImg, ctx.margin, leftLogoY, leftSize, leftSize);
-    }
-    if (rightImg && rightSize > 0) {
-        const rightLogoY = logoBoxY + (maxLogoSize - rightSize) / 2;
-        drawContainedImage(
-            ctx.page,
-            rightImg,
-            ctx.margin + ctx.contentWidth - rightSize,
-            rightLogoY,
-            rightSize,
-            rightSize
-        );
-    }
+        const logoBoxY = startY - (blockHeight + maxLogoSize) / 2;
+        if (leftImg && leftSize > 0) {
+            const leftLogoY = logoBoxY + (maxLogoSize - leftSize) / 2;
+            drawContainedImage(c.page, leftImg, c.margin, leftLogoY, leftSize, leftSize);
+        }
+        if (rightImg && rightSize > 0) {
+            const rightLogoY = logoBoxY + (maxLogoSize - rightSize) / 2;
+            drawContainedImage(
+                c.page,
+                rightImg,
+                c.margin + c.contentWidth - rightSize,
+                rightLogoY,
+                rightSize,
+                rightSize,
+            );
+        }
 
-    ctx.cursorY = startY - blockHeight;
-    if (header.divider) {
-        ctx.page.drawLine({
-            start: { x: ctx.margin, y: ctx.cursorY + 2 },
-            end: { x: ctx.margin + ctx.contentWidth, y: ctx.cursorY + 2 },
-            thickness: 0.75,
-            color: BORDER,
-        });
-    }
+        c.cursorY = startY - blockHeight;
+        if (header.divider) {
+            c.page.drawLine({
+                start: { x: c.margin, y: c.cursorY + 2 },
+                end: { x: c.margin + c.contentWidth, y: c.cursorY + 2 },
+                thickness: 0.75,
+                color: BORDER,
+            });
+        }
+    };
+
+    ensureSpace(ctx, blockHeight);
+    paint(ctx);
+    ctx.repeatHeader = paint;
     ctx.cursorY -= 6;
 }
 
