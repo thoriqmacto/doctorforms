@@ -78,10 +78,10 @@ export default function ReportMeasurementReferencePanel({
 
     return (
         <aside
-            className="sticky top-20 z-10 print:hidden"
+            className="fixed right-4 top-20 z-[9999] w-[min(420px,calc(100vw-2rem))] print:hidden"
             data-component="report-measurement-reference"
         >
-            <Card className="max-h-[60vh] overflow-y-auto bg-background/95 shadow-lg backdrop-blur">
+            <Card className="max-h-[calc(100vh-6rem)] overflow-y-auto bg-background/95 shadow-2xl backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-sm">Patient reference</CardTitle>
                     <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Hide measurements">
