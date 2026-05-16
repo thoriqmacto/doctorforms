@@ -14,7 +14,49 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import ReportMeasurementReferencePanel from '@/components/reports/ReportMeasurementReferencePanel';
 import { buildReportModeHref } from '@/lib/reportViewModes';
+
+// Labels on a measurement field that should fall back to patient data
+// when the report has no stored value of its own. Matching is case-
+// insensitive and whitespace-insensitive. This is the short-term
+// "BSA from patient" rule from PR B; the long-term solution is to
+// declare options.binding = { source: 'patient', path: '...' } on the
+// template field — when that exists it wins over this fallback.
+const PATIENT_FALLBACK_BY_LABEL: Record<string, 'bsa' | 'height_cm' | 'weight_kg' | 'age'> = {
+    bsa: 'bsa',
+    'bsa (m2)': 'bsa',
+    'bsa (m²)': 'bsa',
+    'height (cm)': 'height_cm',
+    height: 'height_cm',
+    'weight (kg)': 'weight_kg',
+    weight: 'weight_kg',
+    age: 'age',
+};
+
+function normalizeLabel(label: string): string {
+    return label.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function patientFallbackFor(
+    field: { attributes: { label: string; options?: Record<string, unknown> | string[] | null } },
+    patient: Record<string, unknown> | undefined,
+): string | undefined {
+    if (!patient) return undefined;
+    const options = (field.attributes?.options ?? {}) as Record<string, unknown>;
+    const binding = options?.binding as { source?: unknown; path?: unknown } | undefined;
+    if (binding && binding.source === 'patient' && typeof binding.path === 'string') {
+        const raw = patient[binding.path];
+        if (raw !== undefined && raw !== null && String(raw).trim() !== '') return String(raw);
+    }
+    const measurementName = typeof options?.measurement_name === 'string' ? options.measurement_name : '';
+    const key = normalizeLabel(measurementName || field.attributes?.label || '');
+    const patientKey = PATIENT_FALLBACK_BY_LABEL[key];
+    if (!patientKey) return undefined;
+    const raw = patient[patientKey];
+    if (raw === undefined || raw === null || String(raw).trim() === '') return undefined;
+    return String(raw);
+}
 
 type ReportMetadata = {
     title: string;
@@ -162,7 +204,11 @@ export default function EditReportPage() {
     const initHydrated = useRef(false);
 
     useEffect(() => {
-        if (!initHydrated.current && report && groupedSections) {
+        // Wait until patient is loaded too, otherwise the patient fallback
+        // for measurement values (BSA / height / weight) won't run and the
+        // initHydrated ref locks the form to incomplete data.
+        const patientLoaded = !patientId || !!patientRes?.data;
+        if (!initHydrated.current && report && groupedSections && patientLoaded) {
             const reportFields = report?.relationships?.fields?.data ?? [];
             const reportMeasurements = report?.relationships?.measurements?.data ?? [];
             const byTemplateFieldId = new Map<string, any>(
@@ -171,6 +217,7 @@ export default function EditReportPage() {
             const measurementByName = new Map<string, any>(
                 reportMeasurements.map((m: any) => [String(m.attributes?.name ?? ''), m.attributes?.value])
             );
+            const patientAttrs = (patientRes?.data?.attributes ?? {}) as Record<string, unknown>;
 
             const vals: Record<string, any> = {};
             for (const sec of editableSections) {
@@ -184,6 +231,17 @@ export default function EditReportPage() {
                             vals[key] = measurementValue;
                             continue;
                         }
+                        // Patient is the source of truth for shared clinical
+                        // values (BSA, height, weight, age). When the report
+                        // has no stored measurement value yet, hydrate from
+                        // patient.bsa / patient.height_cm / patient.weight_kg
+                        // / patient.age. This is the short-term fallback;
+                        // a template-level options.binding wins when set.
+                        const fallback = patientFallbackFor(f, patientAttrs);
+                        if (fallback !== undefined) {
+                            vals[key] = fallback;
+                            continue;
+                        }
                     }
 
                     const val = byTemplateFieldId.get(String(f.id));
@@ -195,7 +253,7 @@ export default function EditReportPage() {
             setInitialValues(vals);
             initHydrated.current = true;
         }
-    }, [editableSections, groupedSections, report]);
+    }, [editableSections, groupedSections, report, patientRes]);
 
     async function onRefresh() {
         initHydrated.current = false;
@@ -378,6 +436,11 @@ export default function EditReportPage() {
                         'Loading…'
                     ) : (
                         <div className="mx-auto w-full max-w-6xl space-y-4">
+                            <ReportMeasurementReferencePanel
+                                patient={contexts.patient}
+                                groupedSections={editableSections}
+                                formValues={initialValues}
+                            />
                             <div className="rounded-xl border bg-white shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={editableSections}
