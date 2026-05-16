@@ -17,6 +17,9 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import ReportMeasurementReferencePanel, {
     ReportMeasurementReferenceToggle,
 } from '@/components/reports/ReportMeasurementReferencePanel';
+import ReportImageGallery, {
+    type ReportImageRow,
+} from '@/components/reports/ReportImageGallery';
 import { buildReportModeHref } from '@/lib/reportViewModes';
 
 // Labels on a measurement field that should fall back to patient data
@@ -201,6 +204,50 @@ export default function EditReportPage() {
     const editableSections = (groupedSections ?? []).filter(
         (section: any) => section?.section?.trim().toLowerCase() !== 'header'
     );
+
+    // Sections that have at least one measurement field with
+    // options.image_upload_enabled === true get an image gallery. Max
+    // images is the largest max_images value declared on any field in
+    // the section (so admin can extend the cap without splitting the
+    // section).
+    type SectionGalleryConfig = {
+        sectionKey: string;
+        sectionLabel: string;
+        maxImages: number;
+    };
+    const imageGallerySections: SectionGalleryConfig[] = (editableSections ?? [])
+        .map((section: any): SectionGalleryConfig | null => {
+            const items = section?.items ?? [];
+            let enabled = false;
+            let maxImages = 0;
+            for (const f of items) {
+                if (f?.attributes?.type !== 'measurement') continue;
+                const opts = (f.attributes?.options ?? {}) as Record<string, unknown>;
+                if (opts.image_upload_enabled === true) {
+                    enabled = true;
+                    const declared = Number(opts.max_images);
+                    if (Number.isFinite(declared) && declared > 0) {
+                        maxImages = Math.max(maxImages, declared);
+                    }
+                }
+            }
+            if (!enabled) return null;
+            return {
+                sectionKey: String(section?.section ?? ''),
+                sectionLabel: String(section?.section ?? 'Measurements'),
+                maxImages: maxImages > 0 ? maxImages : 8,
+            };
+        })
+        .filter((s: SectionGalleryConfig | null): s is SectionGalleryConfig => s !== null);
+
+    const reportImages: ReportImageRow[] = ((report?.attributes?.images ?? []) as ReportImageRow[]) ?? [];
+    const imagesBySection = new Map<string, ReportImageRow[]>();
+    for (const img of reportImages) {
+        const key = img.template_section_key ?? '';
+        const list = imagesBySection.get(key) ?? [];
+        list.push(img);
+        imagesBySection.set(key, list);
+    }
 
     // 3) Build initial values ONCE when both report and grouped are ready
     const [initialValues, setInitialValues] = useState<Record<string, any> | null>(null);
@@ -472,6 +519,23 @@ export default function EditReportPage() {
                                 }
                             />
                             </div>
+                            {imageGallerySections.length > 0 ? (
+                                <div className="space-y-3">
+                                    {imageGallerySections.map((cfg) => (
+                                        <ReportImageGallery
+                                            key={cfg.sectionKey}
+                                            reportId={id}
+                                            sectionKey={cfg.sectionKey}
+                                            sectionLabel={cfg.sectionLabel}
+                                            maxImages={cfg.maxImages}
+                                            initialImages={imagesBySection.get(cfg.sectionKey) ?? []}
+                                            onChange={() => {
+                                                mutateReport(undefined, { revalidate: true });
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : null}
                             <SignatorySelector
                                 hospitalId={hospitalId ? Number(hospitalId) : null}
                                 value={signatoryId}

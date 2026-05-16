@@ -7,6 +7,7 @@ import type {
     HospitalHeaderBlock,
     InfoGridBlock,
     MeasurementsBlock,
+    MeasurementImagesBlock,
     RenderBlock,
     ReportRenderPlan,
     ReportTitleBlock,
@@ -227,6 +228,37 @@ function Measurements({ block }: { block: MeasurementsBlock }) {
     );
 }
 
+function MeasurementImages({ block }: { block: MeasurementImagesBlock }) {
+    if (!block.images || block.images.length === 0) return null;
+    return (
+        <section className="break-inside-avoid">
+            <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
+                {block.images.map((img) => {
+                    const src = resolveAssetUrl(img.url);
+                    if (!src) return null;
+                    return (
+                        <figure key={img.id} className="rounded border border-slate-300 bg-white p-1">
+                            <Image
+                                src={src}
+                                alt={img.caption ?? `Report image ${img.id}`}
+                                width={320}
+                                height={240}
+                                unoptimized
+                                className="h-auto w-full object-contain"
+                            />
+                            {img.caption ? (
+                                <figcaption className="mt-1 truncate text-[9px] text-slate-700">
+                                    {img.caption}
+                                </figcaption>
+                            ) : null}
+                        </figure>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
 function Findings({ block }: { block: FindingsBlock }) {
     return (
         <section className="break-inside-avoid">
@@ -314,6 +346,8 @@ function renderBlock(block: RenderBlock, key: string | number) {
             return <InfoGrid key={key} block={block} />;
         case 'measurements':
             return <Measurements key={key} block={block} />;
+        case 'measurement_images':
+            return <MeasurementImages key={key} block={block} />;
         case 'findings':
             return <Findings key={key} block={block} />;
         case 'conclusion':

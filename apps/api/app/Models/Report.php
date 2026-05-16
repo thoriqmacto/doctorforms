@@ -72,5 +72,10 @@ class Report extends Model
     {
         return $this->hasMany(Measurement::class);
     }
+
+    public function images()
+    {
+        return $this->hasMany(ReportImage::class)->orderBy('sort_order')->orderBy('id');
+    }
 }
 

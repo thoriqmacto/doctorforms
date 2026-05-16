@@ -7,6 +7,7 @@ import type {
     HospitalHeaderBlock,
     InfoGridBlock,
     MeasurementsBlock,
+    MeasurementImagesBlock,
     RenderBlock,
     ReportRenderPlan,
     ReportTitleBlock,
@@ -557,6 +558,40 @@ function drawMeasurements(ctx: Ctx, block: MeasurementsBlock): void {
     ctx.cursorY = bottom - 6;
 }
 
+/**
+ * PR D — render the measurement screenshots in a 2-column grid below
+ * the matching measurement block. Each image is fetched through the
+ * existing PDF image proxy so cross-origin URLs work. We deliberately
+ * avoid forcing a page break between rows; ensureSpace() lets a row
+ * spill to the next page if needed (PR #190 keeps the header on every
+ * page).
+ */
+async function drawMeasurementImages(ctx: Ctx, block: MeasurementImagesBlock): Promise<void> {
+    if (!block.images || block.images.length === 0) return;
+
+    const cols = 2;
+    const gapPt = 6;
+    const cellW = (ctx.contentWidth - gapPt * (cols - 1)) / cols;
+    const cellH = cellW * (3 / 4); // 4:3 aspect ratio for the bounding box
+
+    ctx.cursorY -= 4; // small breathing room after the measurements table
+
+    for (let i = 0; i < block.images.length; i += cols) {
+        ensureSpace(ctx, cellH + gapPt);
+        const rowTop = ctx.cursorY;
+        for (let col = 0; col < cols; col++) {
+            const img = block.images[i + col];
+            if (!img) continue;
+            const embedded = await embedLogo(ctx.doc, img.url);
+            if (!embedded) continue;
+            const x = ctx.margin + col * (cellW + gapPt);
+            const y = rowTop - cellH;
+            drawContainedImage(ctx.page, embedded, x, y, cellW, cellH);
+        }
+        ctx.cursorY = rowTop - cellH - gapPt;
+    }
+}
+
 function drawFindings(ctx: Ctx, block: FindingsBlock): void {
     drawSectionBanner(ctx, block.title);
 
@@ -741,6 +776,9 @@ async function drawBlock(ctx: Ctx, block: RenderBlock): Promise<void> {
             return;
         case 'measurements':
             drawMeasurements(ctx, block);
+            return;
+        case 'measurement_images':
+            await drawMeasurementImages(ctx, block);
             return;
         case 'findings':
             drawFindings(ctx, block);

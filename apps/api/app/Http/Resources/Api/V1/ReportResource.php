@@ -6,6 +6,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use App\Http\Resources\Api\V1\ReportFieldResource;
 use App\Http\Resources\Api\V1\MeasurementResource;
 use App\Http\Resources\Api\V1\HospitalSignatoryResource;
+use App\Http\Resources\Api\V1\ReportImageResource;
 
 class ReportResource extends JsonResource
 {
@@ -28,6 +29,15 @@ class ReportResource extends JsonResource
                 // the template+fields are loaded; null if we don't have
                 // enough context to compute (caller can fall back to "—").
                 'completion_percent' => $this->resolveCompletionPercent(),
+                // Measurement screenshots / images. Only surfaced when the
+                // relation is loaded so we don't fan-out queries on the
+                // list endpoint. PR D scope; OCR / parameter extraction is
+                // a queued follow-up that uses the extraction_* keys on
+                // each row.
+                'images'       => $this->when(
+                    $this->relationLoaded('images'),
+                    fn () => ReportImageResource::collection($this->images)->resolve(),
+                ),
                 'created_at'   => optional($this->created_at)->toDateTimeString(),
                 'updated_at'   => optional($this->updated_at)->toDateTimeString(),
             ],
