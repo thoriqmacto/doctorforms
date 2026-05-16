@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\HospitalSignatoryController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\ReportImageController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\TemplateFieldController;
 use App\Http\Controllers\Api\V1\TemplateFieldImageUploadController;
@@ -18,6 +19,13 @@ Route::apiResource('templates', TemplateController::class);
 Route::apiResource('template-fields', TemplateFieldController::class);
 Route::apiResource('patients', PatientController::class);
 Route::apiResource('reports', ReportController::class);
+// Report images (measurement screenshots). Per-image include/exclude
+// + delete are routed off the image id directly so they don't need to
+// piggyback on the report id.
+Route::get('reports/{report}/images', [ReportImageController::class, 'index']);
+Route::post('reports/{report}/images', [ReportImageController::class, 'store']);
+Route::patch('report-images/{reportImage}', [ReportImageController::class, 'update']);
+Route::delete('report-images/{reportImage}', [ReportImageController::class, 'destroy']);
 Route::apiResource('tests', TestController::class);
 // Hospital reads (index, show) are accessible to any authenticated user so
 // doctors can pick a hospital while adding a patient and while creating a

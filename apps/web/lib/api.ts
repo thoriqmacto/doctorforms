@@ -321,6 +321,36 @@ export const createReport = (payload: any) =>
 export const setReportCompletion = (id: string | number, isCompleted: boolean) =>
     api.patch(`reports/${id}`, { json: { is_completed: isCompleted } }).json<any>();
 
+// Report images (measurement screenshots). See PR D.
+export const listReportImages = (reportId: string | number) =>
+    api.get(`reports/${reportId}/images`).json<any>();
+
+export const uploadReportImage = (
+    reportId: string | number,
+    sectionKey: string,
+    file: File,
+    extras?: { include_in_report?: boolean; sort_order?: number },
+) => {
+    const form = new FormData();
+    form.append('image', file);
+    form.append('template_section_key', sectionKey);
+    if (extras?.include_in_report !== undefined) {
+        form.append('include_in_report', extras.include_in_report ? '1' : '0');
+    }
+    if (extras?.sort_order !== undefined) {
+        form.append('sort_order', String(extras.sort_order));
+    }
+    return multipartApi.post(`reports/${reportId}/images`, { body: form }).json<any>();
+};
+
+export const updateReportImage = (
+    imageId: string | number,
+    payload: { include_in_report?: boolean; sort_order?: number },
+) => api.patch(`report-images/${imageId}`, { json: payload }).json<any>();
+
+export const deleteReportImage = (imageId: string | number) =>
+    api.delete(`report-images/${imageId}`).json<any>();
+
 // Feedback
 export const createFeedback = (payload: { message: string; page_url?: string }) =>
     api.post('feedback', { json: payload }).json<any>();

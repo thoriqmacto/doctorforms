@@ -23,6 +23,7 @@ class ReportController extends Controller
             'fields.templateField',
             'measurements',
             'signatory',
+            'images',
         ]);
 
         // Accept both `filter[xxx]` (idiomatic Laravel bracket syntax) and
@@ -102,7 +103,7 @@ class ReportController extends Controller
     // GET /api/v1/reports/{report}
     public function show(Report $report)
     {
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields', 'images']);
 
         return new ReportResource($report);
     }
@@ -186,7 +187,7 @@ class ReportController extends Controller
             $report->measurements()->createMany($data['measurements']);
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields', 'images']);
 
         return (new ReportResource($report))
             ->additional(['meta' => ['status' => 'created']])
@@ -295,7 +296,7 @@ class ReportController extends Controller
             }
         }
 
-        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields']);
+        $report->load(['patient', 'fields.templateField', 'measurements', 'signatory', 'template.fields', 'images']);
 
         return new ReportResource($report);
     }

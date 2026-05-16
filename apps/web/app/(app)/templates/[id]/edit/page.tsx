@@ -67,6 +67,12 @@ type TemplateFieldForm = {
   measurement_name: string;
   measurement_unit: string;
   measurement_category: string;
+  // Measurement-only image options (PR D). When image_upload_enabled is
+  // true on any measurement field in a section, the report edit page
+  // shows an image gallery for that section.
+  image_upload_enabled: boolean;
+  max_images: number;
+  default_include_in_report: boolean;
   // textarea_result-only options. Defaults match TemplateFormRenderer.
   result_joiner: string;
   checkbox_joiner: string;
@@ -154,6 +160,9 @@ function emptyNormalizedOptions() {
     measurement_name: "",
     measurement_unit: "",
     measurement_category: "",
+    image_upload_enabled: false,
+    max_images: 8,
+    default_include_in_report: true,
     textarea_mode: "free" as "free" | "result",
     result_joiner: RESULT_JOINER_DEFAULT,
     checkbox_joiner: CHECKBOX_JOINER_DEFAULT,
@@ -222,6 +231,13 @@ function normalizeOptions(raw: unknown) {
       measurement_category: obj.measurement_category
         ? String(obj.measurement_category)
         : "",
+      image_upload_enabled: obj.image_upload_enabled === true,
+      max_images:
+        Number.isFinite(Number(obj.max_images)) && Number(obj.max_images) > 0
+          ? Number(obj.max_images)
+          : 8,
+      default_include_in_report:
+        obj.default_include_in_report === false ? false : true,
       textarea_mode:
         obj.textarea_mode === "result" ? "result" : "free",
       result_joiner:
@@ -587,6 +603,9 @@ export default function EditTemplatePage() {
               measurement_name: options.measurement_name,
               measurement_unit: options.measurement_unit,
               measurement_category: options.measurement_category,
+              image_upload_enabled: options.image_upload_enabled,
+              max_images: options.max_images,
+              default_include_in_report: options.default_include_in_report,
               result_joiner: options.result_joiner,
               checkbox_joiner: options.checkbox_joiner,
               trim_result: options.trim_result,
@@ -735,6 +754,16 @@ export default function EditTemplatePage() {
               baseOptions.measurement_name = f.measurement_name;
               baseOptions.measurement_unit = f.measurement_unit;
               baseOptions.measurement_category = f.measurement_category;
+              // PR D — only emit image options when the admin opts in.
+              if (f.image_upload_enabled) {
+                baseOptions.image_upload_enabled = true;
+                baseOptions.max_images =
+                  Number.isFinite(Number(f.max_images)) && Number(f.max_images) > 0
+                    ? Number(f.max_images)
+                    : 8;
+                baseOptions.default_include_in_report =
+                  f.default_include_in_report !== false;
+              }
             } else if (
               f.type === "textarea_free" ||
               f.type === "textarea_result"
@@ -1974,6 +2003,65 @@ export default function EditTemplatePage() {
                                       </FormItem>
                                     )}
                                   />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.image_upload_enabled`}
+                                    render={({ field }) => (
+                                      <FormItem className="md:col-span-3 flex flex-row items-center gap-2 space-y-0">
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={!!field.value}
+                                            onCheckedChange={(v) => field.onChange(v === true)}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">
+                                          Enable image upload for this measurement section
+                                        </FormLabel>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.max_images`}
+                                    render={({ field }) => (
+                                      <FormItem className="md:col-span-2">
+                                        <FormLabel>Max images</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            min={1}
+                                            max={32}
+                                            value={
+                                              Number.isFinite(Number(field.value)) && Number(field.value) > 0
+                                                ? Number(field.value)
+                                                : 8
+                                            }
+                                            onChange={(e) => field.onChange(Number(e.target.value))}
+                                          />
+                                        </FormControl>
+                                        <p className="text-xs text-muted-foreground">
+                                          Hard cap per measurement section. Defaults to 8.
+                                        </p>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.default_include_in_report`}
+                                    render={({ field }) => (
+                                      <FormItem className="md:col-span-2 flex flex-row items-center gap-2 space-y-0">
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value !== false}
+                                            onCheckedChange={(v) => field.onChange(v === true)}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">
+                                          Include uploads in report by default
+                                        </FormLabel>
+                                      </FormItem>
+                                    )}
+                                  />
                                 </>
                               ) : null}
 
@@ -2150,6 +2238,9 @@ export default function EditTemplatePage() {
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
+                              image_upload_enabled: false,
+                              max_images: 8,
+                              default_include_in_report: true,
                               result_joiner: " ",
                               checkbox_joiner: ", ",
                               trim_result: true,
@@ -2193,6 +2284,9 @@ export default function EditTemplatePage() {
                       measurement_name: "",
                       measurement_unit: "",
                       measurement_category: "",
+                      image_upload_enabled: false,
+                      max_images: 8,
+                      default_include_in_report: true,
                       result_joiner: " ",
                       checkbox_joiner: ", ",
                       trim_result: true,

@@ -97,6 +97,12 @@ export type MeasurementsBlock = {
     cells: MeasurementCell[];
 };
 
+export type MeasurementImagesBlock = {
+    kind: 'measurement_images';
+    title?: string;
+    images: Array<{ id: number; url: string; caption?: string }>;
+};
+
 export type FindingsBlock = {
     kind: 'findings';
     title: string;
@@ -128,6 +134,7 @@ export type RenderBlock =
     | ReportTitleBlock
     | InfoGridBlock
     | MeasurementsBlock
+    | MeasurementImagesBlock
     | FindingsBlock
     | ConclusionBlock
     | SignatureBlock
@@ -173,6 +180,20 @@ export type BuildPlanInput = {
     testName?: string;
     /** right-side logo for the legacy hospital header, independent of hospital.logo_url */
     secondaryLogoUrl?: string;
+    /**
+     * Measurement screenshots (PR D). Already filtered to
+     * include_in_report = true by the caller. Grouped by
+     * template_section_key so the renderer can drop a
+     * MeasurementImagesBlock next to the matching measurement section.
+     */
+    images?: Array<{
+        id: number;
+        url: string;
+        template_section_key: string;
+        original_filename?: string | null;
+        sort_order?: number;
+        include_in_report?: boolean;
+    }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -521,6 +542,24 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
 
         if (kind === 'measurements') {
             blocks.push(buildMeasurements(section));
+            // PR D — emit a MeasurementImagesBlock when the report has
+            // included images keyed off this section's name.
+            const sectionKey = section.section ?? '';
+            const sectionImages = (input.images ?? [])
+                .filter((img) => img.template_section_key === sectionKey)
+                .filter((img) => img.include_in_report !== false)
+                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
+            if (sectionImages.length > 0) {
+                blocks.push({
+                    kind: 'measurement_images',
+                    title: sectionKey || undefined,
+                    images: sectionImages.map((img) => ({
+                        id: img.id,
+                        url: img.url,
+                        caption: img.original_filename ?? undefined,
+                    })),
+                });
+            }
             continue;
         }
 

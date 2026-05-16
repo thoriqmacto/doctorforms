@@ -209,6 +209,7 @@ export default function ReportDetailPage() {
         },
     };
 
+    const reportImages = Array.isArray(attrs.images) ? attrs.images : [];
     const plan = buildReportRenderPlan({
         viewModel,
         sectionKinds,
@@ -220,6 +221,14 @@ export default function ReportDetailPage() {
         report: renderContexts.report,
         headerConfig,
         testName,
+        images: reportImages.map((img: any) => ({
+            id: Number(img.id),
+            url: typeof img.url === 'string' ? img.url : '',
+            template_section_key: String(img.template_section_key ?? ''),
+            original_filename: img.original_filename ?? null,
+            sort_order: Number(img.sort_order ?? 0),
+            include_in_report: img.include_in_report !== false,
+        })),
     });
     const modeLinks: { label: string; mode: ReportViewMode }[] = [
         { label: 'HTML View', mode: 'html' },
