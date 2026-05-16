@@ -19,7 +19,15 @@ Route::apiResource('template-fields', TemplateFieldController::class);
 Route::apiResource('patients', PatientController::class);
 Route::apiResource('reports', ReportController::class);
 Route::apiResource('tests', TestController::class);
-Route::apiResource('hospitals', HospitalController::class)->middleware('role:admin');
+// Hospital reads (index, show) are accessible to any authenticated user so
+// doctors can pick a hospital while adding a patient and while creating a
+// report. All hospital mutations (store/update/destroy) and asset uploads
+// remain admin-only via the explicit routes below.
+Route::get('hospitals', [HospitalController::class, 'index']);
+Route::get('hospitals/{hospital}', [HospitalController::class, 'show']);
+Route::apiResource('hospitals', HospitalController::class)
+    ->except(['index', 'show'])
+    ->middleware('role:admin');
 Route::apiResource('users', UsersController::class)->middleware('role:admin');
 Route::post('template-field-images', [TemplateFieldImageUploadController::class, 'store']);
 Route::post('hospitals/{hospital}/logo', [HospitalLogoController::class, 'store'])->middleware('role:admin');

@@ -1,10 +1,32 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { type PatientPayload } from '@/lib/api';
+
+function calcAgeFromDOB(dobISO: string): number | null {
+  if (!dobISO) return null;
+  const dob = new Date(dobISO);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDelta = now.getMonth() - dob.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  if (age < 0 || age > 150) return null;
+  return age;
+}
+
+function calcBsa(heightCm: number, weightKg: number): number | null {
+  if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg)) return null;
+  if (heightCm <= 0 || weightKg <= 0) return null;
+  const bsa = 0.007184 * Math.pow(heightCm, 0.725) * Math.pow(weightKg, 0.425);
+  if (!Number.isFinite(bsa) || bsa <= 0) return null;
+  return Math.round(bsa * 100) / 100;
+}
 
 const SELECT_CLASS =
   'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
@@ -68,12 +90,45 @@ export default function PatientForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Track whether the user has manually edited Age or BSA in this session.
+  // While unset, the auto-calc effects below keep them in sync with DOB /
+  // height / weight. After a manual edit the effects stop overwriting so
+  // a doctor's correction is preserved.
+  const ageManuallyEditedRef = useRef(false);
+  const bsaManuallyEditedRef = useRef(false);
+
   useEffect(() => {
     setValues(initialValues);
     setError(null);
+    ageManuallyEditedRef.current = false;
+    bsaManuallyEditedRef.current = false;
     // Intentionally only depending on resetKey to avoid resets when parent recreates initialValues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
+
+  // Auto-fill Age from DOB unless the user has typed an Age value in this
+  // session. Clearing DOB does not clear Age.
+  useEffect(() => {
+    if (ageManuallyEditedRef.current) return;
+    const next = calcAgeFromDOB(values.dob);
+    if (next === null) return;
+    const nextStr = String(next);
+    if (values.age === nextStr) return;
+    setValues((prev) => ({ ...prev, age: nextStr }));
+  }, [values.dob, values.age]);
+
+  // Auto-fill BSA via DuBois unless the user has typed a BSA value.
+  // Clearing height or weight does not clear BSA.
+  useEffect(() => {
+    if (bsaManuallyEditedRef.current) return;
+    const h = Number(values.height_cm);
+    const w = Number(values.weight_kg);
+    const next = calcBsa(h, w);
+    if (next === null) return;
+    const nextStr = next.toFixed(2);
+    if (values.bsa === nextStr) return;
+    setValues((prev) => ({ ...prev, bsa: nextStr }));
+  }, [values.height_cm, values.weight_kg, values.bsa]);
 
   const validHospitals = useMemo(() => {
     const raw = Array.isArray(hospitals) ? hospitals : [];
@@ -195,12 +250,22 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <Label>Age</Label>
+          <Label className='flex items-center gap-2'>
+            <span>Age</span>
+            {!ageManuallyEditedRef.current && values.age ? (
+              <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
+                Auto from DOB
+              </span>
+            ) : null}
+          </Label>
           <Input
             disabled={submitting}
             type='number'
             value={values.age}
-            onChange={(e) => setField('age', e.target.value)}
+            onChange={(e) => {
+              ageManuallyEditedRef.current = true;
+              setField('age', e.target.value);
+            }}
           />
         </div>
         <div className='space-y-1'>
@@ -222,13 +287,23 @@ export default function PatientForm({
           />
         </div>
         <div className='space-y-1'>
-          <Label>BSA</Label>
+          <Label className='flex items-center gap-2'>
+            <span>BSA</span>
+            {!bsaManuallyEditedRef.current && values.bsa ? (
+              <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
+                Auto from Height &amp; Weight
+              </span>
+            ) : null}
+          </Label>
           <Input
             disabled={submitting}
             type='number'
             step='0.01'
             value={values.bsa}
-            onChange={(e) => setField('bsa', e.target.value)}
+            onChange={(e) => {
+              bsaManuallyEditedRef.current = true;
+              setField('bsa', e.target.value);
+            }}
           />
         </div>
         <div className='space-y-1'>
