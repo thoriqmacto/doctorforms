@@ -81,6 +81,13 @@ type Props = {
     autosaveDraftKey?: string;
     autosaveIntervalMs?: number;
     /**
+     * Extra controls rendered inline at the end of the sticky toolbar so
+     * surrounding pages can extend it (e.g. the report-edit page's
+     * "Show measurements" toggle). Visible only when
+     * enableSectionControls is true.
+     */
+    toolbarExtras?: React.ReactNode;
+    /**
      * When true, BSA is auto-calculated from Height/Weight fields once the
      * user edits either of them. Defaults to false because in the report
      * edit flow height/weight are patient-level data and BSA should not be
@@ -306,6 +313,7 @@ export default function TemplateFormRenderer({
     autosaveIntervalMs = 15000,
     enableBsaAutoCalc = false,
     contexts,
+    toolbarExtras,
 }: Props) {
     const schema = useMemo(() => {
         const baseShape: Record<string, z.ZodTypeAny> = {};
@@ -1084,72 +1092,96 @@ export default function TemplateFormRenderer({
             className="space-y-4 print:space-y-2"
         >
             <div className="mx-auto w-full max-w-[1100px] space-y-4 p-2 md:p-4 print:max-w-[210mm]">
-                {enableSectionControls && (
-                    <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
-                        {showDirtyState && (
-                            <div className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-                                {dirtyStatusLabel}
-                            </div>
-                        )}
-                        {showRefreshButton && (
-                            <Button type="button" variant="outline" onClick={() => onRefresh?.()}>
-                                Refresh
+                {enableSectionControls && (() => {
+                    // Single toggle replaces the old "Collapse All / Expand
+                    // All" pair. We treat "all collapsed" as the only state
+                    // worth reporting; any non-collapsed section flips the
+                    // label back to "Collapse all".
+                    const allCollapsed =
+                        visibleSections.length > 0 &&
+                        visibleSections.every((s) => collapsedSections[s.idx]);
+                    return (
+                        <div className="sticky top-3 z-20 flex items-center gap-2 overflow-x-auto whitespace-nowrap rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur print:hidden">
+                            {showDirtyState && (
+                                <div className="shrink-0 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                                    {dirtyStatusLabel}
+                                </div>
+                            )}
+                            {showRefreshButton && (
+                                <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => onRefresh?.()}>
+                                    Refresh
+                                </Button>
+                            )}
+                            {showSubmitButton && (
+                                <Button type="submit" size="sm" form={formId} className="shrink-0">
+                                    Save
+                                </Button>
+                            )}
+                            {showRefreshButton && lastRefreshedAt && (
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                    Last refreshed: {lastRefreshedAt.toLocaleString()}
+                                </span>
+                            )}
+                            {showPrintButton && (
+                                <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={() => (onPrint ? onPrint() : window.print())}>
+                                    Print
+                                </Button>
+                            )}
+                            {editHref && (
+                                <Button asChild type="button" size="sm" variant="outline" className="shrink-0">
+                                    <Link href={editHref}>Edit</Link>
+                                </Button>
+                            )}
+                            {resolvedViewLinks.map((viewLink) => (
+                                <Button asChild type="button" size="sm" variant="outline" className="shrink-0" key={`${viewLink.href}-${viewLink.label}`}>
+                                    <Link href={viewLink.href}>{viewLink.label}</Link>
+                                </Button>
+                            ))}
+                            <Label htmlFor="jump-to-section" className="sr-only">
+                                Jump to section
+                            </Label>
+                            <Select
+                                value={jumpSection}
+                                onValueChange={(value) => {
+                                    setJumpSection(value);
+                                    document.getElementById(value)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }}
+                            >
+                                <SelectTrigger id="jump-to-section" aria-label="Jump to section" size="sm" className="w-[200px] shrink-0">
+                                    <SelectValue placeholder="Jump to section" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {visibleSections.map((sec) => (
+                                        <SelectItem key={sec.id} value={sec.id}>
+                                            {sec.title}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="shrink-0"
+                                onClick={() => {
+                                    if (allCollapsed) {
+                                        setCollapsedSections({});
+                                    } else {
+                                        setCollapsedSections(
+                                            Object.fromEntries(visibleSections.map((s) => [s.idx, true])),
+                                        );
+                                    }
+                                }}
+                                aria-pressed={allCollapsed}
+                            >
+                                {allCollapsed ? "Expand all" : "Collapse all"}
                             </Button>
-                        )}
-                        {showSubmitButton && <Button type="submit" form={formId}>Save</Button>}
-                        {showRefreshButton && lastRefreshedAt && (
-                            <span className="text-xs text-muted-foreground">
-                                Last refreshed: {lastRefreshedAt.toLocaleString()}
-                            </span>
-                        )}
-                        {showPrintButton && (
-                            <Button type="button" variant="secondary" onClick={() => (onPrint ? onPrint() : window.print())}>
-                                Print
-                            </Button>
-                        )}
-                        {editHref && (
-                            <Button asChild type="button" variant="outline">
-                                <Link href={editHref}>Edit</Link>
-                            </Button>
-                        )}
-                        {resolvedViewLinks.map((viewLink) => (
-                            <Button asChild type="button" variant="outline" key={`${viewLink.href}-${viewLink.label}`}>
-                                <Link href={viewLink.href}>{viewLink.label}</Link>
-                            </Button>
-                        ))}
-                        <Label htmlFor="jump-to-section" className="sr-only">
-                            Jump to section
-                        </Label>
-                        <Select
-                            value={jumpSection}
-                            onValueChange={(value) => {
-                                setJumpSection(value);
-                                document.getElementById(value)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                            }}
-                        >
-                            <SelectTrigger id="jump-to-section" aria-label="Jump to section" className="w-[220px]">
-                                <SelectValue placeholder="Jump to section" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {visibleSections.map((sec) => (
-                                    <SelectItem key={sec.id} value={sec.id}>
-                                        {sec.title}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setCollapsedSections(Object.fromEntries(visibleSections.map((s) => [s.idx, true])))}
-                        >
-                            Collapse All
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => setCollapsedSections({})}>
-                            Expand All
-                        </Button>
-                    </div>
-                )}
+                            {toolbarExtras ? (
+                                <div className="ml-auto flex shrink-0 items-center gap-2">{toolbarExtras}</div>
+                            ) : null}
+                        </div>
+                    );
+                })()}
 
                 {sorted.map((sec, idx) => (
                     <div key={`${sec.section ?? "section"}-${idx}`}>{renderSection(sec, idx)}</div>

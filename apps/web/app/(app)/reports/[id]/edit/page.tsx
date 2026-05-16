@@ -14,7 +14,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-provider';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import ReportMeasurementReferencePanel from '@/components/reports/ReportMeasurementReferencePanel';
+import ReportMeasurementReferencePanel, {
+    ReportMeasurementReferenceToggle,
+} from '@/components/reports/ReportMeasurementReferencePanel';
 import { buildReportModeHref } from '@/lib/reportViewModes';
 
 // Labels on a measurement field that should fall back to patient data
@@ -106,6 +108,7 @@ export default function EditReportPage() {
     const [metadata, setMetadata] = useState<ReportMetadata>(EMPTY_METADATA);
     const metadataHydrated = useRef(false);
     const [assignedUserId, setAssignedUserId] = useState<string>('unassigned');
+    const [measurementsPanelOpen, setMeasurementsPanelOpen] = useState(false);
     const ownerHydrated = useRef(false);
 
     useEffect(() => {
@@ -253,7 +256,7 @@ export default function EditReportPage() {
             setInitialValues(vals);
             initHydrated.current = true;
         }
-    }, [editableSections, groupedSections, report, patientRes]);
+    }, [editableSections, groupedSections, report, patientRes, patientId]);
 
     async function onRefresh() {
         initHydrated.current = false;
@@ -437,6 +440,8 @@ export default function EditReportPage() {
                     ) : (
                         <div className="mx-auto w-full max-w-6xl space-y-4">
                             <ReportMeasurementReferencePanel
+                                open={measurementsPanelOpen}
+                                onClose={() => setMeasurementsPanelOpen(false)}
                                 patient={contexts.patient}
                                 groupedSections={editableSections}
                                 formValues={initialValues}
@@ -459,6 +464,12 @@ export default function EditReportPage() {
                                     { href: buildReportModeHref(id, 'html'), label: 'View HTML' },
                                     { href: buildReportModeHref(id, 'pdf'), label: 'View PDF' },
                                 ]}
+                                toolbarExtras={
+                                    <ReportMeasurementReferenceToggle
+                                        open={measurementsPanelOpen}
+                                        onToggle={() => setMeasurementsPanelOpen((v) => !v)}
+                                    />
+                                }
                             />
                             </div>
                             <SignatorySelector
