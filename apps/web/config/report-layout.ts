@@ -11,11 +11,14 @@ export const reportLayout = {
         // A4 portrait
         widthPt: 595.28,
         heightPt: 841.89,
-        marginPt: 34, // ~12mm
+        // Trimmed from 34pt (~12mm) → 22pt (~7.8mm) to fit more content
+        // on one page. Logos still anchor near the top; only the
+        // surrounding whitespace shrinks.
+        marginPt: 22,
         // mirror for HTML (A4 width in mm used by `.page-a4`)
         widthMm: 210,
         heightMm: 297,
-        marginMm: 12,
+        marginMm: 8,
     },
     hospitalHeader: {
         logoSizePt: 56,

@@ -744,10 +744,14 @@ async function drawBlock(ctx: Ctx, block: RenderBlock): Promise<void> {
  */
 export async function renderPlanToPdfBytes(plan: ReportRenderPlan): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
+    // The report's requested font is Calibri. pdf-lib only ships the 14
+    // PDF "standard" fonts and cannot embed Calibri without a
+    // proprietary TTF file. Helvetica is the closest sans-serif and
+    // matches the HTML view's Carlito/Arial/Helvetica fallback chain.
     const fonts: Fonts = {
-        regular: await doc.embedFont(StandardFonts.TimesRoman),
-        bold: await doc.embedFont(StandardFonts.TimesRomanBold),
-        italic: await doc.embedFont(StandardFonts.TimesRomanItalic),
+        regular: await doc.embedFont(StandardFonts.Helvetica),
+        bold: await doc.embedFont(StandardFonts.HelveticaBold),
+        italic: await doc.embedFont(StandardFonts.HelveticaOblique),
     };
 
     const pageWidth = reportLayout.page.widthPt;
