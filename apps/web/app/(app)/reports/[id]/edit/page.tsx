@@ -209,19 +209,26 @@ export default function EditReportPage() {
     // options.image_upload_enabled === true get an image gallery. Max
     // images is the largest max_images value declared on any field in
     // the section (so admin can extend the cap without splitting the
-    // section).
+    // section). measurementFields are also collected so the gallery's
+    // OCR recogniser can map raw text → template field suggestions.
     type SectionGalleryConfig = {
         sectionKey: string;
         sectionLabel: string;
         maxImages: number;
+        measurementFields: Array<{ id: string | number; attributes: { label: string; options?: unknown } }>;
     };
     const imageGallerySections: SectionGalleryConfig[] = (editableSections ?? [])
         .map((section: any): SectionGalleryConfig | null => {
             const items = section?.items ?? [];
             let enabled = false;
             let maxImages = 0;
+            const measurementFields: SectionGalleryConfig['measurementFields'] = [];
             for (const f of items) {
                 if (f?.attributes?.type !== 'measurement') continue;
+                measurementFields.push({
+                    id: f.id,
+                    attributes: { label: f.attributes?.label, options: f.attributes?.options },
+                });
                 const opts = (f.attributes?.options ?? {}) as Record<string, unknown>;
                 if (opts.image_upload_enabled === true) {
                     enabled = true;
@@ -236,6 +243,7 @@ export default function EditReportPage() {
                 sectionKey: String(section?.section ?? ''),
                 sectionLabel: String(section?.section ?? 'Measurements'),
                 maxImages: maxImages > 0 ? maxImages : 8,
+                measurementFields,
             };
         })
         .filter((s: SectionGalleryConfig | null): s is SectionGalleryConfig => s !== null);
@@ -502,6 +510,7 @@ export default function EditReportPage() {
                                             sectionKey={cfg.sectionKey}
                                             sectionLabel={cfg.sectionLabel}
                                             maxImages={cfg.maxImages}
+                                            measurementFields={cfg.measurementFields}
                                             initialImages={imagesBySection.get(cfg.sectionKey) ?? []}
                                             onChange={() => {
                                                 mutateReport(undefined, { revalidate: true });
