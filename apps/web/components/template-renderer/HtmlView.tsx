@@ -14,6 +14,7 @@ import type {
     SignatureBlock,
     StructuredHeader,
 } from '@/lib/template-renderer/renderPlan';
+import { arrangeMeasurementCellsColumnMajor } from '@/lib/template-renderer/renderPlan';
 import {
     ALIGN_HTML_CLASS,
     FONT_SIZE_HTML_CLASS,
@@ -189,10 +190,11 @@ function SectionBanner({ title, uppercase = false }: { title: string; uppercase?
 }
 
 function Measurements({ block }: { block: MeasurementsBlock }) {
-    const rowsOfCells: typeof block.cells[] = [];
-    for (let i = 0; i < block.cells.length; i += block.cols) {
-        rowsOfCells.push(block.cells.slice(i, i + block.cols));
-    }
+    // Column-major layout (matches the RSUD Soedarso reference): the
+    // template field order fills the first column top-to-bottom, then
+    // moves to the next column. The shared helper also pads short
+    // inputs with `undefined` so empty grid cells keep alignment.
+    const rowsOfCells = arrangeMeasurementCellsColumnMajor(block.cells, block.cols, 8);
     return (
         <section className="break-inside-avoid">
             <SectionBanner title={block.title ?? 'Measurements & Calculations'} />
@@ -232,6 +234,7 @@ function MeasurementImages({ block }: { block: MeasurementImagesBlock }) {
     if (!block.images || block.images.length === 0) return null;
     return (
         <section className="break-inside-avoid">
+            {block.title ? <SectionBanner title={block.title} /> : null}
             <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
                 {block.images.map((img) => {
                     const src = resolveAssetUrl(img.url);
@@ -328,18 +331,17 @@ function Generic({ block }: { block: GenericSectionBlock }) {
                             <td className="border border-slate-400 px-1.5 py-0.5 text-slate-900" colSpan={row.label !== undefined ? 1 : 2}>
                                 <div>{row.value}</div>
                                 {row.extra ? (
-                                    <div
-                                        className={
-                                            row.extraEmphasis === 'bold'
-                                                ? 'mt-0.5 font-semibold text-slate-900'
-                                                : row.extraEmphasis === 'muted'
-                                                  ? 'mt-0.5 text-slate-600'
-                                                  : row.extraEmphasis === 'normal'
-                                                    ? 'mt-0.5 text-slate-900'
-                                                    : 'mt-0.5 italic text-slate-800'
-                                        }
-                                    >
-                                        {row.extra}
+                                    // textarea_free secondary block — label
+                                    // rendered in bold, content in regular,
+                                    // both indented so the block visually
+                                    // sits inside the parent row.
+                                    <div className="mt-1 pl-4">
+                                        {row.extraLabel ? (
+                                            <div className="font-semibold text-slate-900">
+                                                {row.extraLabel}
+                                            </div>
+                                        ) : null}
+                                        <div className="text-slate-900">{row.extra}</div>
                                     </div>
                                 ) : null}
                             </td>
