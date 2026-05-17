@@ -117,6 +117,12 @@ type FieldOptionMeta = {
     trimResult: boolean;
     /** Whether the generated textarea_result should be user-editable. */
     editableResult: boolean;
+    /** PR E — textarea_free can opt-in to an extra secondary textarea. */
+    extraTextareaEnabled: boolean;
+    /** Display label above the secondary textarea. */
+    extraTextareaLabel: string;
+    /** Visual emphasis applied to the secondary textarea's body in HTML/PDF. */
+    extraTextareaEmphasis: "italic" | "bold" | "muted" | "normal";
 };
 
 type AutoResultGroup = {
@@ -161,6 +167,9 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
             checkboxJoiner: CHECKBOX_JOINER_DEFAULT,
             trimResult: true,
             editableResult: false,
+            extraTextareaEnabled: false,
+            extraTextareaLabel: "Additional note",
+            extraTextareaEmphasis: "italic",
         };
     }
 
@@ -174,7 +183,18 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
         checkbox_joiner?: unknown;
         trim_result?: unknown;
         editable_result?: unknown;
+        extra_textarea_enabled?: unknown;
+        extra_textarea_label?: unknown;
+        extra_textarea_emphasis?: unknown;
     };
+
+    const emphasis = typeof options.extra_textarea_emphasis === "string"
+        ? options.extra_textarea_emphasis.toLowerCase()
+        : "italic";
+    const extraEmphasis: FieldOptionMeta["extraTextareaEmphasis"] =
+        emphasis === "bold" || emphasis === "muted" || emphasis === "normal"
+            ? (emphasis as FieldOptionMeta["extraTextareaEmphasis"])
+            : "italic";
 
     return {
         defaultValue: options.default ? String(options.default) : "",
@@ -193,7 +213,51 @@ function parseFieldOptionMeta(value: unknown): FieldOptionMeta {
             typeof options.checkbox_joiner === "string" ? options.checkbox_joiner : CHECKBOX_JOINER_DEFAULT,
         trimResult: options.trim_result === undefined ? true : !!options.trim_result,
         editableResult: !!options.editable_result,
+        extraTextareaEnabled: !!options.extra_textarea_enabled,
+        extraTextareaLabel:
+            typeof options.extra_textarea_label === "string" && options.extra_textarea_label.trim() !== ""
+                ? String(options.extra_textarea_label)
+                : "Additional note",
+        extraTextareaEmphasis: extraEmphasis,
     };
+}
+
+/**
+ * PR E (Issue 8) — textarea_free can have an optional secondary
+ * textarea. We encode the two strings into the single backend column
+ * with a magic prefix so the storage stays a plain `string` and
+ * existing rows decode as primary-only.
+ *
+ * Shape: `__df_extra_v1__::{json}` where json is `{p,e}`.
+ *
+ * Plain strings round-trip transparently. Encoding only happens when
+ * the extra textarea actually has content.
+ */
+const EXTRA_TEXTAREA_PREFIX = "__df_extra_v1__::";
+
+type ExtraTextareaValue = { primary: string; extra: string };
+
+function decodeExtraTextarea(raw: string | null | undefined): ExtraTextareaValue {
+    const s = typeof raw === "string" ? raw : "";
+    if (!s.startsWith(EXTRA_TEXTAREA_PREFIX)) {
+        return { primary: s, extra: "" };
+    }
+    try {
+        const parsed = JSON.parse(s.slice(EXTRA_TEXTAREA_PREFIX.length)) as {
+            p?: unknown;
+            e?: unknown;
+        };
+        const primary = typeof parsed.p === "string" ? parsed.p : "";
+        const extra = typeof parsed.e === "string" ? parsed.e : "";
+        return { primary, extra };
+    } catch {
+        return { primary: s, extra: "" };
+    }
+}
+
+function encodeExtraTextarea(primary: string, extra: string): string {
+    if (!extra || extra.trim() === "") return primary;
+    return `${EXTRA_TEXTAREA_PREFIX}${JSON.stringify({ p: primary, e: extra })}`;
 }
 
 function staticFieldClassName(style: Record<string, string>) {
@@ -821,6 +885,7 @@ export default function TemplateFormRenderer({
         if (t === "textarea") {
             const isTextareaResult = optionMeta.textareaMode === "result";
             const isResultLocked = isTextareaResult && !optionMeta.editableResult;
+            const supportsExtra = !isTextareaResult && optionMeta.extraTextareaEnabled;
             return (
                 <div key={name} className="space-y-1 col-span-full">
                     <Label htmlFor={fieldInputId}>{label}</Label>
@@ -833,15 +898,76 @@ export default function TemplateFormRenderer({
                     <Controller
                         control={control}
                         name={name}
-                        render={({ field }) => (
-                            <Textarea
-                                id={fieldInputId}
-                                {...field}
-                                value={(field.value as string | undefined) ?? ""}
-                                rows={3}
-                                disabled={isResultLocked}
-                            />
-                        )}
+                        render={({ field }) => {
+                            const decoded = decodeExtraTextarea(field.value as string | undefined);
+                            const extraOn = supportsExtra && decoded.extra.trim().length > 0;
+                            return (
+                                <div className="space-y-2">
+                                    <Textarea
+                                        id={fieldInputId}
+                                        value={decoded.primary}
+                                        onChange={(e) => {
+                                            field.onChange(
+                                                supportsExtra
+                                                    ? encodeExtraTextarea(e.target.value, decoded.extra)
+                                                    : e.target.value,
+                                            );
+                                        }}
+                                        rows={3}
+                                        disabled={isResultLocked}
+                                    />
+                                    {supportsExtra ? (
+                                        <div className="space-y-2 rounded border border-dashed border-muted-foreground/30 bg-muted/30 p-2">
+                                            <label className="flex items-center gap-2 text-xs">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={extraOn}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            // Initialize with a single space so the
+                                                            // codec encodes; user can then type real
+                                                            // content.
+                                                            field.onChange(
+                                                                encodeExtraTextarea(
+                                                                    decoded.primary,
+                                                                    decoded.extra || " ",
+                                                                ),
+                                                            );
+                                                        } else {
+                                                            // Drop the extra value entirely; round-
+                                                            // trips back to a plain string.
+                                                            field.onChange(decoded.primary);
+                                                        }
+                                                    }}
+                                                />
+                                                {optionMeta.extraTextareaLabel || "Additional note"}
+                                            </label>
+                                            {extraOn ? (
+                                                <Textarea
+                                                    aria-label={optionMeta.extraTextareaLabel}
+                                                    value={decoded.extra}
+                                                    onChange={(e) => {
+                                                        field.onChange(
+                                                            encodeExtraTextarea(
+                                                                decoded.primary,
+                                                                e.target.value,
+                                                            ),
+                                                        );
+                                                    }}
+                                                    rows={2}
+                                                    className={cx(
+                                                        optionMeta.extraTextareaEmphasis === "italic" && "italic",
+                                                        optionMeta.extraTextareaEmphasis === "bold" && "font-semibold",
+                                                        optionMeta.extraTextareaEmphasis === "muted" &&
+                                                            "text-muted-foreground",
+                                                    )}
+                                                />
+                                            ) : null}
+                                        </div>
+                                    ) : null}
+                                </div>
+                            );
+                        }}
                     />
                 </div>
             );

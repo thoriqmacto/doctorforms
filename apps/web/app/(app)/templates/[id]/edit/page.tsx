@@ -78,6 +78,10 @@ type TemplateFieldForm = {
   checkbox_joiner: string;
   trim_result: boolean;
   editable_result: boolean;
+  // textarea_free-only options (PR E, Issue 8).
+  extra_textarea_enabled: boolean;
+  extra_textarea_label: string;
+  extra_textarea_emphasis: "italic" | "bold" | "muted" | "normal";
 };
 
 /*
@@ -168,6 +172,9 @@ function emptyNormalizedOptions() {
     checkbox_joiner: CHECKBOX_JOINER_DEFAULT,
     trim_result: true,
     editable_result: false,
+    extra_textarea_enabled: false,
+    extra_textarea_label: "Additional note",
+    extra_textarea_emphasis: "italic" as "italic" | "bold" | "muted" | "normal",
   };
 }
 
@@ -251,6 +258,17 @@ function normalizeOptions(raw: unknown) {
       trim_result:
         obj.trim_result === undefined ? true : !!obj.trim_result,
       editable_result: !!obj.editable_result,
+      extra_textarea_enabled: !!obj.extra_textarea_enabled,
+      extra_textarea_label:
+        typeof obj.extra_textarea_label === "string" && obj.extra_textarea_label.trim() !== ""
+          ? String(obj.extra_textarea_label)
+          : "Additional note",
+      extra_textarea_emphasis:
+        obj.extra_textarea_emphasis === "bold" ||
+        obj.extra_textarea_emphasis === "muted" ||
+        obj.extra_textarea_emphasis === "normal"
+          ? (obj.extra_textarea_emphasis as "bold" | "muted" | "normal")
+          : "italic",
     };
   }
 
@@ -644,6 +662,9 @@ export default function EditTemplatePage() {
               checkbox_joiner: options.checkbox_joiner,
               trim_result: options.trim_result,
               editable_result: options.editable_result,
+              extra_textarea_enabled: options.extra_textarea_enabled,
+              extra_textarea_label: options.extra_textarea_label,
+              extra_textarea_emphasis: options.extra_textarea_emphasis,
             };
           }),
         )
@@ -819,6 +840,23 @@ export default function EditTemplatePage() {
                     : ", ";
                 baseOptions.trim_result = !!f.trim_result;
                 baseOptions.editable_result = !!f.editable_result;
+              }
+              // PR E (Issue 8) — textarea_free can opt-in to a second
+              // textarea. Persist the three options whenever the toggle
+              // is on so templates round-trip cleanly.
+              if (f.type === "textarea_free" && f.extra_textarea_enabled) {
+                baseOptions.extra_textarea_enabled = true;
+                baseOptions.extra_textarea_label =
+                  typeof f.extra_textarea_label === "string" &&
+                  f.extra_textarea_label.trim() !== ""
+                    ? f.extra_textarea_label
+                    : "Additional note";
+                baseOptions.extra_textarea_emphasis =
+                  f.extra_textarea_emphasis === "bold" ||
+                  f.extra_textarea_emphasis === "muted" ||
+                  f.extra_textarea_emphasis === "normal"
+                    ? f.extra_textarea_emphasis
+                    : "italic";
               }
             } else if (f.type === "title") {
               baseOptions.title_tag = f.title_tag || "h2";
@@ -2122,6 +2160,79 @@ export default function EditTemplatePage() {
                                 </>
                               ) : null}
 
+                              {fieldType === "textarea_free" ? (
+                                <>
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.extra_textarea_enabled`}
+                                    render={({ field }) => (
+                                      <FormItem className="md:col-span-3 flex flex-row items-center gap-2 space-y-0">
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={!!field.value}
+                                            onCheckedChange={(v) => field.onChange(v === true)}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">
+                                          Offer an optional secondary textarea on the report form
+                                        </FormLabel>
+                                      </FormItem>
+                                    )}
+                                  />
+                                  {form.watch(`fields.${index}.extra_textarea_enabled`) ? (
+                                    <>
+                                      <FormField
+                                        control={form.control}
+                                        name={`fields.${index}.extra_textarea_label`}
+                                        render={({ field }) => (
+                                          <FormItem className="md:col-span-3">
+                                            <FormLabel>Secondary textarea label</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                value={field.value ?? ""}
+                                                onChange={field.onChange}
+                                                placeholder="Additional note"
+                                              />
+                                            </FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name={`fields.${index}.extra_textarea_emphasis`}
+                                        render={({ field }) => (
+                                          <FormItem className="md:col-span-2">
+                                            <FormLabel>Secondary emphasis</FormLabel>
+                                            <Select
+                                              value={
+                                                field.value === "bold" ||
+                                                field.value === "muted" ||
+                                                field.value === "normal"
+                                                  ? field.value
+                                                  : "italic"
+                                              }
+                                              onValueChange={(v) => field.onChange(v)}
+                                            >
+                                              <FormControl>
+                                                <SelectTrigger>
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                              </FormControl>
+                                              <SelectContent>
+                                                <SelectItem value="italic">Italic</SelectItem>
+                                                <SelectItem value="bold">Bold</SelectItem>
+                                                <SelectItem value="muted">Muted</SelectItem>
+                                                <SelectItem value="normal">Normal</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </>
+                                  ) : null}
+                                </>
+                              ) : null}
+
                               {fieldType === "textarea_result" ? (
                                 <>
                                   <FormField
@@ -2302,6 +2413,9 @@ export default function EditTemplatePage() {
                               checkbox_joiner: ", ",
                               trim_result: true,
                               editable_result: false,
+                              extra_textarea_enabled: false,
+                              extra_textarea_label: "Additional note",
+                              extra_textarea_emphasis: "italic",
                             })
                           }
                           disabled={isProcessing}
@@ -2348,6 +2462,9 @@ export default function EditTemplatePage() {
                       checkbox_joiner: ", ",
                       trim_result: true,
                       editable_result: false,
+                      extra_textarea_enabled: false,
+                      extra_textarea_label: "Additional note",
+                      extra_textarea_emphasis: "italic",
                     })
                   }
                   disabled={isProcessing}

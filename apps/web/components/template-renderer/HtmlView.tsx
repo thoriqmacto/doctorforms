@@ -326,7 +326,22 @@ function Generic({ block }: { block: GenericSectionBlock }) {
                                 </td>
                             ) : null}
                             <td className="border border-slate-400 px-1.5 py-0.5 text-slate-900" colSpan={row.label !== undefined ? 1 : 2}>
-                                {row.value}
+                                <div>{row.value}</div>
+                                {row.extra ? (
+                                    <div
+                                        className={
+                                            row.extraEmphasis === 'bold'
+                                                ? 'mt-0.5 font-semibold text-slate-900'
+                                                : row.extraEmphasis === 'muted'
+                                                  ? 'mt-0.5 text-slate-600'
+                                                  : row.extraEmphasis === 'normal'
+                                                    ? 'mt-0.5 text-slate-900'
+                                                    : 'mt-0.5 italic text-slate-800'
+                                        }
+                                    >
+                                        {row.extra}
+                                    </div>
+                                ) : null}
                             </td>
                         </tr>
                     ))}
