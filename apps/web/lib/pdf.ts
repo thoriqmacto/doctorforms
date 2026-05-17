@@ -14,6 +14,7 @@ import type {
     SignatureBlock,
     StructuredHeader,
 } from '@/lib/template-renderer/renderPlan';
+import { arrangeMeasurementCellsColumnMajor } from '@/lib/template-renderer/renderPlan';
 import {
     FONT_SIZE_PT,
     IMAGE_SIZE_PT,
@@ -479,7 +480,10 @@ function drawMeasurements(ctx: Ctx, block: MeasurementsBlock): void {
     const valueW = colWidth * (12 / 33);
     const unitW = colWidth - labelW - valueW;
 
-    const rows = Math.ceil(block.cells.length / cols);
+    // Column-major arrangement (matches the RSUD reference) — same
+    // helper as the HtmlView so both views stay in lock-step.
+    const rowsOfCells = arrangeMeasurementCellsColumnMajor(block.cells, cols, 8);
+    const rows = rowsOfCells.length;
     const tableHeight = rows * rowHeightPt;
 
     ensureSpace(ctx, tableHeight + 4);
@@ -519,62 +523,67 @@ function drawMeasurements(ctx: Ctx, block: MeasurementsBlock): void {
         }
     }
 
-    block.cells.forEach((cell, idx) => {
-        const r = Math.floor(idx / cols);
-        const c = idx % cols;
-        const baseX = ctx.margin + c * colWidth;
-        const baseY = top - r * rowHeightPt - cellPaddingPt - labelFontPt;
+    rowsOfCells.forEach((row, r) => {
+        row.forEach((cell, c) => {
+            if (!cell) return;
+            const baseX = ctx.margin + c * colWidth;
+            const baseY = top - r * rowHeightPt - cellPaddingPt - labelFontPt;
 
-        ctx.page.drawText(cell.label, {
-            x: baseX + cellPaddingPt,
-            y: baseY,
-            size: labelFontPt,
-            font: ctx.fonts.bold,
-            color: TEXT,
-            maxWidth: labelW - cellPaddingPt * 2,
-        });
-        const valueText = cell.value;
-        const valueWidth = ctx.fonts.regular.widthOfTextAtSize(valueText, valueFontPt);
-        const valueRightX = baseX + labelW + valueW - cellPaddingPt - valueWidth;
-        ctx.page.drawText(valueText, {
-            x: valueRightX,
-            y: baseY,
-            size: valueFontPt,
-            font: ctx.fonts.regular,
-            color: TEXT,
-        });
-        if (cell.unit) {
-            ctx.page.drawText(cell.unit, {
-                x: baseX + labelW + valueW + cellPaddingPt,
+            ctx.page.drawText(cell.label, {
+                x: baseX + cellPaddingPt,
                 y: baseY,
-                size: unitFontPt,
-                font: ctx.fonts.italic,
-                color: MUTED,
-                maxWidth: unitW - cellPaddingPt * 2,
+                size: labelFontPt,
+                font: ctx.fonts.bold,
+                color: TEXT,
+                maxWidth: labelW - cellPaddingPt * 2,
             });
-        }
+            const valueText = cell.value;
+            const valueWidth = ctx.fonts.regular.widthOfTextAtSize(valueText, valueFontPt);
+            const valueRightX = baseX + labelW + valueW - cellPaddingPt - valueWidth;
+            ctx.page.drawText(valueText, {
+                x: valueRightX,
+                y: baseY,
+                size: valueFontPt,
+                font: ctx.fonts.regular,
+                color: TEXT,
+            });
+            if (cell.unit) {
+                ctx.page.drawText(cell.unit, {
+                    x: baseX + labelW + valueW + cellPaddingPt,
+                    y: baseY,
+                    size: unitFontPt,
+                    font: ctx.fonts.italic,
+                    color: MUTED,
+                    maxWidth: unitW - cellPaddingPt * 2,
+                });
+            }
+        });
     });
 
     ctx.cursorY = bottom - 6;
 }
 
 /**
- * PR D — render the measurement screenshots in a 2-column grid below
- * the matching measurement block. Each image is fetched through the
- * existing PDF image proxy so cross-origin URLs work. We deliberately
- * avoid forcing a page break between rows; ensureSpace() lets a row
- * spill to the next page if needed (PR #190 keeps the header on every
- * page).
+ * Render echocardiography screenshots in a 2-column grid. The block is
+ * emitted once at the end of the plan (after the signatory) so the body
+ * of the report stays compact. Each image is fetched through the PDF
+ * image proxy so cross-origin URLs work. We deliberately avoid forcing
+ * a page break between rows; ensureSpace() lets a row spill to the
+ * next page (PR #190 keeps the header on every page).
  */
 async function drawMeasurementImages(ctx: Ctx, block: MeasurementImagesBlock): Promise<void> {
     if (!block.images || block.images.length === 0) return;
+
+    if (block.title) {
+        drawSectionBanner(ctx, block.title);
+    }
 
     const cols = 2;
     const gapPt = 6;
     const cellW = (ctx.contentWidth - gapPt * (cols - 1)) / cols;
     const cellH = cellW * (3 / 4); // 4:3 aspect ratio for the bounding box
 
-    ctx.cursorY -= 4; // small breathing room after the measurements table
+    ctx.cursorY -= 4; // small breathing room after the banner
 
     for (let i = 0; i < block.images.length; i += cols) {
         ensureSpace(ctx, cellH + gapPt);
@@ -722,32 +731,33 @@ function drawGeneric(ctx: Ctx, block: GenericSectionBlock): void {
     const textFont = reportLayout.findings.textFontPt;
     const labelCol = ctx.contentWidth * 0.32;
     const valueCol = ctx.contentWidth - labelCol;
+    // Indentation for the textarea_free secondary block — slight nudge
+    // to the right so the secondary visually sits inside the parent row.
+    const secondaryIndentPt = 8;
 
     for (const row of block.rows) {
         const lines = wrapText(row.value, ctx.fonts.regular, textFont, valueCol - 6);
-        // PR E (Issue 8) — when the row carries an optional secondary
-        // textarea, append its wrapped lines under the primary value
-        // with the configured emphasis. Italic is the default.
-        const extraText = (row.extra ?? '').trim();
-        const extraFont = (() => {
-            switch (row.extraEmphasis) {
-                case 'bold':
-                    return ctx.fonts.bold;
-                case 'muted':
-                case 'normal':
-                    return ctx.fonts.regular;
-                case 'italic':
-                default:
-                    return ctx.fonts.italic;
-            }
-        })();
-        const extraLines = extraText
-            ? wrapText(extraText, extraFont, textFont, valueCol - 6)
-            : [];
 
-        const totalTextLines = lines.length + extraLines.length;
-        const rowHeight =
-            4 + Math.max(labelFont, totalTextLines * (textFont + 2));
+        // textarea_free secondary block — bold label above regular
+        // content, both indented. Wraps at the indented width so the
+        // height calculation matches the rendered geometry.
+        const extraText = (row.extra ?? '').trim();
+        const extraWrapWidth = Math.max(20, valueCol - 6 - secondaryIndentPt);
+        const extraLabelLines =
+            extraText && row.extraLabel
+                ? wrapText(row.extraLabel, ctx.fonts.bold, textFont, extraWrapWidth)
+                : [];
+        const extraLines = extraText
+            ? wrapText(extraText, ctx.fonts.regular, textFont, extraWrapWidth)
+            : [];
+        const extraTopGap = extraText ? 3 : 0;
+        const extraBlockHeight =
+            extraTopGap +
+            extraLabelLines.length * (textFont + 2) +
+            extraLines.length * (textFont + 2);
+
+        const primaryBlockHeight = lines.length * (textFont + 2);
+        const rowHeight = 4 + Math.max(labelFont, primaryBlockHeight + extraBlockHeight);
         ensureSpace(ctx, rowHeight);
 
         const top = ctx.cursorY;
@@ -782,15 +792,29 @@ function drawGeneric(ctx: Ctx, block: GenericSectionBlock): void {
             });
             textY -= textFont + 2;
         }
-        for (const line of extraLines) {
-            ctx.page.drawText(line, {
-                x: textX,
-                y: textY,
-                size: textFont,
-                font: extraFont,
-                color: TEXT,
-            });
-            textY -= textFont + 2;
+        if (extraText) {
+            textY -= extraTopGap;
+            const extraX = textX + secondaryIndentPt;
+            for (const line of extraLabelLines) {
+                ctx.page.drawText(line, {
+                    x: extraX,
+                    y: textY,
+                    size: textFont,
+                    font: ctx.fonts.bold,
+                    color: TEXT,
+                });
+                textY -= textFont + 2;
+            }
+            for (const line of extraLines) {
+                ctx.page.drawText(line, {
+                    x: extraX,
+                    y: textY,
+                    size: textFont,
+                    font: ctx.fonts.regular,
+                    color: TEXT,
+                });
+                textY -= textFont + 2;
+            }
         }
         ctx.cursorY -= rowHeight;
     }

@@ -132,7 +132,17 @@ export type GenericSectionBlock = {
         isStatic: boolean;
         /** PR E (Issue 8) — optional secondary textarea content. */
         extra?: string;
-        /** Emphasis style for the secondary line in HTML/PDF. */
+        /**
+         * Display label rendered in bold above `extra` (e.g. "Additional
+         * note:"). Source: parsed FieldOptions.extraTextareaLabel.
+         */
+        extraLabel?: string;
+        /**
+         * Emphasis style for the secondary block. Kept on the block for
+         * backward compatibility with the older renderer. The new default
+         * rendering paints the label in bold and the content in regular
+         * weight regardless of this value.
+         */
         extraEmphasis?: 'italic' | 'bold' | 'muted' | 'normal';
     }>;
 };
@@ -263,6 +273,51 @@ function kindOf(section: PlanSection): SectionKind {
     // Backend returns the kind on grouped_sections[].kind (via TemplateResource::classifySectionKind).
     // We no longer duplicate that classifier on the frontend; missing kind = "general".
     return section.kind ?? 'general';
+}
+
+/**
+ * Re-arrange a flat list of measurement cells into rows of a column-major
+ * layout that matches the RSUD Soedarso TTE reference PDF. The first
+ * `cols - 1` columns each hold `rowsPerColumn` cells, top-to-bottom; any
+ * overflow lands in the last column. Missing cells (when the input is
+ * shorter than `cols * rowsPerColumn`) leave `undefined` placeholders so
+ * the table grid stays aligned.
+ *
+ * Example with cells = [1..25], cols = 3, rowsPerColumn = 8:
+ *   row 0: [1, 9, 17]
+ *   row 1: [2, 10, 18]
+ *   ...
+ *   row 7: [8, 16, 24]
+ *   row 8: [undefined, undefined, 25]
+ */
+export function arrangeMeasurementCellsColumnMajor<T>(
+    cells: T[],
+    cols = 3,
+    rowsPerColumn = 8,
+): Array<Array<T | undefined>> {
+    if (cols <= 0 || cells.length === 0) return [];
+    const columns: T[][] = [];
+    let cursor = 0;
+    for (let c = 0; c < cols; c++) {
+        if (c === cols - 1) {
+            // Last column absorbs any overflow so the first columns
+            // stay at the requested rowsPerColumn target.
+            columns.push(cells.slice(cursor));
+        } else {
+            columns.push(cells.slice(cursor, cursor + rowsPerColumn));
+            cursor += rowsPerColumn;
+        }
+    }
+    const totalRows = Math.max(rowsPerColumn, ...columns.map((col) => col.length));
+    const rows: Array<Array<T | undefined>> = [];
+    for (let r = 0; r < totalRows; r++) {
+        const row: Array<T | undefined> = [];
+        for (let c = 0; c < cols; c++) {
+            row.push(columns[c][r]);
+        }
+        rows.push(row);
+    }
+    return rows;
 }
 
 // ---------------------------------------------------------------------------
@@ -501,17 +556,21 @@ function buildGeneric(section: PlanSection): GenericSectionBlock {
         rows: section.fields.map((field) => {
             const raw = valueOf(field) || '';
             const decoded = decodeExtraTextarea(raw);
+            const hasExtra = decoded.extra.trim().length > 0;
             return {
                 label: field.isStatic ? undefined : field.label || undefined,
                 value: decoded.primary || EM_DASH,
                 isStatic: field.isStatic,
                 // PR E (Issue 8) — surface the optional secondary
-                // textarea content; renderer paints it in italic by
-                // default. Admin-configurable emphasis is a follow-up
-                // (the template field's options.extra_textarea_emphasis
-                // is already accepted server-side but the view-model
-                // shape doesn't surface custom options yet).
-                extra: decoded.extra ? decoded.extra : undefined,
+                // textarea content together with its configured label.
+                // Renderers paint the label in bold and the content in
+                // regular weight; extraEmphasis stays on the block for
+                // backward compatibility but is no longer used by the
+                // default rendering path.
+                extra: hasExtra ? decoded.extra : undefined,
+                extraLabel: hasExtra
+                    ? field.extraTextareaLabel || 'Additional note'
+                    : undefined,
                 extraEmphasis: field.extraTextareaEmphasis ?? 'italic',
             };
         }),
@@ -594,24 +653,10 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
 
         if (kind === 'measurements') {
             blocks.push(buildMeasurements(section));
-            // PR D — emit a MeasurementImagesBlock when the report has
-            // included images keyed off this section's name.
-            const sectionKey = section.section ?? '';
-            const sectionImages = (input.images ?? [])
-                .filter((img) => img.template_section_key === sectionKey)
-                .filter((img) => img.include_in_report !== false)
-                .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
-            if (sectionImages.length > 0) {
-                blocks.push({
-                    kind: 'measurement_images',
-                    title: sectionKey || undefined,
-                    images: sectionImages.map((img) => ({
-                        id: img.id,
-                        url: img.url,
-                        caption: img.original_filename ?? undefined,
-                    })),
-                });
-            }
+            // PR (image reposition) — image emission deferred to the
+            // very end of the plan, after the signature block, to match
+            // the RSUD reference layout where echocardiography images
+            // close the report rather than interrupting the body.
             continue;
         }
 
@@ -651,6 +696,25 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
                 undefined,
             sipNumber: nonEmpty(signatory?.sip_number),
             signatureImageUrl: nonEmpty(signatory?.signature_image_url),
+        });
+    }
+
+    // Echocardiography images — collected from every measurement section
+    // and rendered as a single trailing block after the signatory so the
+    // body of the report stays uninterrupted. Sorted by (sort_order, id)
+    // and pre-filtered for include_in_report.
+    const allImages = (input.images ?? [])
+        .filter((img) => img.include_in_report !== false)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
+    if (allImages.length > 0) {
+        blocks.push({
+            kind: 'measurement_images',
+            title: 'Echocardiography Images',
+            images: allImages.map((img) => ({
+                id: img.id,
+                url: img.url,
+                caption: img.original_filename ?? undefined,
+            })),
         });
     }
 
