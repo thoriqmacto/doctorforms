@@ -512,7 +512,7 @@ function buildGeneric(section: PlanSection): GenericSectionBlock {
                 // is already accepted server-side but the view-model
                 // shape doesn't surface custom options yet).
                 extra: decoded.extra ? decoded.extra : undefined,
-                extraEmphasis: 'italic',
+                extraEmphasis: field.extraTextareaEmphasis ?? 'italic',
             };
         }),
     };

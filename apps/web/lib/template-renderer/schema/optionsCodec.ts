@@ -37,6 +37,9 @@ const DEFAULT_OPTIONS: FieldOptions = {
     measurementUnit: '',
     measurementCategory: '',
     binding: undefined,
+    extraTextareaEnabled: false,
+    extraTextareaLabel: 'Additional note',
+    extraTextareaEmphasis: 'italic',
     extra: undefined,
 };
 
@@ -167,6 +170,15 @@ export function parseFieldOptions(raw: unknown): FieldOptions {
 
     const binding = parseBinding(obj.binding);
 
+    const extraEmphasisRaw = String(obj.extra_textarea_emphasis ?? '').toLowerCase();
+    const extraTextareaEmphasis: FieldOptions['extraTextareaEmphasis'] =
+        extraEmphasisRaw === 'bold' ||
+        extraEmphasisRaw === 'muted' ||
+        extraEmphasisRaw === 'normal'
+            ? (extraEmphasisRaw as FieldOptions['extraTextareaEmphasis'])
+            : 'italic';
+    const extraTextareaLabelRaw = toStringOrEmpty(obj.extra_textarea_label);
+
     return {
         values,
         default: toStringOrEmpty(obj.default),
@@ -183,6 +195,9 @@ export function parseFieldOptions(raw: unknown): FieldOptions {
         measurementUnit: toStringOrEmpty(obj.measurement_unit),
         measurementCategory: toStringOrEmpty(obj.measurement_category),
         binding,
+        extraTextareaEnabled: !!obj.extra_textarea_enabled,
+        extraTextareaLabel: extraTextareaLabelRaw || 'Additional note',
+        extraTextareaEmphasis,
     };
 }
 
@@ -226,6 +241,16 @@ export function serializeFieldOptions(options: FieldOptions): Record<string, unk
                 path: options.binding.path,
                 ...(options.binding.format ? { format: options.binding.format } : {}),
             };
+    }
+
+    if (options.extraTextareaEnabled) {
+        out.extra_textarea_enabled = true;
+        if (options.extraTextareaLabel && options.extraTextareaLabel !== 'Additional note') {
+            out.extra_textarea_label = options.extraTextareaLabel;
+        }
+        if (options.extraTextareaEmphasis && options.extraTextareaEmphasis !== 'italic') {
+            out.extra_textarea_emphasis = options.extraTextareaEmphasis;
+        }
     }
 
     return out;

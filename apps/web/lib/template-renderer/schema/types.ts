@@ -108,6 +108,14 @@ export type FieldOptions = {
     measurementUnit: string;
     measurementCategory: string;
     binding?: Binding;
+    /**
+     * textarea_free can opt-in to a second, optional textarea (e.g. for a
+     * subtitle line under the primary content). The label and emphasis are
+     * authored on the template; the toggle/value lives in the report.
+     */
+    extraTextareaEnabled: boolean;
+    extraTextareaLabel: string;
+    extraTextareaEmphasis: 'normal' | 'italic' | 'bold' | 'muted';
     /** Pass-through bucket for anything the codec doesn't yet model. */
     extra?: Record<string, unknown>;
 };
