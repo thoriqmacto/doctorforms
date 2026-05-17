@@ -67,6 +67,14 @@ type TemplateFieldForm = {
   measurement_name: string;
   measurement_unit: string;
   measurement_category: string;
+  /**
+   * Extra OCR alias strings used by the report edit gallery's
+   * "Recognize measurements" pass. Stored on the saved field as
+   * options.image_extraction_aliases (string[]). Independent of
+   * image_upload_enabled — admins can curate aliases ahead of
+   * enabling uploads.
+   */
+  image_extraction_aliases: string[];
   // Measurement-only image options (PR D). When image_upload_enabled is
   // true on any measurement field in a section, the report edit page
   // shows an image gallery for that section.
@@ -164,6 +172,7 @@ function emptyNormalizedOptions() {
     measurement_name: "",
     measurement_unit: "",
     measurement_category: "",
+    image_extraction_aliases: [] as string[],
     image_upload_enabled: false,
     max_images: 8,
     default_include_in_report: true,
@@ -238,6 +247,11 @@ function normalizeOptions(raw: unknown) {
       measurement_category: obj.measurement_category
         ? String(obj.measurement_category)
         : "",
+      image_extraction_aliases: Array.isArray(obj.image_extraction_aliases)
+        ? obj.image_extraction_aliases
+            .map((v) => (typeof v === "string" ? v.trim() : ""))
+            .filter((v) => v.length > 0)
+        : [],
       image_upload_enabled: obj.image_upload_enabled === true,
       max_images:
         Number.isFinite(Number(obj.max_images)) && Number(obj.max_images) > 0
@@ -655,6 +669,7 @@ export default function EditTemplatePage() {
               measurement_name: options.measurement_name,
               measurement_unit: options.measurement_unit,
               measurement_category: options.measurement_category,
+              image_extraction_aliases: options.image_extraction_aliases,
               image_upload_enabled: options.image_upload_enabled,
               max_images: options.max_images,
               default_include_in_report: options.default_include_in_report,
@@ -809,6 +824,13 @@ export default function EditTemplatePage() {
               baseOptions.measurement_name = f.measurement_name;
               baseOptions.measurement_unit = f.measurement_unit;
               baseOptions.measurement_category = f.measurement_category;
+              // OCR recognition aliases — emit only when admin has set
+              // at least one, so empty arrays don't bloat saved options.
+              if (Array.isArray(f.image_extraction_aliases) && f.image_extraction_aliases.length > 0) {
+                baseOptions.image_extraction_aliases = f.image_extraction_aliases
+                  .map((v) => (typeof v === "string" ? v.trim() : ""))
+                  .filter((v) => v.length > 0);
+              }
               // PR D — only emit image options when the admin opts in.
               if (f.image_upload_enabled) {
                 baseOptions.image_upload_enabled = true;
@@ -2157,6 +2179,40 @@ export default function EditTemplatePage() {
                                       </FormItem>
                                     )}
                                   />
+                                  <FormField
+                                    control={form.control}
+                                    name={`fields.${index}.image_extraction_aliases`}
+                                    render={({ field }) => {
+                                      const current: string[] = Array.isArray(field.value)
+                                        ? (field.value as string[])
+                                        : [];
+                                      return (
+                                        <FormItem
+                                          className="md:col-span-7"
+                                          data-field-path={`fields.${index}.image_extraction_aliases`}
+                                        >
+                                          <FormLabel>Image extraction aliases</FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              placeholder="e.g. LVIDd, LV ID d, LVEDD"
+                                              value={current.join(", ")}
+                                              onChange={(e) => {
+                                                const next = e.target.value
+                                                  .split(",")
+                                                  .map((s) => s.trim())
+                                                  .filter((s) => s.length > 0);
+                                                field.onChange(next);
+                                              }}
+                                            />
+                                          </FormControl>
+                                          <p className="text-xs text-muted-foreground">
+                                            Comma-separated. Extra phrases the OCR pass should match for this field, in addition to the measurement name and the built-in echo aliases.
+                                          </p>
+                                          <FormMessage />
+                                        </FormItem>
+                                      );
+                                    }}
+                                  />
                                 </>
                               ) : null}
 
@@ -2406,6 +2462,7 @@ export default function EditTemplatePage() {
                               measurement_name: "",
                               measurement_unit: "",
                               measurement_category: "",
+                              image_extraction_aliases: [],
                               image_upload_enabled: false,
                               max_images: 8,
                               default_include_in_report: true,
@@ -2455,6 +2512,7 @@ export default function EditTemplatePage() {
                       measurement_name: "",
                       measurement_unit: "",
                       measurement_category: "",
+                      image_extraction_aliases: [],
                       image_upload_enabled: false,
                       max_images: 8,
                       default_include_in_report: true,
