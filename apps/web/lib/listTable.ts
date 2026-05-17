@@ -114,3 +114,34 @@ export function saveColumnPrefs(storageKey: string, prefs: ColumnPrefs): void {
         // swallow — column prefs are best-effort
     }
 }
+
+/**
+ * Normalize an arbitrary value (e.g. a row out of `users.preferences`) into
+ * a defaults-aligned ColumnPrefs. Unknown keys are dropped; missing keys
+ * inherit the canonical default order and visibility.
+ */
+export function reconcileColumnPrefs(
+    raw: unknown,
+    defaults: ColumnDef[],
+): ColumnPrefs {
+    const knownKeys = new Set(defaults.map((c) => c.key));
+    const defaultVisibility = Object.fromEntries(
+        defaults.map((c) => [c.key, c.defaultVisible !== false]),
+    );
+    const defaultOrder = defaults.map((c) => c.key);
+
+    if (!raw || typeof raw !== 'object') {
+        return { visible: defaultVisibility, order: defaultOrder };
+    }
+
+    const obj = raw as Partial<ColumnPrefs>;
+    const rawVisible = obj.visible && typeof obj.visible === 'object' ? obj.visible : {};
+    const visible = Object.fromEntries(
+        defaults.map((c) => [c.key, rawVisible[c.key] ?? c.defaultVisible !== false]),
+    );
+    const filtered = Array.isArray(obj.order)
+        ? obj.order.filter((k): k is string => typeof k === 'string' && knownKeys.has(k))
+        : [];
+    const order = filtered.concat(defaultOrder.filter((k) => !filtered.includes(k)));
+    return { visible, order };
+}

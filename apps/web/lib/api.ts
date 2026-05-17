@@ -166,6 +166,14 @@ export const updateMyProfile = (payload: MeProfilePayload) =>
 export const changeMyPassword = (payload: MePasswordPayload) =>
     api.patch('me/password', { json: payload }).json<any>();
 
+export type MyPreferences = Record<string, unknown>;
+
+export const getMyPreferences = () =>
+    api.get('me/preferences').json<{ data: MyPreferences }>();
+
+export const updateMyPreferences = (payload: MyPreferences) =>
+    api.patch('me/preferences', { json: payload }).json<{ data: MyPreferences }>();
+
 export type AuthPayload = {
     token_id: string | number;
     token: string;
