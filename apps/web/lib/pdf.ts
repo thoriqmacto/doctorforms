@@ -725,7 +725,29 @@ function drawGeneric(ctx: Ctx, block: GenericSectionBlock): void {
 
     for (const row of block.rows) {
         const lines = wrapText(row.value, ctx.fonts.regular, textFont, valueCol - 6);
-        const rowHeight = 4 + Math.max(labelFont, lines.length * (textFont + 2));
+        // PR E (Issue 8) — when the row carries an optional secondary
+        // textarea, append its wrapped lines under the primary value
+        // with the configured emphasis. Italic is the default.
+        const extraText = (row.extra ?? '').trim();
+        const extraFont = (() => {
+            switch (row.extraEmphasis) {
+                case 'bold':
+                    return ctx.fonts.bold;
+                case 'muted':
+                case 'normal':
+                    return ctx.fonts.regular;
+                case 'italic':
+                default:
+                    return ctx.fonts.italic;
+            }
+        })();
+        const extraLines = extraText
+            ? wrapText(extraText, extraFont, textFont, valueCol - 6)
+            : [];
+
+        const totalTextLines = lines.length + extraLines.length;
+        const rowHeight =
+            4 + Math.max(labelFont, totalTextLines * (textFont + 2));
         ensureSpace(ctx, rowHeight);
 
         const top = ctx.cursorY;
@@ -749,12 +771,23 @@ function drawGeneric(ctx: Ctx, block: GenericSectionBlock): void {
             });
         }
         let textY = top - 2 - textFont;
+        const textX = ctx.margin + (row.label ? labelCol : 3);
         for (const line of lines) {
             ctx.page.drawText(line, {
-                x: ctx.margin + (row.label ? labelCol : 3),
+                x: textX,
                 y: textY,
                 size: textFont,
                 font: ctx.fonts.regular,
+                color: TEXT,
+            });
+            textY -= textFont + 2;
+        }
+        for (const line of extraLines) {
+            ctx.page.drawText(line, {
+                x: textX,
+                y: textY,
+                size: textFont,
+                font: extraFont,
                 color: TEXT,
             });
             textY -= textFont + 2;

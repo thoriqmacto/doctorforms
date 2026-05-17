@@ -126,7 +126,15 @@ export type SignatureBlock = {
 export type GenericSectionBlock = {
     kind: 'generic';
     title: string;
-    rows: Array<{ label?: string; value: string; isStatic: boolean }>;
+    rows: Array<{
+        label?: string;
+        value: string;
+        isStatic: boolean;
+        /** PR E (Issue 8) — optional secondary textarea content. */
+        extra?: string;
+        /** Emphasis style for the secondary line in HTML/PDF. */
+        extraEmphasis?: 'italic' | 'bold' | 'muted' | 'normal';
+    }>;
 };
 
 export type RenderBlock =
@@ -201,6 +209,29 @@ export type BuildPlanInput = {
 // ---------------------------------------------------------------------------
 
 const EM_DASH = '—';
+
+// PR E (Issue 8) — textarea_free can encode an optional secondary
+// textarea inside the same column with a magic prefix. Keep this
+// constant in sync with TemplateFormRenderer.ts.
+const EXTRA_TEXTAREA_PREFIX = '__df_extra_v1__::';
+
+function decodeExtraTextarea(raw: string | null | undefined): { primary: string; extra: string } {
+    const s = typeof raw === 'string' ? raw : '';
+    if (!s.startsWith(EXTRA_TEXTAREA_PREFIX)) {
+        return { primary: s, extra: '' };
+    }
+    try {
+        const parsed = JSON.parse(s.slice(EXTRA_TEXTAREA_PREFIX.length)) as {
+            p?: unknown;
+            e?: unknown;
+        };
+        const primary = typeof parsed.p === 'string' ? parsed.p : '';
+        const extra = typeof parsed.e === 'string' ? parsed.e : '';
+        return { primary, extra };
+    } catch {
+        return { primary: s, extra: '' };
+    }
+}
 
 function nonEmpty(value: string | undefined | null): string | undefined {
     if (value === undefined || value === null) return undefined;
@@ -391,11 +422,20 @@ function buildFindings(findingsSections: PlanSection[]): FindingsBlock | null {
 
         if (!resultField) return [];
 
+        const raw = (valueOf(resultField) || '').trim();
+        // PR E (Issue 9) — when the doctor leaves a finding's result
+        // textarea blank, drop the row entirely from HTML/PDF. The
+        // numbering downstream (HTML/PDF list rendering) follows the
+        // surviving rows so there are no gaps.
+        if (raw === '') return [];
+
         const suffix = section.section.replace(/^findings_/i, '').trim();
         const label = formatFindingsGroupText(suffix) || resultField.label || section.section;
 
-        return [{ label, text: valueOf(resultField) || '' }];
+        return [{ label, text: raw }];
     });
+
+    if (rows.length === 0) return null;
 
     return { kind: 'findings', title: 'Findings', rows };
 }
@@ -458,11 +498,23 @@ function buildGeneric(section: PlanSection): GenericSectionBlock {
     return {
         kind: 'generic',
         title: section.section,
-        rows: section.fields.map((field) => ({
-            label: field.isStatic ? undefined : field.label || undefined,
-            value: valueOf(field) || EM_DASH,
-            isStatic: field.isStatic,
-        })),
+        rows: section.fields.map((field) => {
+            const raw = valueOf(field) || '';
+            const decoded = decodeExtraTextarea(raw);
+            return {
+                label: field.isStatic ? undefined : field.label || undefined,
+                value: decoded.primary || EM_DASH,
+                isStatic: field.isStatic,
+                // PR E (Issue 8) — surface the optional secondary
+                // textarea content; renderer paints it in italic by
+                // default. Admin-configurable emphasis is a follow-up
+                // (the template field's options.extra_textarea_emphasis
+                // is already accepted server-side but the view-model
+                // shape doesn't surface custom options yet).
+                extra: decoded.extra ? decoded.extra : undefined,
+                extraEmphasis: 'italic',
+            };
+        }),
     };
 }
 
