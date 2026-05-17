@@ -493,6 +493,23 @@ export default function EditReportPage() {
                                 groupedSections={editableSections}
                                 formValues={initialValues}
                             />
+                            {imageGallerySections.length > 0 ? (
+                                <div className="space-y-3">
+                                    {imageGallerySections.map((cfg) => (
+                                        <ReportImageGallery
+                                            key={cfg.sectionKey}
+                                            reportId={id}
+                                            sectionKey={cfg.sectionKey}
+                                            sectionLabel={cfg.sectionLabel}
+                                            maxImages={cfg.maxImages}
+                                            initialImages={imagesBySection.get(cfg.sectionKey) ?? []}
+                                            onChange={() => {
+                                                mutateReport(undefined, { revalidate: true });
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : null}
                             <div className="rounded-xl border bg-white shadow-md">
                             <TemplateFormRenderer
                                 groupedSections={editableSections}
@@ -519,23 +536,6 @@ export default function EditReportPage() {
                                 }
                             />
                             </div>
-                            {imageGallerySections.length > 0 ? (
-                                <div className="space-y-3">
-                                    {imageGallerySections.map((cfg) => (
-                                        <ReportImageGallery
-                                            key={cfg.sectionKey}
-                                            reportId={id}
-                                            sectionKey={cfg.sectionKey}
-                                            sectionLabel={cfg.sectionLabel}
-                                            maxImages={cfg.maxImages}
-                                            initialImages={imagesBySection.get(cfg.sectionKey) ?? []}
-                                            onChange={() => {
-                                                mutateReport(undefined, { revalidate: true });
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            ) : null}
                             <SignatorySelector
                                 hospitalId={hospitalId ? Number(hospitalId) : null}
                                 value={signatoryId}

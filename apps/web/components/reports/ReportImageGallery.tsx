@@ -59,6 +59,11 @@ export default function ReportImageGallery({
 }: Props) {
     const [images, setImages] = useState<ReportImageRow[]>(initialImages);
     const [busy, setBusy] = useState(false);
+    // Collapsed by default once there's at least one image, so an open
+    // gallery doesn't push the measurements form below the fold while
+    // the doctor is just filling out the rest of the section. Empty
+    // galleries stay expanded so the upload button is one click away.
+    const [collapsed, setCollapsed] = useState(initialImages.length > 0);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -186,9 +191,21 @@ export default function ReportImageGallery({
                         size="sm"
                         variant="outline"
                         disabled={busy || sorted.length >= cap}
-                        onClick={() => inputRef.current?.click()}
+                        onClick={() => {
+                            if (collapsed) setCollapsed(false);
+                            inputRef.current?.click();
+                        }}
                     >
                         {busy ? 'Uploading…' : 'Upload'}
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-expanded={!collapsed}
+                        onClick={() => setCollapsed((v) => !v)}
+                    >
+                        {collapsed ? 'Expand' : 'Collapse'}
                     </Button>
                     <input
                         ref={inputRef}
@@ -200,6 +217,7 @@ export default function ReportImageGallery({
                     />
                 </div>
             </CardHeader>
+            {collapsed ? null : (
             <CardContent>
                 {sorted.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
@@ -292,6 +310,7 @@ export default function ReportImageGallery({
                     </ul>
                 )}
             </CardContent>
+            )}
         </Card>
     );
 }
