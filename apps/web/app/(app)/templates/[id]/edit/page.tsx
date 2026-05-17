@@ -429,6 +429,40 @@ export default function EditTemplatePage() {
     });
   }
 
+  // PR D — image upload is a section-level feature (a single screenshot
+  // gallery scoped to a Measurements & Calculations group can later be
+  // OCR-extracted across all parameters in the section). The setting is
+  // stored on every measurement field in the group so the existing
+  // any-true rollup on the report side keeps working, but the editor
+  // surfaces a single section-level control. These helpers fan a single
+  // change out to every field in the group, matching updateShowSectionName.
+  function updateImageUploadEnabled(groupIndices: number[], enabled: boolean) {
+    groupIndices.forEach((fieldIndex) => {
+      form.setValue(`fields.${fieldIndex}.image_upload_enabled`, enabled, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  }
+
+  function updateMaxImages(groupIndices: number[], n: number) {
+    groupIndices.forEach((fieldIndex) => {
+      form.setValue(`fields.${fieldIndex}.max_images`, n, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  }
+
+  function updateDefaultIncludeInReport(groupIndices: number[], include: boolean) {
+    groupIndices.forEach((fieldIndex) => {
+      form.setValue(`fields.${fieldIndex}.default_include_in_report`, include, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  }
+
   function reorderSectionGroups(sourceGroupOrder: number, targetPosition: number) {
     const orderedGroups = [...groupedFields].sort(
       (a, b) => a.groupOrder - b.groupOrder,
@@ -1433,6 +1467,88 @@ export default function EditTemplatePage() {
                             </FormControl>
                             <FormLabel>Show Section Name</FormLabel>
                           </FormItem>
+                          {(() => {
+                            // PR D — image upload is a section-group-level
+                            // toggle (same scope as "Show Section Name").
+                            // Only surface it when the group has at least
+                            // one measurement field so non-measurement
+                            // sections (Findings / Conclusion / etc.)
+                            // don't get a useless control.
+                            const hasMeasurement = group.items.some(
+                              (item) => form.watch(`fields.${item.index}.type`) === "measurement",
+                            );
+                            if (!hasMeasurement) return null;
+                            const groupIndices = group.items.map((item) => item.index);
+                            const imageEnabled = group.items.every((item) =>
+                              Boolean(
+                                form.watch(`fields.${item.index}.image_upload_enabled`),
+                              ),
+                            );
+                            const rawMax = form.watch(
+                              `fields.${group.items[0]?.index}.max_images`,
+                            );
+                            const currentMax =
+                              Number.isFinite(Number(rawMax)) && Number(rawMax) > 0
+                                ? Number(rawMax)
+                                : 8;
+                            const defaultIncludeChecked = group.items.every((item) =>
+                              form.watch(
+                                `fields.${item.index}.default_include_in_report`,
+                              ) !== false,
+                            );
+                            return (
+                              <div className="flex flex-wrap items-end gap-3 pb-2">
+                                <FormItem className="flex flex-row items-center space-x-2">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={imageEnabled}
+                                      onCheckedChange={(checked) =>
+                                        updateImageUploadEnabled(
+                                          groupIndices,
+                                          checked === true,
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormLabel>Enable image upload</FormLabel>
+                                </FormItem>
+                                {imageEnabled ? (
+                                  <>
+                                    <div className="w-24 space-y-1">
+                                      <FormLabel className="text-xs">Max images</FormLabel>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        max={32}
+                                        value={currentMax}
+                                        onChange={(e) => {
+                                          const next = Number(e.target.value);
+                                          updateMaxImages(
+                                            groupIndices,
+                                            Number.isFinite(next) && next > 0 ? next : 8,
+                                          );
+                                        }}
+                                      />
+                                    </div>
+                                    <FormItem className="flex flex-row items-center space-x-2">
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={defaultIncludeChecked}
+                                          onCheckedChange={(checked) =>
+                                            updateDefaultIncludeInReport(
+                                              groupIndices,
+                                              checked === true,
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                      <FormLabel>Include uploads by default</FormLabel>
+                                    </FormItem>
+                                  </>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                           <Button
                             type="button"
                             variant="secondary"
@@ -2000,65 +2116,6 @@ export default function EditTemplatePage() {
                                           <Input {...field} />
                                         </FormControl>
                                         <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`fields.${index}.image_upload_enabled`}
-                                    render={({ field }) => (
-                                      <FormItem className="md:col-span-3 flex flex-row items-center gap-2 space-y-0">
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={!!field.value}
-                                            onCheckedChange={(v) => field.onChange(v === true)}
-                                          />
-                                        </FormControl>
-                                        <FormLabel className="!mt-0">
-                                          Enable image upload for this measurement section
-                                        </FormLabel>
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`fields.${index}.max_images`}
-                                    render={({ field }) => (
-                                      <FormItem className="md:col-span-2">
-                                        <FormLabel>Max images</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            min={1}
-                                            max={32}
-                                            value={
-                                              Number.isFinite(Number(field.value)) && Number(field.value) > 0
-                                                ? Number(field.value)
-                                                : 8
-                                            }
-                                            onChange={(e) => field.onChange(Number(e.target.value))}
-                                          />
-                                        </FormControl>
-                                        <p className="text-xs text-muted-foreground">
-                                          Hard cap per measurement section. Defaults to 8.
-                                        </p>
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`fields.${index}.default_include_in_report`}
-                                    render={({ field }) => (
-                                      <FormItem className="md:col-span-2 flex flex-row items-center gap-2 space-y-0">
-                                        <FormControl>
-                                          <Checkbox
-                                            checked={field.value !== false}
-                                            onCheckedChange={(v) => field.onChange(v === true)}
-                                          />
-                                        </FormControl>
-                                        <FormLabel className="!mt-0">
-                                          Include uploads in report by default
-                                        </FormLabel>
                                       </FormItem>
                                     )}
                                   />
