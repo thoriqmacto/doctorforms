@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\ReportImageResource;
 use App\Models\Report;
 use App\Models\ReportImage;
+use App\Services\Ocr\OcrEngine;
+use App\Services\Ocr\OcrException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -58,15 +61,70 @@ class ReportImageController extends Controller
                 $this->nextSortOrder($report, (string) $request->input('template_section_key'))
             ),
             'uploaded_by_user_id'  => $request->user()?->id,
-            // Extraction stays in the "none" state until the OCR sprint
-            // wires a worker that flips it to pending/processing/ready.
-            'extraction_status'    => 'none',
+            'extraction_status'    => config('ocr.enabled') ? 'pending' : 'none',
         ]);
+
+        if (config('ocr.enabled')) {
+            $this->runOcr($row, $storedPath);
+            $row->refresh();
+        }
 
         return (new ReportImageResource($row))
             ->additional(['meta' => ['status' => 'created']])
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * Synchronous OCR pass. Resolves the engine binding (which is fakeable
+     * in tests), reads the stored file from the default disk, and writes
+     * the result back onto the row. Any failure is swallowed into the row's
+     * extraction_error so the upload itself still succeeds — the doctor
+     * can re-upload or proceed without OCR.
+     */
+    private function runOcr(ReportImage $row, string $storedPath): void
+    {
+        $disk    = config('filesystems.default');
+        $storage = Storage::disk($disk);
+
+        try {
+            // Tesseract needs a real path on the local filesystem. For the
+            // `local`/`public` disks we can read the absolute path directly;
+            // for remote disks we materialise a temp copy.
+            $absolutePath = method_exists($storage, 'path')
+                ? $storage->path($storedPath)
+                : null;
+            $tempPath = null;
+
+            if (!$absolutePath || !is_file($absolutePath)) {
+                $tempPath = tempnam(sys_get_temp_dir(), 'ocr-');
+                file_put_contents($tempPath, $storage->get($storedPath));
+                $absolutePath = $tempPath;
+            }
+
+            try {
+                $engine = app(OcrEngine::class);
+                $result = $engine->extract($absolutePath);
+                $row->update([
+                    'extraction_status' => 'ready',
+                    'extracted_data'    => $result,
+                    'extraction_error'  => null,
+                ]);
+            } finally {
+                if ($tempPath && is_file($tempPath)) {
+                    @unlink($tempPath);
+                }
+            }
+        } catch (OcrException $e) {
+            $row->update([
+                'extraction_status' => 'failed',
+                'extraction_error'  => $e->getMessage(),
+            ]);
+            Log::warning('OCR extraction failed', [
+                'report_image_id' => $row->id,
+                'message'         => $e->getMessage(),
+            ]);
+        }
     }
 
     // PATCH /api/v1/report-images/{reportImage}
