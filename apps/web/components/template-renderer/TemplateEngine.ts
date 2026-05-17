@@ -34,6 +34,8 @@ export type TemplateField = {
     showSectionName: boolean;
     /** Present when the field carries options.binding. Used by renderPlan. */
     binding?: Binding;
+    extraTextareaEnabled: boolean;
+    extraTextareaEmphasis: 'normal' | 'italic' | 'bold' | 'muted';
 };
 
 export type TemplateViewModel = {
@@ -175,6 +177,8 @@ function buildTemplateField(
         textareaMode: parsed.textareaMode,
         showSectionName: parsed.showSectionName,
         binding: parsed.binding,
+        extraTextareaEnabled: parsed.extraTextareaEnabled,
+        extraTextareaEmphasis: parsed.extraTextareaEmphasis,
     };
 }
 

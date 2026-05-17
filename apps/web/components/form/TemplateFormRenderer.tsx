@@ -260,6 +260,96 @@ function encodeExtraTextarea(primary: string, extra: string): string {
     return `${EXTRA_TEXTAREA_PREFIX}${JSON.stringify({ p: primary, e: extra })}`;
 }
 
+/**
+ * Inner control for textarea_free fields. The "show extra" toggle lives in
+ * local state so flipping it on does not depend on the codec round-tripping
+ * a space-only string — `encodeExtraTextarea` intentionally drops an empty
+ * extra, which previously made the checkbox immediately re-uncheck itself.
+ */
+function TextareaFreeControl({
+    value,
+    onChange,
+    fieldInputId,
+    isResultLocked,
+    supportsExtra,
+    optionMeta,
+}: {
+    value: string | undefined;
+    onChange: (v: string) => void;
+    fieldInputId: string;
+    isResultLocked: boolean;
+    supportsExtra: boolean;
+    optionMeta: FieldOptionMeta;
+}) {
+    const decoded = decodeExtraTextarea(value);
+    const [extraOn, setExtraOn] = useState<boolean>(
+        supportsExtra && decoded.extra.length > 0,
+    );
+
+    // If a saved value with an extra is loaded after first mount, make sure
+    // the secondary textarea becomes visible.
+    useEffect(() => {
+        if (supportsExtra && decoded.extra.length > 0 && !extraOn) {
+            setExtraOn(true);
+        }
+    }, [decoded.extra, supportsExtra, extraOn]);
+
+    return (
+        <div className="space-y-2">
+            <Textarea
+                id={fieldInputId}
+                value={decoded.primary}
+                onChange={(e) => {
+                    onChange(
+                        supportsExtra && extraOn
+                            ? encodeExtraTextarea(e.target.value, decoded.extra)
+                            : e.target.value,
+                    );
+                }}
+                rows={3}
+                disabled={isResultLocked}
+            />
+            {supportsExtra ? (
+                <div className="space-y-2 rounded border border-dashed border-muted-foreground/30 bg-muted/30 p-2">
+                    <label className="flex items-center gap-2 text-xs">
+                        <input
+                            type="checkbox"
+                            checked={extraOn}
+                            onChange={(e) => {
+                                const next = e.target.checked;
+                                setExtraOn(next);
+                                if (!next) {
+                                    // Dropping the extra round-trips back to a plain string.
+                                    onChange(decoded.primary);
+                                }
+                            }}
+                        />
+                        {optionMeta.extraTextareaLabel || "Additional note"}
+                    </label>
+                    {extraOn ? (
+                        <Textarea
+                            aria-label={optionMeta.extraTextareaLabel}
+                            value={decoded.extra}
+                            onChange={(e) => {
+                                onChange(
+                                    encodeExtraTextarea(decoded.primary, e.target.value),
+                                );
+                            }}
+                            rows={2}
+                            className={cx(
+                                optionMeta.extraTextareaEmphasis === "italic" && "italic",
+                                optionMeta.extraTextareaEmphasis === "bold" && "font-semibold",
+                                optionMeta.extraTextareaEmphasis === "muted" &&
+                                    "text-muted-foreground",
+                            )}
+                        />
+                    ) : null}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 function staticFieldClassName(style: Record<string, string>) {
     const align = style.align?.toLowerCase();
     const tone = style.tone?.toLowerCase();
@@ -898,76 +988,16 @@ export default function TemplateFormRenderer({
                     <Controller
                         control={control}
                         name={name}
-                        render={({ field }) => {
-                            const decoded = decodeExtraTextarea(field.value as string | undefined);
-                            const extraOn = supportsExtra && decoded.extra.trim().length > 0;
-                            return (
-                                <div className="space-y-2">
-                                    <Textarea
-                                        id={fieldInputId}
-                                        value={decoded.primary}
-                                        onChange={(e) => {
-                                            field.onChange(
-                                                supportsExtra
-                                                    ? encodeExtraTextarea(e.target.value, decoded.extra)
-                                                    : e.target.value,
-                                            );
-                                        }}
-                                        rows={3}
-                                        disabled={isResultLocked}
-                                    />
-                                    {supportsExtra ? (
-                                        <div className="space-y-2 rounded border border-dashed border-muted-foreground/30 bg-muted/30 p-2">
-                                            <label className="flex items-center gap-2 text-xs">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={extraOn}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            // Initialize with a single space so the
-                                                            // codec encodes; user can then type real
-                                                            // content.
-                                                            field.onChange(
-                                                                encodeExtraTextarea(
-                                                                    decoded.primary,
-                                                                    decoded.extra || " ",
-                                                                ),
-                                                            );
-                                                        } else {
-                                                            // Drop the extra value entirely; round-
-                                                            // trips back to a plain string.
-                                                            field.onChange(decoded.primary);
-                                                        }
-                                                    }}
-                                                />
-                                                {optionMeta.extraTextareaLabel || "Additional note"}
-                                            </label>
-                                            {extraOn ? (
-                                                <Textarea
-                                                    aria-label={optionMeta.extraTextareaLabel}
-                                                    value={decoded.extra}
-                                                    onChange={(e) => {
-                                                        field.onChange(
-                                                            encodeExtraTextarea(
-                                                                decoded.primary,
-                                                                e.target.value,
-                                                            ),
-                                                        );
-                                                    }}
-                                                    rows={2}
-                                                    className={cx(
-                                                        optionMeta.extraTextareaEmphasis === "italic" && "italic",
-                                                        optionMeta.extraTextareaEmphasis === "bold" && "font-semibold",
-                                                        optionMeta.extraTextareaEmphasis === "muted" &&
-                                                            "text-muted-foreground",
-                                                    )}
-                                                />
-                                            ) : null}
-                                        </div>
-                                    ) : null}
-                                </div>
-                            );
-                        }}
+                        render={({ field }) => (
+                            <TextareaFreeControl
+                                value={field.value as string | undefined}
+                                onChange={field.onChange}
+                                fieldInputId={fieldInputId}
+                                isResultLocked={isResultLocked}
+                                supportsExtra={supportsExtra}
+                                optionMeta={optionMeta}
+                            />
+                        )}
                     />
                 </div>
             );
