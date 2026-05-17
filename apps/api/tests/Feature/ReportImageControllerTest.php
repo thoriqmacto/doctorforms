@@ -1,9 +1,41 @@
 <?php
 
 use App\Models\{Hospital, Patient, Report, ReportImage, Template, Test as TestModel, User};
+use App\Services\Ocr\OcrEngine;
+use App\Services\Ocr\OcrException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+
+/**
+ * A predictable, deterministic OCR engine used by the test suite so the
+ * controller flow can be exercised without the real `tesseract` binary.
+ */
+class FakeOcrEngine implements OcrEngine
+{
+    public function __construct(
+        private readonly string $rawText = 'LVEDd 5.4 cm',
+    ) {
+    }
+
+    public function extract(string $absolutePath): array
+    {
+        return [
+            'raw_text' => $this->rawText,
+            'engine'   => 'fake',
+            'ran_at'   => '2026-05-17T00:00:00Z',
+            'meta'     => ['source_path' => basename($absolutePath)],
+        ];
+    }
+}
+
+class FailingOcrEngine implements OcrEngine
+{
+    public function extract(string $absolutePath): array
+    {
+        throw new OcrException('synthetic OCR failure');
+    }
+}
 
 function makeImageReportContext(?User $owner = null): array
 {
@@ -42,6 +74,9 @@ function makeImageReportContext(?User $owner = null): array
 
 beforeEach(function () {
     Storage::fake(config('filesystems.default'));
+    // Default OCR off so the original upload tests don't depend on a
+    // bound engine. The OCR-specific tests below opt in explicitly.
+    config()->set('ocr.enabled', false);
 });
 
 it('lets the report owner upload an image', function () {
@@ -195,6 +230,76 @@ it('lists images for a report in sort_order, then id', function () {
         ->pluck('id')->map(fn ($id) => (int) $id)->all();
 
     expect($ids)->toBe([$first->id, $second->id]);
+});
+
+it('runs OCR synchronously on upload and stores the raw text', function () {
+    config()->set('ocr.enabled', true);
+    app()->instance(OcrEngine::class, new FakeOcrEngine('LVEDd 5.4 cm'));
+
+    $ctx = makeImageReportContext();
+    Sanctum::actingAs($ctx['owner']);
+
+    $response = $this->postJson(
+        '/api/v1/reports/'.$ctx['report']->id.'/images',
+        [
+            'image'                => UploadedFile::fake()->image('m.png'),
+            'template_section_key' => 'Measurements_2D',
+        ]
+    );
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.extraction_status', 'ready')
+        ->assertJsonPath('data.extracted_data.raw_text', 'LVEDd 5.4 cm')
+        ->assertJsonPath('data.extracted_data.engine', 'fake');
+
+    $row = ReportImage::find($response->json('data.id'));
+    expect($row->extraction_error)->toBeNull();
+});
+
+it('records a failed extraction without aborting the upload', function () {
+    config()->set('ocr.enabled', true);
+    app()->instance(OcrEngine::class, new FailingOcrEngine());
+
+    $ctx = makeImageReportContext();
+    Sanctum::actingAs($ctx['owner']);
+
+    $response = $this->postJson(
+        '/api/v1/reports/'.$ctx['report']->id.'/images',
+        [
+            'image'                => UploadedFile::fake()->image('m.png'),
+            'template_section_key' => 'Measurements_2D',
+        ]
+    );
+
+    // Upload still succeeds — the doctor sees the image; OCR just didn't
+    // produce text.
+    $response->assertStatus(201)
+        ->assertJsonPath('data.extraction_status', 'failed')
+        ->assertJsonPath('data.extraction_error', 'synthetic OCR failure');
+
+    $disk = Storage::disk(config('filesystems.default'));
+    expect($disk->exists($response->json('data.path')))->toBeTrue();
+});
+
+it('skips OCR entirely when ocr.enabled is false', function () {
+    config()->set('ocr.enabled', false);
+    // Bind a failing engine just to prove it never gets called.
+    app()->instance(OcrEngine::class, new FailingOcrEngine());
+
+    $ctx = makeImageReportContext();
+    Sanctum::actingAs($ctx['owner']);
+
+    $this->postJson(
+        '/api/v1/reports/'.$ctx['report']->id.'/images',
+        [
+            'image'                => UploadedFile::fake()->image('m.png'),
+            'template_section_key' => 'Measurements_2D',
+        ]
+    )
+        ->assertStatus(201)
+        ->assertJsonPath('data.extraction_status', 'none')
+        ->assertJsonPath('data.extracted_data', null)
+        ->assertJsonPath('data.extraction_error', null);
 });
 
 it('surfaces images inline on GET /reports/{id}', function () {

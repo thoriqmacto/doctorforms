@@ -22,9 +22,13 @@ export type ReportImageRow = {
     size_bytes?: number | null;
     include_in_report: boolean;
     sort_order: number;
-    /** Extension point for the OCR sprint (PR D2). Today always 'none'. */
+    /**
+     * OCR extraction state. PR D2 ran a synchronous Tesseract pass on
+     * upload and dumped the recognised text into extracted_data.raw_text.
+     * Mapping that text to template fields is a follow-up.
+     */
     extraction_status?: 'none' | 'pending' | 'processing' | 'ready' | 'failed';
-    extracted_data?: unknown;
+    extracted_data?: { raw_text?: string; engine?: string; ran_at?: string } | null;
     extraction_error?: string | null;
 };
 
@@ -294,16 +298,7 @@ export default function ReportImageGallery({
                                             Remove
                                         </Button>
                                     </div>
-                                    {/*
-                                        Extraction status placeholder for the
-                                        OCR sprint (PR D2). Today extraction_status
-                                        is always 'none' so this never renders.
-                                    */}
-                                    {img.extraction_status && img.extraction_status !== 'none' ? (
-                                        <div className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                            Extraction: {img.extraction_status}
-                                        </div>
-                                    ) : null}
+                                    <OcrPanel image={img} />
                                 </li>
                             );
                         })}
@@ -312,5 +307,49 @@ export default function ReportImageGallery({
             </CardContent>
             )}
         </Card>
+    );
+}
+
+function OcrPanel({ image }: { image: ReportImageRow }) {
+    const [open, setOpen] = useState(false);
+    const status = image.extraction_status ?? 'none';
+    if (status === 'none') return null;
+
+    const rawText =
+        status === 'ready' ? (image.extracted_data?.raw_text ?? '').trim() : '';
+    const isReady = status === 'ready';
+    const isFailed = status === 'failed';
+
+    return (
+        <div className="space-y-1 rounded bg-muted px-1.5 py-1 text-[10px] text-muted-foreground">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 text-left font-medium"
+                aria-expanded={open}
+            >
+                <span>
+                    OCR:{' '}
+                    {isReady
+                        ? rawText
+                            ? `${rawText.length} chars extracted`
+                            : 'no text recognised'
+                        : isFailed
+                          ? 'extraction failed'
+                          : status}
+                </span>
+                <span>{open ? '−' : '+'}</span>
+            </button>
+            {open && isReady && rawText ? (
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-background p-1 font-mono text-[10px] text-foreground">
+                    {rawText}
+                </pre>
+            ) : null}
+            {open && isFailed && image.extraction_error ? (
+                <p className="rounded bg-destructive/10 p-1 text-destructive">
+                    {image.extraction_error}
+                </p>
+            ) : null}
+        </div>
     );
 }

@@ -127,6 +127,7 @@ Both HTML and PDF consume the exact same `ReportRenderPlan`. Style tokens (`FONT
 - **Two README sources are slightly stale.** Root `README.md` and `AGENTS.md` mention Laravel 11; `composer.json` pins `^12.0`. Trust `composer.json`.
 - **No root workspace manager.** `pnpm install` at the root only installs `apps/web` because the root `package.json` has no workspaces field — api deps come from Composer.
 - **Filter/include query params** follow `filter.<field>=value` and `include=<relation>` conventions (see `TemplateController`). Match this style when adding new list endpoints.
+- **Report-image OCR needs the `tesseract` binary on the API host.** PR D2 runs Tesseract synchronously inside `POST /reports/{id}/images` and writes the raw text to `report_images.extracted_data`. If the binary is missing, set `OCR_ENABLED=false` in `apps/api/.env` — uploads still succeed, `extraction_status` stays `none`. Mapping the extracted text to template fields is the next sprint.
 
 ## Git workflow for this session
 
