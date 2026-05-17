@@ -285,9 +285,19 @@ function Conclusion({ block }: { block: ConclusionBlock }) {
         <section className="break-inside-avoid">
             <SectionBanner title={block.title} uppercase />
             <ul className="list-none space-y-0.5 px-2 py-1 text-[11px] leading-snug text-slate-900">
-                {block.items.map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                ))}
+                {block.items.map((item, idx) => {
+                    if (item.kind === 'extra') {
+                        // textarea_free secondary — bold label, regular
+                        // content, indented to match the Generic block.
+                        return (
+                            <li key={idx} className="mt-1 pl-4">
+                                <div className="font-semibold text-slate-900">{item.label}</div>
+                                <div className="text-slate-900">{item.text}</div>
+                            </li>
+                        );
+                    }
+                    return <li key={idx}>{item.text}</li>;
+                })}
             </ul>
         </section>
     );

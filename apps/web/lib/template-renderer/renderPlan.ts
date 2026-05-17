@@ -109,10 +109,14 @@ export type FindingsBlock = {
     rows: Array<{ label: string; text: string }>;
 };
 
+export type ConclusionItem =
+    | { kind: 'text'; text: string }
+    | { kind: 'extra'; label: string; text: string };
+
 export type ConclusionBlock = {
     kind: 'conclusion';
     title: string;
-    items: string[];
+    items: ConclusionItem[];
 };
 
 export type SignatureBlock = {
@@ -496,14 +500,34 @@ function buildFindings(findingsSections: PlanSection[]): FindingsBlock | null {
 }
 
 function buildConclusion(section: PlanSection): ConclusionBlock {
-    const items = section.fields.flatMap((field) => {
+    const items: ConclusionItem[] = [];
+
+    for (const field of section.fields) {
         const raw = valueOf(field);
-        if (!raw) return [];
-        return raw
-            .split(/\r?\n/)
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0);
-    });
+        if (!raw) continue;
+        // textarea_free values can encode an optional secondary
+        // textarea inside the same column via the __df_extra_v1__
+        // prefix. Decoding here mirrors buildGeneric() so the encoded
+        // JSON never leaks into the final HTML/PDF rendering — the
+        // previous behaviour split the encoded string straight onto
+        // the conclusion bullet list.
+        const decoded = decodeExtraTextarea(raw);
+
+        for (const line of decoded.primary.split(/\r?\n/)) {
+            const trimmed = line.trim();
+            if (trimmed.length === 0) continue;
+            items.push({ kind: 'text', text: trimmed });
+        }
+
+        const extraText = decoded.extra.trim();
+        if (extraText.length > 0) {
+            items.push({
+                kind: 'extra',
+                label: field.extraTextareaLabel || 'Additional note',
+                text: extraText,
+            });
+        }
+    }
 
     return {
         kind: 'conclusion',
