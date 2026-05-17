@@ -56,6 +56,8 @@ Route::delete('hospital-signatories/{hospitalSignatory}/signature-image', [Hospi
 Route::get('me/profile', [MeController::class, 'profile']);
 Route::patch('me/profile', [MeController::class, 'updateProfile']);
 Route::patch('me/password', [MeController::class, 'updatePassword']);
+Route::get('me/preferences', [MeController::class, 'preferences']);
+Route::patch('me/preferences', [MeController::class, 'updatePreferences']);
 
 Route::post('feedback', [FeedbackController::class, 'store']);
 Route::get('feedback', [FeedbackController::class, 'index'])->middleware('role:admin');

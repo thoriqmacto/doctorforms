@@ -35,14 +35,12 @@ import {
 import Breadcrumbs from '@/components/Breadcrumbs';
 import {
     buildListQuery,
-    loadColumnPrefs,
     parseSort,
-    saveColumnPrefs,
     serializeSort,
     type ColumnDef,
-    type ColumnPrefs,
     type SortDescriptor,
 } from '@/lib/listTable';
+import { useColumnPrefs } from '@/lib/useColumnPrefs';
 
 const PATIENT_COLUMNS: ColumnDef[] = [
     { key: 'name', label: 'Name', defaultVisible: true },
@@ -67,8 +65,10 @@ export default function PatientsPage() {
     const [page, setPage] = useState(1);
     const [sort, setSort] = useState<SortDescriptor>({ field: 'updated_at', direction: 'desc' });
 
-    const [columnPrefs, setColumnPrefs] = useState<ColumnPrefs>(() =>
-        loadColumnPrefs(COLUMN_STORAGE_KEY, PATIENT_COLUMNS),
+    const [columnPrefs, updateColumnPrefs] = useColumnPrefs(
+        'patients',
+        PATIENT_COLUMNS,
+        COLUMN_STORAGE_KEY,
     );
 
     const queryParams = useMemo(
@@ -137,10 +137,6 @@ export default function PatientsPage() {
         setPage(1);
     }
 
-    function updateColumnPrefs(next: ColumnPrefs) {
-        setColumnPrefs(next);
-        saveColumnPrefs(COLUMN_STORAGE_KEY, next);
-    }
     function toggleColumn(key: string, visible: boolean) {
         updateColumnPrefs({ ...columnPrefs, visible: { ...columnPrefs.visible, [key]: visible } });
     }

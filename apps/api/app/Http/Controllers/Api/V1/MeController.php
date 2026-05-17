@@ -81,4 +81,66 @@ class MeController extends Controller
             'message' => 'Password updated.',
         ]);
     }
+
+    /**
+     * Per-user, free-form key/value preferences. Used by the web client to
+     * persist UI choices (column visibility/order, etc.) so they survive
+     * across browsers. Stored as a JSON blob on users.preferences.
+     */
+    public function preferences(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json([
+            'data' => (object) ($user->preferences ?? []),
+        ]);
+    }
+
+    /**
+     * Shallow-merge the request payload into the user's preferences. Each
+     * top-level key is replaced wholesale; existing keys not in the payload
+     * are preserved. Passing `null` for a key removes it.
+     */
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $payload = $request->all();
+        if (!is_array($payload) || array_is_list($payload)) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => ['preferences' => ['Payload must be a JSON object.']],
+            ], 422);
+        }
+
+        $current = (array) ($user->preferences ?? []);
+        foreach ($payload as $key => $value) {
+            if (!is_string($key) || $key === '') {
+                continue;
+            }
+            if ($value === null) {
+                unset($current[$key]);
+                continue;
+            }
+            $current[$key] = $value;
+        }
+
+        // Cap stored size to a reasonable budget (64 KB JSON-encoded) so a
+        // misbehaving client cannot inflate the row indefinitely.
+        $encoded = json_encode($current);
+        if ($encoded === false || strlen($encoded) > 65536) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => ['preferences' => ['Preferences payload is too large.']],
+            ], 422);
+        }
+
+        $user->update(['preferences' => $current]);
+
+        return response()->json([
+            'data' => (object) ($user->preferences ?? []),
+        ]);
+    }
 }

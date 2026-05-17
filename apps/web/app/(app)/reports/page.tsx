@@ -32,14 +32,12 @@ import {
 import { useAuth } from '@/components/auth-provider';
 import {
   buildListQuery,
-  loadColumnPrefs,
   parseSort,
-  saveColumnPrefs,
   serializeSort,
   type ColumnDef,
-  type ColumnPrefs,
   type SortDescriptor,
 } from '@/lib/listTable';
+import { useColumnPrefs } from '@/lib/useColumnPrefs';
 
 const REPORT_COLUMNS: ColumnDef[] = [
   { key: 'title', label: 'Name', defaultVisible: true },
@@ -69,8 +67,10 @@ export default function ReportsPage() {
   const [sort, setSort] = useState<SortDescriptor>({ field: 'updated_at', direction: 'desc' });
   const [completionFilter, setCompletionFilter] = useState<'all' | 'completed' | 'open'>('all');
 
-  const [columnPrefs, setColumnPrefs] = useState<ColumnPrefs>(() =>
-    loadColumnPrefs(COLUMN_STORAGE_KEY, REPORT_COLUMNS),
+  const [columnPrefs, updateColumnPrefs] = useColumnPrefs(
+    'reports',
+    REPORT_COLUMNS,
+    COLUMN_STORAGE_KEY,
   );
 
   const queryParams = useMemo(
@@ -230,11 +230,6 @@ export default function ReportsPage() {
       return { field, direction: current.direction === 'asc' ? 'desc' : 'asc' };
     });
     setPage(1);
-  }
-
-  function updateColumnPrefs(next: ColumnPrefs) {
-    setColumnPrefs(next);
-    saveColumnPrefs(COLUMN_STORAGE_KEY, next);
   }
 
   function toggleColumn(key: string, visible: boolean) {

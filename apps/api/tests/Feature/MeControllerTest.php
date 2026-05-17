@@ -142,3 +142,84 @@ it('rejects unauthenticated password change', function () {
         'password_confirmation' => 'new-password-123',
     ])->assertStatus(401);
 });
+
+it('returns an empty preferences object for a fresh user', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/v1/me/preferences')
+        ->assertStatus(200)
+        ->assertExactJson(['data' => []]);
+});
+
+it('shallow-merges preferences across patches', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $this->patchJson('/api/v1/me/preferences', [
+        'list_columns_reports' => ['visible' => ['title' => true], 'order' => ['title']],
+    ])->assertStatus(200);
+
+    $this->patchJson('/api/v1/me/preferences', [
+        'list_columns_patients' => ['visible' => ['name' => true], 'order' => ['name']],
+    ])->assertStatus(200);
+
+    $this->getJson('/api/v1/me/preferences')
+        ->assertStatus(200)
+        ->assertJsonPath('data.list_columns_reports.order.0', 'title')
+        ->assertJsonPath('data.list_columns_patients.order.0', 'name');
+});
+
+it('replaces a top-level preference key wholesale', function () {
+    $user = User::factory()->create([
+        'preferences' => [
+            'list_columns_reports' => ['visible' => ['title' => true], 'order' => ['title']],
+        ],
+    ]);
+    Sanctum::actingAs($user);
+
+    $this->patchJson('/api/v1/me/preferences', [
+        'list_columns_reports' => ['visible' => ['patient' => false], 'order' => ['patient']],
+    ])->assertStatus(200);
+
+    expect($user->fresh()->preferences['list_columns_reports']['order'])->toEqual(['patient']);
+    expect($user->fresh()->preferences['list_columns_reports']['visible'])->not->toHaveKey('title');
+});
+
+it('removes a preference key when value is null', function () {
+    $user = User::factory()->create([
+        'preferences' => ['ephemeral' => ['x' => 1], 'keep' => ['y' => 2]],
+    ]);
+    Sanctum::actingAs($user);
+
+    $this->patchJson('/api/v1/me/preferences', ['ephemeral' => null])
+        ->assertStatus(200);
+
+    expect($user->fresh()->preferences)->toEqual(['keep' => ['y' => 2]]);
+});
+
+it('rejects a non-object preferences payload', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    // A JSON array (list) is not a valid preferences body.
+    $this->patchJson('/api/v1/me/preferences', ['a', 'b', 'c'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['preferences']);
+});
+
+it('rejects an oversize preferences payload', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $this->patchJson('/api/v1/me/preferences', [
+        'big' => str_repeat('x', 70000),
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['preferences']);
+});
+
+it('rejects unauthenticated preference reads and writes', function () {
+    $this->getJson('/api/v1/me/preferences')->assertStatus(401);
+    $this->patchJson('/api/v1/me/preferences', ['x' => 1])->assertStatus(401);
+});
