@@ -5,11 +5,13 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import {
     deletePatient,
+    exportPatientsZip,
     getHospitals,
     getPatients,
     getReports,
     getUsers,
 } from '@/lib/api';
+import ImportPatientsCsvDialog from '@/components/patients/ImportPatientsCsvDialog';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,10 +124,35 @@ export default function PatientsPage() {
         return map;
     }, [reports]);
 
+    const [isExporting, setIsExporting] = useState(false);
+
     async function handleDelete(id: number | string) {
         if (!confirm('Delete this patient?')) return;
         await deletePatient(id);
         mutate();
+    }
+
+    async function handleExport() {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            const response = await exportPatientsZip(queryParams);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const today = new Date().toISOString().slice(0, 10);
+            link.download = `patients-${today}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to export patients.');
+        } finally {
+            setIsExporting(false);
+        }
     }
 
     function toggleSort(field: string) {
@@ -256,9 +283,15 @@ export default function PatientsPage() {
             <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Patients' }]} />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Patients</h1>
-                <Link href="/patients/new">
-                    <Button>Add Patient</Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+                        {isExporting ? 'Preparing…' : 'Download CSV'}
+                    </Button>
+                    <ImportPatientsCsvDialog onImported={() => mutate()} />
+                    <Link href="/patients/new">
+                        <Button>Add Patient</Button>
+                    </Link>
+                </div>
             </div>
 
             <Card>

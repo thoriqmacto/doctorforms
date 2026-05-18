@@ -21,6 +21,11 @@ Route::get('templates/{template}/export', [TemplateController::class, 'export'])
 Route::post('templates/import', [TemplateController::class, 'import']);
 Route::apiResource('templates', TemplateController::class);
 Route::apiResource('template-fields', TemplateFieldController::class);
+// Patient CSV bundle (zip with patients.csv + reports.csv) and CSV
+// upsert. Registered before the apiResource so static segments win
+// over the dynamic {patient} route.
+Route::get('patients/export', [PatientController::class, 'exportCsv']);
+Route::post('patients/import', [PatientController::class, 'importCsv']);
 Route::apiResource('patients', PatientController::class);
 Route::apiResource('reports', ReportController::class);
 // Report images (measurement screenshots). Per-image include/exclude

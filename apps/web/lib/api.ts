@@ -280,6 +280,40 @@ export const updatePatient = (id: string | number, payload: Partial<PatientPaylo
 export const deletePatient = (id: string | number) =>
     api.delete(`patients/${id}`).json<any>();
 
+/**
+ * Download the patient + report export as a ZIP archive. The endpoint
+ * honours the same filter/sort params as GET /patients so the export
+ * matches what the user sees in the list. Returns the raw response so
+ * the caller can blob() it and trigger a browser save.
+ */
+export const exportPatientsZip = (params?: Record<string, any>) =>
+    api.get('patients/export', { searchParams: params, timeout: 120000 });
+
+/** Per-row CSV import summary returned by POST /patients/import. */
+export type PatientImportResult = {
+    row: number;
+    status: 'success' | 'failed';
+    action?: 'created' | 'updated';
+    patient_id?: number;
+    errors?: Record<string, string[]>;
+};
+export type PatientImportSummary = {
+    data: {
+        total: number;
+        succeeded: number;
+        failed: number;
+        created: number;
+        updated: number;
+        results: PatientImportResult[];
+    };
+    meta?: { status?: string };
+};
+export const importPatientsCsv = (file: File): Promise<PatientImportSummary> => {
+    const form = new FormData();
+    form.append('file', file);
+    return multipartApi.post('patients/import', { body: form, timeout: 120000 }).json<PatientImportSummary>();
+};
+
 // Hospitals
 export const getHospitals = (params?: Record<string, any>) =>
     api.get('hospitals', { searchParams: params }).json<any>();
