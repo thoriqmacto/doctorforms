@@ -69,6 +69,15 @@ export const normalizePatientPayload = (v: PatientFormValues): PatientPayload =>
 
 const Required = () => <span className='text-destructive' aria-hidden='true'>*</span>;
 
+/**
+ * `mode` controls which fields are rendered:
+ *  - `full` (default): the canonical form used on the patient CRUD pages.
+ *  - `quick`: only MRN, Name, Gender, Hospital, User — used by the "Add
+ *    patient" modal during report creation. All other fields stay in the
+ *    payload as null/empty so the existing PatientPayload contract is unchanged.
+ */
+export type PatientFormMode = 'full' | 'quick';
+
 export default function PatientForm({
   initialValues,
   hospitals,
@@ -77,6 +86,7 @@ export default function PatientForm({
   onDelete,
   submitLabel = 'Save',
   resetKey,
+  mode = 'full',
 }: {
   initialValues: PatientFormValues;
   hospitals: Option[];
@@ -85,6 +95,7 @@ export default function PatientForm({
   onDelete?: () => Promise<void>;
   submitLabel?: string;
   resetKey?: string;
+  mode?: PatientFormMode;
 }) {
   const [values, setValues] = useState(initialValues);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +211,7 @@ export default function PatientForm({
   const hospitalValue = values.hospital_id ?? '';
   const userValue = values.user_id ?? '';
   const genderValue = values.gender || 'male';
+  const isQuick = mode === 'quick';
 
   return (
     <form onSubmit={submit} className='space-y-3'>
@@ -231,97 +243,101 @@ export default function PatientForm({
             <option value='female'>female</option>
           </select>
         </div>
-        <div className='space-y-1'>
-          <Label>Date of birth</Label>
-          <Input
-            disabled={submitting}
-            type='date'
-            value={values.dob}
-            onChange={(e) => setField('dob', e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>Date of service/study</Label>
-          <Input
-            disabled={submitting}
-            type='date'
-            value={values.dos}
-            onChange={(e) => setField('dos', e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label className='flex items-center gap-2'>
-            <span>Age</span>
-            {!ageManuallyEditedRef.current && values.age ? (
-              <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
-                Auto from DOB
-              </span>
-            ) : null}
-          </Label>
-          <Input
-            disabled={submitting}
-            type='number'
-            value={values.age}
-            onChange={(e) => {
-              ageManuallyEditedRef.current = true;
-              setField('age', e.target.value);
-            }}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>Height cm</Label>
-          <Input
-            disabled={submitting}
-            type='number'
-            value={values.height_cm}
-            onChange={(e) => setField('height_cm', e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>Weight kg</Label>
-          <Input
-            disabled={submitting}
-            type='number'
-            value={values.weight_kg}
-            onChange={(e) => setField('weight_kg', e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label className='flex items-center gap-2'>
-            <span>BSA</span>
-            {!bsaManuallyEditedRef.current && values.bsa ? (
-              <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
-                Auto from Height &amp; Weight
-              </span>
-            ) : null}
-          </Label>
-          <Input
-            disabled={submitting}
-            type='number'
-            step='0.01'
-            value={values.bsa}
-            onChange={(e) => {
-              bsaManuallyEditedRef.current = true;
-              setField('bsa', e.target.value);
-            }}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>Blood pressure</Label>
-          <Input
-            disabled={submitting}
-            value={values.blood_pressure}
-            onChange={(e) => setField('blood_pressure', e.target.value)}
-          />
-        </div>
-        <div className='space-y-1'>
-          <Label>Referring physician</Label>
-          <Input
-            disabled={submitting}
-            value={values.referring_physician}
-            onChange={(e) => setField('referring_physician', e.target.value)}
-          />
-        </div>
+        {!isQuick && (
+          <>
+            <div className='space-y-1'>
+              <Label>Date of birth</Label>
+              <Input
+                disabled={submitting}
+                type='date'
+                value={values.dob}
+                onChange={(e) => setField('dob', e.target.value)}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label>Date of service/study</Label>
+              <Input
+                disabled={submitting}
+                type='date'
+                value={values.dos}
+                onChange={(e) => setField('dos', e.target.value)}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label className='flex items-center gap-2'>
+                <span>Age</span>
+                {!ageManuallyEditedRef.current && values.age ? (
+                  <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
+                    Auto from DOB
+                  </span>
+                ) : null}
+              </Label>
+              <Input
+                disabled={submitting}
+                type='number'
+                value={values.age}
+                onChange={(e) => {
+                  ageManuallyEditedRef.current = true;
+                  setField('age', e.target.value);
+                }}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label>Height cm</Label>
+              <Input
+                disabled={submitting}
+                type='number'
+                value={values.height_cm}
+                onChange={(e) => setField('height_cm', e.target.value)}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label>Weight kg</Label>
+              <Input
+                disabled={submitting}
+                type='number'
+                value={values.weight_kg}
+                onChange={(e) => setField('weight_kg', e.target.value)}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label className='flex items-center gap-2'>
+                <span>BSA</span>
+                {!bsaManuallyEditedRef.current && values.bsa ? (
+                  <span className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground'>
+                    Auto from Height &amp; Weight
+                  </span>
+                ) : null}
+              </Label>
+              <Input
+                disabled={submitting}
+                type='number'
+                step='0.01'
+                value={values.bsa}
+                onChange={(e) => {
+                  bsaManuallyEditedRef.current = true;
+                  setField('bsa', e.target.value);
+                }}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label>Blood pressure</Label>
+              <Input
+                disabled={submitting}
+                value={values.blood_pressure}
+                onChange={(e) => setField('blood_pressure', e.target.value)}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label>Referring physician</Label>
+              <Input
+                disabled={submitting}
+                value={values.referring_physician}
+                onChange={(e) => setField('referring_physician', e.target.value)}
+              />
+            </div>
+          </>
+        )}
         <div className='space-y-1'>
           <Label>
             Hospital <Required />
@@ -363,14 +379,16 @@ export default function PatientForm({
           )}
         </div>
       </div>
-      <div className='space-y-1'>
-        <Label>Diagnosis brief</Label>
-        <Textarea
-          disabled={submitting}
-          value={values.diagnosis_brief}
-          onChange={(e) => setField('diagnosis_brief', e.target.value)}
-        />
-      </div>
+      {!isQuick && (
+        <div className='space-y-1'>
+          <Label>Diagnosis brief</Label>
+          <Textarea
+            disabled={submitting}
+            value={values.diagnosis_brief}
+            onChange={(e) => setField('diagnosis_brief', e.target.value)}
+          />
+        </div>
+      )}
       <div className='flex gap-2'>
         <Button type='submit' disabled={submitting}>
           {submitting ? 'Saving…' : submitLabel}

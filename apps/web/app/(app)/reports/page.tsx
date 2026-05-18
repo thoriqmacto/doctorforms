@@ -38,6 +38,7 @@ import {
   type SortDescriptor,
 } from '@/lib/listTable';
 import { useColumnPrefs } from '@/lib/useColumnPrefs';
+import AddPatientDialog from '@/components/patients/AddPatientDialog';
 
 const REPORT_COLUMNS: ColumnDef[] = [
   { key: 'title', label: 'Name', defaultVisible: true },
@@ -380,6 +381,14 @@ export default function ReportsPage() {
                 })}
               </SelectContent>
             </Select>
+            <AddPatientDialog
+              defaultHospitalId={derivedHospitalId ? Number(derivedHospitalId) : null}
+              onCreated={(newId) => {
+                if (Number.isFinite(newId) && newId > 0) {
+                  setPatientId(String(newId));
+                }
+              }}
+            />
 
             <Select value={templateId} onValueChange={setTemplateId}>
               <SelectTrigger className="w-52">
