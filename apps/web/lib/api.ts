@@ -227,6 +227,12 @@ export const updateTemplate = (
 ) => api.patch(`templates/${id}`, { json: payload }).json<any>();
 export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
+/** Download a template as a TemplateExportV1 JSON envelope. */
+export const exportTemplate = (id: string | number) =>
+    api.get(`templates/${id}/export`).json<any>();
+/** Create a new template (disabled by default) from a TemplateExportV1 payload. */
+export const importTemplate = (payload: Record<string, unknown>) =>
+    api.post('templates/import', { json: payload }).json<any>();
 export const getTests = (params?: Record<string, any>) =>
     api.get('tests', { searchParams: params }).json<any>();
 

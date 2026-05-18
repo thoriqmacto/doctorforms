@@ -6,10 +6,12 @@ import {
     createTemplate,
     createTemplateField,
     deleteTemplate,
+    exportTemplate,
     getTemplate,
     getTemplates,
     getTests,
 } from '@/lib/api';
+import TemplateImportDialog from '@/components/template-builder/TemplateImportDialog';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -70,6 +72,7 @@ export default function TemplatesPage() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState<string | null>(null);
     const [isMassDeleting, setIsMassDeleting] = useState(false);
     const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
@@ -134,6 +137,34 @@ export default function TemplatesPage() {
         }
     }
 
+    async function handleExport(template: TemplateResource) {
+        const templateId = String(template.id);
+        try {
+            setIsExporting(templateId);
+            const payload = await exportTemplate(templateId);
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const slug = (template.attributes?.name ?? `template-${templateId}`)
+                .toString()
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '');
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${slug || `template-${templateId}`}.v1.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to export template');
+        } finally {
+            setIsExporting(null);
+        }
+    }
+
     async function handleDuplicate(template: TemplateResource) {
         try {
             setIsDuplicating(template.id);
@@ -192,9 +223,12 @@ export default function TemplatesPage() {
             <Breadcrumbs items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Templates' }]} />
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Templates</h1>
-                <Link href="/templates/new">
-                    <Button>Add Template</Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                    <TemplateImportDialog onImported={() => mutate()} />
+                    <Link href="/templates/new">
+                        <Button>Add Template</Button>
+                    </Link>
+                </div>
             </div>
             <Card>
                 <CardHeader>
@@ -301,6 +335,14 @@ export default function TemplatesPage() {
                                                         disabled={isDuplicating === rowId}
                                                     >
                                                         Duplicate
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleExport(t)}
+                                                        disabled={isExporting === rowId}
+                                                    >
+                                                        {isExporting === rowId ? 'Exporting…' : 'Export JSON'}
                                                     </Button>
                                                     <Button
                                                         variant="destructive"

@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\V1\TestController;
 use App\Http\Controllers\Api\V1\UsersController;
 use Illuminate\Support\Facades\Route;
 
+// Template JSON round-trip (export/import). Registered before the apiResource
+// so the static `import` path is matched before the dynamic {template} segment.
+Route::get('templates/{template}/export', [TemplateController::class, 'export']);
+Route::post('templates/import', [TemplateController::class, 'import']);
 Route::apiResource('templates', TemplateController::class);
 Route::apiResource('template-fields', TemplateFieldController::class);
 Route::apiResource('patients', PatientController::class);
