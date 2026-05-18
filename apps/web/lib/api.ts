@@ -227,6 +227,12 @@ export const updateTemplate = (
 ) => api.patch(`templates/${id}`, { json: payload }).json<any>();
 export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
+/** Download a template as a TemplateExportV1 JSON envelope. */
+export const exportTemplate = (id: string | number) =>
+    api.get(`templates/${id}/export`).json<any>();
+/** Create a new template (disabled by default) from a TemplateExportV1 payload. */
+export const importTemplate = (payload: Record<string, unknown>) =>
+    api.post('templates/import', { json: payload }).json<any>();
 export const getTests = (params?: Record<string, any>) =>
     api.get('tests', { searchParams: params }).json<any>();
 
@@ -273,6 +279,40 @@ export const updatePatient = (id: string | number, payload: Partial<PatientPaylo
     api.put(`patients/${id}`, { json: payload }).json<any>();
 export const deletePatient = (id: string | number) =>
     api.delete(`patients/${id}`).json<any>();
+
+/**
+ * Download the patient + report export as a ZIP archive. The endpoint
+ * honours the same filter/sort params as GET /patients so the export
+ * matches what the user sees in the list. Returns the raw response so
+ * the caller can blob() it and trigger a browser save.
+ */
+export const exportPatientsZip = (params?: Record<string, any>) =>
+    api.get('patients/export', { searchParams: params, timeout: 120000 });
+
+/** Per-row CSV import summary returned by POST /patients/import. */
+export type PatientImportResult = {
+    row: number;
+    status: 'success' | 'failed';
+    action?: 'created' | 'updated';
+    patient_id?: number;
+    errors?: Record<string, string[]>;
+};
+export type PatientImportSummary = {
+    data: {
+        total: number;
+        succeeded: number;
+        failed: number;
+        created: number;
+        updated: number;
+        results: PatientImportResult[];
+    };
+    meta?: { status?: string };
+};
+export const importPatientsCsv = (file: File): Promise<PatientImportSummary> => {
+    const form = new FormData();
+    form.append('file', file);
+    return multipartApi.post('patients/import', { body: form, timeout: 120000 }).json<PatientImportSummary>();
+};
 
 // Hospitals
 export const getHospitals = (params?: Record<string, any>) =>

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TemplateResource;
 use App\Models\Template;
+use App\Services\Templates\TemplateExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class TemplateController extends Controller
 {
@@ -169,6 +171,68 @@ class TemplateController extends Controller
 
         return (new TemplateResource($template))
             ->additional(['meta' => ['status' => 'updated']]);
+    }
+
+    // GET /api/v1/templates/{template}/export
+    public function export(Template $template, TemplateExportService $service)
+    {
+        $template->load('fields');
+
+        $payload = $service->toExportArray($template);
+
+        $filename = trim($template->name) !== ''
+            ? \Illuminate\Support\Str::slug($template->name).'.v1.json'
+            : 'template-'.$template->id.'.v1.json';
+
+        return response()->json($payload, 200, [
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    // POST /api/v1/templates/import
+    //
+    // Accepts a TemplateExportV1 envelope and creates a NEW template
+    // (always disabled by default). Foreign keys come from the JSON; if
+    // they don't resolve in the target database the request 422s and
+    // nothing is written.
+    public function import(Request $request, TemplateExportService $service)
+    {
+        $v = Validator::make($request->all(), [
+            'version'     => ['required', 'string', 'in:'.TemplateExportService::VERSION],
+            'exported_at' => ['sometimes', 'nullable', 'string'],
+            'template'                  => ['required', 'array'],
+            'template.name'             => ['required', 'string', 'max:255'],
+            'template.description'      => ['nullable', 'string'],
+            'template.user_id'          => ['required', 'integer', 'exists:users,id'],
+            'template.test_id'          => ['required', 'integer', 'exists:tests,id'],
+            'template.hospital_id'      => ['required', 'integer', 'exists:hospitals,id'],
+            'template.department_id'    => ['nullable', 'integer', 'exists:hospital_departments,id'],
+            'template.header_config'    => ['nullable', 'array'],
+            'template.layout_config'    => ['nullable', 'array'],
+            'sections'                  => ['sometimes', 'array'],
+            'fields'                    => ['present', 'array'],
+            'fields.*.section'          => ['required', 'string', 'max:255'],
+            'fields.*.label'            => ['required', 'string', 'max:255'],
+            'fields.*.type'             => ['required', 'in:text,number,select,textarea,subtitle,title,image,date,checkbox_group,bullseye,patient,user,measurement'],
+            'fields.*.options'          => ['nullable', 'array'],
+            'fields.*.order'            => ['nullable', 'integer'],
+            'fields.*.field_group_order' => ['nullable', 'integer'],
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
+        }
+
+        try {
+            $template = $service->createFromExport($v->validated());
+        } catch (ValidationException $e) {
+            return response()->json(['status' => 'error', 'errors' => $e->errors()], 422);
+        }
+
+        return (new TemplateResource($template->load('fields')))
+            ->additional(['meta' => ['status' => 'created']])
+            ->response()
+            ->setStatusCode(201);
     }
 
     // DELETE /api/v1/templates/{template}

@@ -5,13 +5,31 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\PatientResource;
 use App\Models\Patient;
+use App\Services\Patients\PatientCsvService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PatientController extends Controller
 {
     // GET /api/v1/patients
     public function index(Request $request)
+    {
+        $q = $this->buildIndexQuery($request);
+
+        $patients = $q
+            ->paginate($request->integer('page.size', 25))
+            ->appends($request->query());
+
+        return PatientResource::collection($patients);
+    }
+
+    /**
+     * Build the patient list query honouring the same filter / sort
+     * conventions as index(). Extracted so CSV export can reuse it
+     * without pulling in pagination.
+     */
+    private function buildIndexQuery(Request $request): \Illuminate\Database\Eloquent\Builder
     {
         $q = Patient::query()->with(['hospital', 'user']);
 
@@ -66,11 +84,7 @@ class PatientController extends Controller
         }
         $q->orderBy($field, $direction);
 
-        $patients = $q
-            ->paginate($request->integer('page.size', 25))
-            ->appends($request->query());
-
-        return PatientResource::collection($patients);
+        return $q;
     }
 
     // GET /api/v1/patients/{patient}
@@ -149,6 +163,110 @@ class PatientController extends Controller
         $patient->update($payload);
 
         return new PatientResource($patient);
+    }
+
+    // GET /api/v1/patients/export
+    //
+    // Streams a ZIP archive containing patients.csv and reports.csv. The
+    // patient query honours the same filter/sort params as index() so a
+    // user can export exactly what they see. Reports.csv has one row per
+    // report belonging to one of those patients, denormalized with
+    // patient_mrn / patient_name for stand-alone analysis.
+    public function exportCsv(Request $request, PatientCsvService $service): BinaryFileResponse
+    {
+        $patientQuery = $this->buildIndexQuery($request);
+
+        $tmpDir = storage_path('app/tmp');
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0775, true);
+        }
+
+        $stamp = now()->format('Ymd-His');
+        $patientsCsvPath = $tmpDir.'/patients-'.$stamp.'-'.uniqid().'.csv';
+        $reportsCsvPath  = $tmpDir.'/reports-'.$stamp.'-'.uniqid().'.csv';
+        $zipPath         = $tmpDir.'/patients-'.$stamp.'-'.uniqid().'.zip';
+
+        $patientsHandle = fopen($patientsCsvPath, 'w');
+        if ($patientsHandle === false) {
+            abort(500, 'Unable to open temporary patient export file.');
+        }
+        try {
+            $service->writePatientsCsv($patientsHandle, clone $patientQuery);
+        } finally {
+            fclose($patientsHandle);
+        }
+
+        $reportsHandle = fopen($reportsCsvPath, 'w');
+        if ($reportsHandle === false) {
+            @unlink($patientsCsvPath);
+            abort(500, 'Unable to open temporary report export file.');
+        }
+        try {
+            $service->writeReportsCsv($reportsHandle, clone $patientQuery);
+        } finally {
+            fclose($reportsHandle);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            @unlink($patientsCsvPath);
+            @unlink($reportsCsvPath);
+            abort(500, 'Unable to create export archive.');
+        }
+        $zip->addFile($patientsCsvPath, 'patients.csv');
+        $zip->addFile($reportsCsvPath, 'reports.csv');
+        $zip->close();
+
+        // The CSVs are inside the zip now — drop the loose copies before
+        // BinaryFileResponse streams the archive.
+        @unlink($patientsCsvPath);
+        @unlink($reportsCsvPath);
+
+        $filename = 'patients-'.now()->toDateString().'.zip';
+
+        return response()
+            ->download($zipPath, $filename, [
+                'Content-Type' => 'application/zip',
+            ])
+            ->deleteFileAfterSend(true);
+    }
+
+    // POST /api/v1/patients/import
+    //
+    // Accepts a single CSV file (multipart, field name `file`) and
+    // upserts patients by (mrn, hospital_id). Bad rows are collected
+    // and returned alongside the summary; one bad row does not abort
+    // the file (continue-on-error per Open Question 8).
+    public function importCsv(Request $request, PatientCsvService $service)
+    {
+        $v = Validator::make($request->all(), [
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:5120'],
+        ]);
+        if ($v->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
+        }
+
+        $uploaded = $request->file('file');
+        $handle = fopen($uploaded->getRealPath(), 'r');
+        if ($handle === false) {
+            return response()->json(['status' => 'error', 'message' => 'Unable to read uploaded file.'], 422);
+        }
+
+        try {
+            $summary = $service->importPatientsCsv($handle);
+        } catch (\RuntimeException $e) {
+            fclose($handle);
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+        }
+
+        return response()->json([
+            'data' => $summary,
+            'meta' => ['status' => 'imported'],
+        ]);
     }
 
     // DELETE /api/v1/patients/{patient}
