@@ -641,9 +641,46 @@ function drawConclusion(ctx: Ctx, block: ConclusionBlock): void {
     drawSectionBanner(ctx, block.title.toUpperCase());
 
     const { fontPt, lineHeightPt } = reportLayout.conclusion;
+    // Indent the secondary block so it visually sits inside the
+    // surrounding conclusion list, matching the Generic block.
+    const secondaryIndentPt = 8;
     ctx.cursorY -= 4;
     for (const item of block.items) {
-        const lines = wrapText(item, ctx.fonts.regular, fontPt, ctx.contentWidth - 12);
+        if (item.kind === 'extra') {
+            const indentX = ctx.margin + secondaryIndentPt;
+            const wrapWidth = Math.max(20, ctx.contentWidth - 12 - secondaryIndentPt);
+            const labelLines = wrapText(item.label, ctx.fonts.bold, fontPt, wrapWidth);
+            const textLines = wrapText(item.text, ctx.fonts.regular, fontPt, wrapWidth);
+            const topGap = 3;
+            ensureSpace(
+                ctx,
+                topGap + (labelLines.length + textLines.length) * lineHeightPt,
+            );
+            ctx.cursorY -= topGap;
+            for (const line of labelLines) {
+                ctx.page.drawText(line, {
+                    x: indentX,
+                    y: ctx.cursorY - fontPt,
+                    size: fontPt,
+                    font: ctx.fonts.bold,
+                    color: TEXT,
+                });
+                ctx.cursorY -= lineHeightPt;
+            }
+            for (const line of textLines) {
+                ctx.page.drawText(line, {
+                    x: indentX,
+                    y: ctx.cursorY - fontPt,
+                    size: fontPt,
+                    font: ctx.fonts.regular,
+                    color: TEXT,
+                });
+                ctx.cursorY -= lineHeightPt;
+            }
+            continue;
+        }
+
+        const lines = wrapText(item.text, ctx.fonts.regular, fontPt, ctx.contentWidth - 12);
         ensureSpace(ctx, lines.length * lineHeightPt);
         for (const line of lines) {
             ctx.page.drawText(line, {
