@@ -64,12 +64,12 @@ export const reportLayout = {
     conclusion: {
         fontPt: 10,
         bulletGapPt: 4,
-        lineHeightPt: 13,
+        lineHeightPt: 10,
     },
     signature: {
         nameFontPt: 10,
         subtitleFontPt: 9,
-        marginTopPt: 28,
+        marginTopPt: 10,
     },
     colors: {
         // 0-1 rgb tuples for pdf-lib
