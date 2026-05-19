@@ -29,6 +29,7 @@ class ReportImageResource extends JsonResource
             'url'                  => $url,
             'path'                 => $this->path,
             'original_filename'    => $this->original_filename,
+            'caption'              => $this->caption,
             'mime'                 => $this->mime,
             'size_bytes'           => $this->size_bytes,
             'include_in_report'    => (bool) $this->include_in_report,

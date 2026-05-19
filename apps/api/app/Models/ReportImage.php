@@ -15,6 +15,7 @@ class ReportImage extends Model
         'template_section_key',
         'path',
         'original_filename',
+        'caption',
         'mime',
         'size_bytes',
         'include_in_report',

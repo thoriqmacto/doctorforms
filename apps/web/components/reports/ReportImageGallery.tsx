@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
     Dialog,
     DialogContent,
@@ -30,6 +31,8 @@ export type ReportImageRow = {
     url?: string | null;
     path?: string | null;
     original_filename?: string | null;
+    /** Editable display caption. Falls back to original_filename when null. */
+    caption?: string | null;
     mime?: string | null;
     size_bytes?: number | null;
     include_in_report: boolean;
@@ -188,6 +191,28 @@ export default function ReportImageGallery({
         }
     }
 
+    /**
+     * Save a caption edit with optimistic state. Treats empty/whitespace
+     * as a clear (null) so the renderer falls back to original_filename
+     * — matches the backend's "null clears" semantics.
+     */
+    async function saveCaption(img: ReportImageRow, raw: string) {
+        const trimmed = raw.trim();
+        const nextCaption: string | null = trimmed === '' ? null : trimmed;
+        const previousCaption = img.caption ?? null;
+        if (nextCaption === previousCaption) return;
+
+        setImages((prev) => prev.map((r) => (r.id === img.id ? { ...r, caption: nextCaption } : r)));
+        try {
+            await updateReportImage(img.id, { caption: nextCaption });
+            onChange?.();
+        } catch (e) {
+            console.error(e);
+            setImages((prev) => prev.map((r) => (r.id === img.id ? { ...r, caption: previousCaption } : r)));
+            toast.error('Failed to save caption.');
+        }
+    }
+
     async function removeImage(img: ReportImageRow) {
         if (!window.confirm('Remove this image from the report?')) return;
         const snapshot = images;
@@ -263,14 +288,14 @@ export default function ReportImageGallery({
                                         type="button"
                                         className="group relative block aspect-square w-full overflow-hidden rounded bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                                         onClick={() => src && setPreviewImage(img)}
-                                        aria-label={`Preview ${img.original_filename ?? `image ${img.id}`} at full size`}
+                                        aria-label={`Preview ${img.caption ?? img.original_filename ?? `image ${img.id}`} at full size`}
                                         disabled={!src}
                                     >
                                         {src ? (
                                             <>
                                                 <Image
                                                     src={src}
-                                                    alt={img.original_filename ?? `Report image ${img.id}`}
+                                                    alt={img.caption ?? img.original_filename ?? `Report image ${img.id}`}
                                                     fill
                                                     unoptimized
                                                     className="object-contain transition-opacity group-hover:opacity-90"
@@ -285,9 +310,7 @@ export default function ReportImageGallery({
                                             </span>
                                         )}
                                     </button>
-                                    <div className="truncate" title={img.original_filename ?? undefined}>
-                                        {img.original_filename ?? `image-${img.id}`}
-                                    </div>
+                                    <CaptionInput image={img} onSave={(value) => saveCaption(img, value)} />
                                     {img.size_bytes ? (
                                         <div className="text-muted-foreground">{formatBytes(img.size_bytes)}</div>
                                     ) : null}
@@ -358,7 +381,10 @@ function ImagePreviewDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const src = image ? resolveAssetUrl(image.url ?? image.path ?? undefined) : undefined;
-    const title = image?.original_filename ?? (image ? `Report image ${image.id}` : '');
+    // Caption is the user's intent for what this image is; fall back to
+    // the upload's original filename so older images without a saved
+    // caption still get a meaningful title.
+    const title = image?.caption ?? image?.original_filename ?? (image ? `Report image ${image.id}` : '');
     return (
         <Dialog open={!!image} onOpenChange={onOpenChange}>
             <DialogContent
@@ -569,5 +595,52 @@ function SuggestionsTable({
                 })}
             </tbody>
         </table>
+    );
+}
+
+/**
+ * Editable caption field for a single report image. Saves on blur or
+ * when the user presses Enter. The parent owns the optimistic state
+ * and rollback (see saveCaption) so this component only manages the
+ * draft string while the user is typing.
+ */
+function CaptionInput({
+    image,
+    onSave,
+}: {
+    image: ReportImageRow;
+    onSave: (value: string) => void;
+}) {
+    const initial = image.caption ?? '';
+    const [draft, setDraft] = useState(initial);
+
+    // If the row swaps out (e.g. cache mutate, rollback) re-sync the draft.
+    useEffect(() => {
+        setDraft(image.caption ?? '');
+    }, [image.caption, image.id]);
+
+    const placeholder = image.original_filename ?? `image-${image.id}`;
+
+    return (
+        <label className="block space-y-0.5">
+            <span className="sr-only">Caption for image {image.id}</span>
+            <Input
+                type="text"
+                value={draft}
+                maxLength={255}
+                placeholder={placeholder}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => onSave(draft)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        (e.currentTarget as HTMLInputElement).blur();
+                    }
+                }}
+                className="h-7 px-2 text-xs"
+                aria-label={`Caption for image ${image.id}`}
+                title={image.original_filename ?? undefined}
+            />
+        </label>
     );
 }

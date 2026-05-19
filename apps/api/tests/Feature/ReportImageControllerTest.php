@@ -302,6 +302,66 @@ it('skips OCR entirely when ocr.enabled is false', function () {
         ->assertJsonPath('data.extraction_error', null);
 });
 
+it('lets the owner update the caption via PATCH and preserves original_filename', function () {
+    $ctx = makeImageReportContext();
+    Sanctum::actingAs($ctx['owner']);
+
+    $row = ReportImage::create([
+        'report_id'            => $ctx['report']->id,
+        'template_section_key' => 'Measurements_2D',
+        'path'                 => 'reports/'.$ctx['report']->id.'/cap.png',
+        'original_filename'    => 'screenshot.png',
+        'mime'                 => 'image/png',
+        'size_bytes'           => 100,
+        'include_in_report'    => true,
+        'sort_order'           => 0,
+    ]);
+
+    // Default response exposes the new column.
+    $this->getJson('/api/v1/reports/'.$ctx['report']->id.'/images')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.caption', null);
+
+    // PATCH a caption — original_filename must stay put.
+    $this->patchJson('/api/v1/report-images/'.$row->id, ['caption' => 'Apical 4-chamber view'])
+        ->assertStatus(200)
+        ->assertJsonPath('data.caption', 'Apical 4-chamber view')
+        ->assertJsonPath('data.original_filename', 'screenshot.png');
+
+    $row->refresh();
+    expect($row->caption)->toBe('Apical 4-chamber view');
+    expect($row->original_filename)->toBe('screenshot.png');
+
+    // Null clears the caption back to falling through to original_filename on the renderer side.
+    $this->patchJson('/api/v1/report-images/'.$row->id, ['caption' => null])
+        ->assertStatus(200)
+        ->assertJsonPath('data.caption', null);
+
+    $row->refresh();
+    expect($row->caption)->toBeNull();
+});
+
+it('rejects a caption longer than 255 characters', function () {
+    $ctx = makeImageReportContext();
+    Sanctum::actingAs($ctx['owner']);
+
+    $row = ReportImage::create([
+        'report_id'            => $ctx['report']->id,
+        'template_section_key' => 'Measurements_2D',
+        'path'                 => 'reports/'.$ctx['report']->id.'/long.png',
+        'mime'                 => 'image/png',
+        'size_bytes'           => 100,
+        'include_in_report'    => true,
+        'sort_order'           => 0,
+    ]);
+
+    $this->patchJson('/api/v1/report-images/'.$row->id, [
+        'caption' => str_repeat('x', 256),
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['caption']);
+});
+
 it('surfaces images inline on GET /reports/{id}', function () {
     $ctx = makeImageReportContext();
     Sanctum::actingAs($ctx['owner']);

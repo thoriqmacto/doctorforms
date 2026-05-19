@@ -135,6 +135,10 @@ class ReportImageController extends Controller
         $v = Validator::make($request->all(), [
             'include_in_report' => ['sometimes', 'boolean'],
             'sort_order'        => ['sometimes', 'integer', 'min:0'],
+            // Editable display caption rendered under each image. Null
+            // clears any previously-saved caption; the renderer then
+            // falls back to original_filename.
+            'caption'           => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         if ($v->fails()) {

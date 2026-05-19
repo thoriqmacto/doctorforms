@@ -212,6 +212,8 @@ export type BuildPlanInput = {
         id: number;
         url: string;
         template_section_key: string;
+        /** Doctor-edited caption rendered under the image. */
+        caption?: string | null;
         original_filename?: string | null;
         sort_order?: number;
         include_in_report?: boolean;
@@ -761,7 +763,9 @@ export function buildReportRenderPlan(input: BuildPlanInput): ReportRenderPlan {
             images: allImages.map((img) => ({
                 id: img.id,
                 url: img.url,
-                caption: img.original_filename ?? undefined,
+                // Doctor's caption wins; fall back to original_filename
+                // for images uploaded before captions existed.
+                caption: img.caption ?? img.original_filename ?? undefined,
             })),
         });
     }

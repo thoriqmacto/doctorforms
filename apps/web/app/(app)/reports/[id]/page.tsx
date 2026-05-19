@@ -232,6 +232,11 @@ export default function ReportDetailPage() {
             id: Number(img.id),
             url: typeof img.url === 'string' ? img.url : '',
             template_section_key: String(img.template_section_key ?? ''),
+            // Caption is the user's intent for what this image is; fall
+            // back to the upload's original filename so images uploaded
+            // before captions existed still render with a meaningful
+            // label. `null`/`undefined` here means "renderer decides".
+            caption: img.caption ?? img.original_filename ?? undefined,
             original_filename: img.original_filename ?? null,
             sort_order: Number(img.sort_order ?? 0),
             include_in_report: img.include_in_report !== false,
