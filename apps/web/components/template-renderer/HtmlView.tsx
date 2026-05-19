@@ -426,7 +426,13 @@ export default function HtmlView({ plan, layoutConfig }: Props) {
             // already set their own font-size (small print, banners)
             // continue to win because Tailwind's text-[Npx] is more
             // specific than the wrapper's inline font-size.
-            className="page-a4 mx-auto flex flex-col overflow-hidden border border-slate-400 bg-white text-slate-900 shadow-sm"
+            //
+            // `overflow-visible` + `report-paper-preview` lets the page
+            // grow vertically past one A4 height while a CSS pseudo-
+            // element draws faint horizontal markers every 297mm so the
+            // viewer can see where page 1, 2, 3 would end. No real
+            // pagination — the PDF generator is unaffected.
+            className="page-a4 report-paper-preview mx-auto flex flex-col overflow-visible border border-slate-400 bg-white text-slate-900 shadow-sm"
             style={style}
         >
             {plan.blocks.map((block, idx) => (

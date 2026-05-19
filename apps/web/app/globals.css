@@ -133,6 +133,40 @@
   background: white;
 }
 
+/*
+ * Visual A4 page-limit guides for the View HTML preview.
+ *
+ * The article grows naturally past 297mm; this ::after overlay paints a
+ * faint horizontal line every 297mm so reviewers can see roughly where
+ * each printed page would break, without forcing real CSS pagination
+ * or splitting the report DOM. The PDF generator is unaffected — it
+ * renders directly via pdf-lib and never touches this stylesheet.
+ *
+ * `isolation: isolate` creates a stacking context so the ::after
+ * pseudo-element with z-index:1 reliably sits above the section
+ * children (which would otherwise paint on top with their own bg).
+ * `pointer-events: none` keeps clicks/selects working through the
+ * overlay.
+ */
+.report-paper-preview {
+  position: relative;
+  isolation: isolate;
+}
+.report-paper-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(297mm - 1px),
+    rgba(239, 68, 68, 0.35) calc(297mm - 1px),
+    rgba(239, 68, 68, 0.35) 297mm
+  );
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -144,5 +178,10 @@
   }
   .page-a4:last-child {
     break-after: auto;
+  }
+  /* The guide lines are only useful in the on-screen preview — print
+     them off so paper output stays clean. */
+  .report-paper-preview::after {
+    display: none !important;
   }
 }
