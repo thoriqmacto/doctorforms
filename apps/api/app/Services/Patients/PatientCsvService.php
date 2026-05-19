@@ -45,18 +45,28 @@ class PatientCsvService
         'referring_physician',
     ];
 
-    public const REPORT_COLUMNS = [
+    /**
+     * Static columns that appear first in reports.csv. The full header
+     * row is this list followed by the dynamic measurement_* and field_*
+     * columns discovered from the report set.
+     */
+    public const REPORT_CORE_COLUMNS = [
         'report_id',
         'title',
         'patient_id',
         'patient_mrn',
         'patient_name',
+        'patient_gender',
+        'patient_dob',
         'template_id',
         'template_name',
         'test_id',
         'test_code',
+        'test_name',
         'hospital_id',
+        'hospital_name',
         'user_id',
+        'signatory_name',
         'operator',
         'supervisor',
         'device',
@@ -67,6 +77,13 @@ class PatientCsvService
         'created_at',
         'updated_at',
     ];
+
+    /**
+     * Back-compat alias — earlier callers referenced REPORT_COLUMNS for
+     * just the core header. Kept so PR #203's tests / external consumers
+     * keep working; new code should reference REPORT_CORE_COLUMNS.
+     */
+    public const REPORT_COLUMNS = self::REPORT_CORE_COLUMNS;
 
     /**
      * Stream the patients matching the given query as a CSV (header row
@@ -89,31 +106,136 @@ class PatientCsvService
 
     /**
      * Stream the reports belonging to the given patient query as a CSV.
-     * Reports are flattened into one row each, with denormalized
-     * patient_mrn / patient_name / template_name / test_code columns so
-     * the file is useful on its own (e.g. opened in Excel).
+     * The header row is REPORT_CORE_COLUMNS + the dynamic measurement
+     * and field columns discovered from the full report set. Reports
+     * with a different template just leave the columns they don't have
+     * as blank cells — the file stays valid even when reports use
+     * different templates.
+     *
+     * Two passes:
+     *   1. Walk the matching reports once to collect every unique
+     *      measurement name (by Measurement.name) and template field
+     *      (by section + label) — without loading the full rows into
+     *      memory at once. Returns the ordered column list.
+     *   2. Stream the actual rows, looking each cell up by the keys
+     *      computed in pass 1.
      *
      * @param  resource  $handle
      */
     public function writeReportsCsv($handle, Builder $patientQuery): void
     {
-        fputcsv($handle, self::REPORT_COLUMNS);
-
         $patientIds = $patientQuery->reorder()->pluck('id');
         if ($patientIds->isEmpty()) {
+            fputcsv($handle, self::REPORT_CORE_COLUMNS);
             return;
         }
 
+        $dynamic = $this->collectExportColumns($patientIds);
+
+        $header = array_merge(
+            self::REPORT_CORE_COLUMNS,
+            array_map(fn (string $name) => 'measurement_'.$name, $dynamic['measurementColumns']),
+            array_map(fn (array $f) => 'field_'.$f['key'], $dynamic['fieldColumns']),
+        );
+        fputcsv($handle, $header);
+
         Report::query()
-            ->with(['patient:id,mrn,name', 'template:id,name', 'test:id,code'])
+            // template+fields are needed so report field values can be looked up
+            // by template_field_id back to a (section, label) coordinate.
+            ->with([
+                'patient:id,mrn,name,gender,dob',
+                'template:id,name',
+                'test:id,code,name',
+                'hospital:id,name',
+                'signatory:id,name',
+                'measurements',
+                'fields.templateField:id,section,label',
+            ])
             ->whereIn('patient_id', $patientIds)
             ->orderBy('patient_id')
             ->orderBy('id')
-            ->chunk(500, function ($chunk) use ($handle) {
+            ->chunk(200, function ($chunk) use ($handle, $dynamic) {
                 foreach ($chunk as $report) {
-                    fputcsv($handle, $this->reportRow($report));
+                    fputcsv($handle, $this->fullReportRow($report, $dynamic));
                 }
             });
+    }
+
+    /**
+     * Walk every report in the export set and collect the union of
+     * measurement names and template-field coordinates seen anywhere.
+     * The returned arrays are sorted (alphabetical for measurements,
+     * stable by (section, label) for fields) so the export header is
+     * deterministic across runs with the same data.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $patientIds
+     * @return array{measurementColumns: list<string>, fieldColumns: list<array{key:string, section:string, label:string}>, fieldKeyByTemplateFieldId: array<int,string>}
+     */
+    public function collectExportColumns($patientIds): array
+    {
+        $measurements = [];
+        $fieldKeysSeen = [];
+        $fieldKeyByTemplateFieldId = [];
+
+        Report::query()
+            ->whereIn('patient_id', $patientIds)
+            ->with([
+                'measurements:id,report_id,name',
+                'fields.templateField:id,section,label',
+            ])
+            ->orderBy('id')
+            ->chunk(200, function ($chunk) use (
+                &$measurements,
+                &$fieldKeysSeen,
+                &$fieldKeyByTemplateFieldId,
+            ) {
+                foreach ($chunk as $report) {
+                    foreach ($report->measurements as $m) {
+                        $name = trim((string) $m->name);
+                        if ($name === '') continue;
+                        $measurements[$name] = true;
+                    }
+                    foreach ($report->fields as $f) {
+                        $tf = $f->templateField;
+                        if (!$tf) continue;
+                        $key = $this->fieldColumnKey((string) $tf->section, (string) $tf->label);
+                        if ($key === '') continue;
+                        $fieldKeysSeen[$key] = [
+                            'key'     => $key,
+                            'section' => (string) $tf->section,
+                            'label'   => (string) $tf->label,
+                        ];
+                        $fieldKeyByTemplateFieldId[(int) $tf->id] = $key;
+                    }
+                }
+            });
+
+        ksort($measurements);
+        ksort($fieldKeysSeen);
+
+        return [
+            'measurementColumns'        => array_keys($measurements),
+            'fieldColumns'              => array_values($fieldKeysSeen),
+            'fieldKeyByTemplateFieldId' => $fieldKeyByTemplateFieldId,
+        ];
+    }
+
+    /**
+     * Build a stable column suffix from a (section, label) pair.
+     * Non-alphanumeric characters collapse to `_` and the result is
+     * lower-cased so the column name is shell-/Excel-safe.
+     */
+    private function fieldColumnKey(string $section, string $label): string
+    {
+        $slug = function (string $s): string {
+            $s = strtolower(trim($s));
+            $s = preg_replace('/[^a-z0-9]+/i', '_', $s) ?? '';
+            return trim($s, '_');
+        };
+        $left = $slug($section) ?: 'general';
+        $right = $slug($label);
+        if ($right === '') return '';
+        return $left.'_'.$right;
     }
 
     /**
@@ -140,32 +262,69 @@ class PatientCsvService
     }
 
     /**
+     * Build a full reports.csv row: core columns first, then dynamic
+     * measurement_* values, then dynamic field_* values. Cells that
+     * the report doesn't have are emitted as empty strings so the row
+     * width stays constant.
+     *
+     * @param  array{measurementColumns: list<string>, fieldColumns: list<array{key:string, section:string, label:string}>, fieldKeyByTemplateFieldId: array<int,string>}  $dynamic
      * @return array<int, string|int|null>
      */
-    private function reportRow(Report $r): array
+    private function fullReportRow(Report $r, array $dynamic): array
     {
-        return [
+        $core = [
             $r->id,
             (string) ($r->title ?? ''),
             $r->patient_id,
             (string) ($r->patient?->mrn ?? ''),
             (string) ($r->patient?->name ?? ''),
+            (string) ($r->patient?->gender ?? ''),
+            optional($r->patient?->dob)->toDateString() ?? '',
             $r->template_id,
             (string) ($r->template?->name ?? ''),
             $r->test_id,
             (string) ($r->test?->code ?? ''),
+            (string) ($r->test?->name ?? ''),
             $r->hospital_id,
+            (string) ($r->hospital?->name ?? ''),
             $r->user_id,
+            (string) ($r->signatory?->name ?? ''),
             (string) ($r->operator ?? ''),
             (string) ($r->supervisor ?? ''),
             (string) ($r->device ?? ''),
             $r->is_completed ? '1' : '0',
-            optional($r->completed_at)->toIso8601String(),
+            optional($r->completed_at)->toIso8601String() ?? '',
             (string) ($r->findings ?? ''),
             (string) ($r->conclusion ?? ''),
-            optional($r->created_at)->toDateTimeString(),
-            optional($r->updated_at)->toDateTimeString(),
+            optional($r->created_at)->toDateTimeString() ?? '',
+            optional($r->updated_at)->toDateTimeString() ?? '',
         ];
+
+        $measurementValueByName = [];
+        foreach ($r->measurements as $m) {
+            $name = trim((string) $m->name);
+            if ($name === '') continue;
+            // Last write wins if a report duplicates a measurement name;
+            // this matches the report viewer's behavior.
+            $measurementValueByName[$name] = (string) ($m->value ?? '');
+        }
+        $measurementCells = [];
+        foreach ($dynamic['measurementColumns'] as $name) {
+            $measurementCells[] = $measurementValueByName[$name] ?? '';
+        }
+
+        $fieldValueByKey = [];
+        foreach ($r->fields as $f) {
+            $key = $dynamic['fieldKeyByTemplateFieldId'][(int) $f->template_field_id] ?? null;
+            if ($key === null) continue;
+            $fieldValueByKey[$key] = (string) ($f->value ?? '');
+        }
+        $fieldCells = [];
+        foreach ($dynamic['fieldColumns'] as $col) {
+            $fieldCells[] = $fieldValueByKey[$col['key']] ?? '';
+        }
+
+        return array_merge($core, $measurementCells, $fieldCells);
     }
 
     /**

@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\Hospital;
+use App\Models\Measurement;
 use App\Models\Patient;
 use App\Models\Report;
+use App\Models\ReportField;
 use App\Models\Template;
+use App\Models\TemplateField;
 use App\Models\Test as TestModel;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -92,6 +95,147 @@ it('exports patients and reports as a zip bundle with the expected sheets', func
     expect($reportsCsv)->toContain('report_id,title,patient_id,patient_mrn');
     expect($reportsCsv)->toContain('Alice Echo');
     expect($reportsCsv)->toContain('EXP-001');
+});
+
+it('exports report measurements and dynamic field values flattened into reports.csv', function () {
+    ['hospital' => $hospital, 'user' => $user] = seedPatientWorld();
+
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $template = Template::create([
+        'name' => 'Echo Template', 'description' => '',
+        'user_id' => $user->id, 'test_id' => $test->id, 'hospital_id' => $hospital->id,
+    ]);
+    $lvField = TemplateField::create([
+        'template_id' => $template->id, 'section' => 'Findings',
+        'label' => 'LV Size', 'type' => 'text', 'order' => 0, 'field_group_order' => 0,
+    ]);
+    $efField = TemplateField::create([
+        'template_id' => $template->id, 'section' => 'Conclusion',
+        'label' => 'EF Note', 'type' => 'textarea', 'order' => 0, 'field_group_order' => 1,
+    ]);
+
+    $patient = Patient::create([
+        'mrn' => 'CSV-FULL', 'name' => 'Carol',
+        'gender' => 'female', 'hospital_id' => $hospital->id, 'user_id' => $user->id,
+        'dob' => '1970-05-01',
+    ]);
+    $report = Report::create([
+        'title' => 'Carol Echo', 'user_id' => $user->id, 'patient_id' => $patient->id,
+        'hospital_id' => $hospital->id, 'template_id' => $template->id, 'test_id' => $test->id,
+        'findings' => 'Normal', 'conclusion' => 'Normal',
+    ]);
+    ReportField::create(['report_id' => $report->id, 'template_field_id' => $lvField->id, 'value' => '4.8']);
+    ReportField::create(['report_id' => $report->id, 'template_field_id' => $efField->id, 'value' => 'EF 60%']);
+    Measurement::create(['report_id' => $report->id, 'name' => 'LVEDD', 'value' => '4.8', 'unit' => 'cm', 'category' => '2D']);
+    Measurement::create(['report_id' => $report->id, 'name' => 'EF',    'value' => '60',  'unit' => '%',  'category' => 'M-Mode']);
+
+    $response = $this->get('/api/v1/patients/export');
+    $response->assertStatus(200);
+    $zipPath = $response->getFile()->getPathname();
+    $zip = new ZipArchive();
+    $zip->open($zipPath);
+    $reportsCsv = $zip->getFromName('reports.csv');
+    $zip->close();
+
+    expect($reportsCsv)->toBeString();
+
+    $rows = array_filter(array_map('str_getcsv', explode("\n", trim($reportsCsv))));
+    $header = $rows[0];
+    $data = $rows[1];
+
+    // Core columns expanded with patient_gender, patient_dob, hospital_name, test_name, signatory_name.
+    expect($header)->toContain('patient_gender');
+    expect($header)->toContain('patient_dob');
+    expect($header)->toContain('hospital_name');
+    expect($header)->toContain('test_name');
+    expect($header)->toContain('signatory_name');
+
+    // Dynamic columns appended in deterministic order (measurements first, then fields).
+    expect($header)->toContain('measurement_EF');
+    expect($header)->toContain('measurement_LVEDD');
+    expect($header)->toContain('field_findings_lv_size');
+    expect($header)->toContain('field_conclusion_ef_note');
+
+    $row = array_combine($header, $data);
+    expect($row['patient_gender'])->toBe('female');
+    expect($row['patient_dob'])->toBe('1970-05-01');
+    expect($row['hospital_name'])->toBe('Test Hospital');
+    expect($row['test_name'])->toBe('Echo');
+    expect($row['measurement_LVEDD'])->toBe('4.8');
+    expect($row['measurement_EF'])->toBe('60');
+    expect($row['field_findings_lv_size'])->toBe('4.8');
+    expect($row['field_conclusion_ef_note'])->toBe('EF 60%');
+});
+
+it('keeps the union of dynamic columns across reports with different templates and blanks missing cells', function () {
+    ['hospital' => $hospital, 'user' => $user] = seedPatientWorld();
+
+    $test = TestModel::create(['code' => 'TTE', 'name' => 'Echo', 'type' => 'ultrasound']);
+    $tplA = Template::create([
+        'name' => 'Template A', 'description' => '',
+        'user_id' => $user->id, 'test_id' => $test->id, 'hospital_id' => $hospital->id,
+    ]);
+    $tplB = Template::create([
+        'name' => 'Template B', 'description' => '',
+        'user_id' => $user->id, 'test_id' => $test->id, 'hospital_id' => $hospital->id,
+    ]);
+    $aField = TemplateField::create([
+        'template_id' => $tplA->id, 'section' => 'Findings', 'label' => 'A Only',
+        'type' => 'text', 'order' => 0, 'field_group_order' => 0,
+    ]);
+    $bField = TemplateField::create([
+        'template_id' => $tplB->id, 'section' => 'Findings', 'label' => 'B Only',
+        'type' => 'text', 'order' => 0, 'field_group_order' => 0,
+    ]);
+
+    $patient = Patient::create([
+        'mrn' => 'CSV-MIX', 'name' => 'Mix',
+        'gender' => 'male', 'hospital_id' => $hospital->id, 'user_id' => $user->id,
+    ]);
+    $repA = Report::create([
+        'title' => 'A', 'user_id' => $user->id, 'patient_id' => $patient->id,
+        'hospital_id' => $hospital->id, 'template_id' => $tplA->id, 'test_id' => $test->id,
+    ]);
+    $repB = Report::create([
+        'title' => 'B', 'user_id' => $user->id, 'patient_id' => $patient->id,
+        'hospital_id' => $hospital->id, 'template_id' => $tplB->id, 'test_id' => $test->id,
+    ]);
+    ReportField::create(['report_id' => $repA->id, 'template_field_id' => $aField->id, 'value' => 'A val']);
+    ReportField::create(['report_id' => $repB->id, 'template_field_id' => $bField->id, 'value' => 'B val']);
+    Measurement::create(['report_id' => $repA->id, 'name' => 'M1', 'value' => '1', 'unit' => '', 'category' => '']);
+    Measurement::create(['report_id' => $repB->id, 'name' => 'M2', 'value' => '2', 'unit' => '', 'category' => '']);
+
+    $response = $this->get('/api/v1/patients/export');
+    $zip = new ZipArchive();
+    $zip->open($response->getFile()->getPathname());
+    $reportsCsv = $zip->getFromName('reports.csv');
+    $zip->close();
+
+    $rows = array_filter(array_map('str_getcsv', explode("\n", trim($reportsCsv))));
+    $header = $rows[0];
+
+    expect($header)->toContain('measurement_M1');
+    expect($header)->toContain('measurement_M2');
+    expect($header)->toContain('field_findings_a_only');
+    expect($header)->toContain('field_findings_b_only');
+
+    $rowA = array_combine($header, $rows[1]);
+    $rowB = array_combine($header, $rows[2]);
+
+    // Report A has M1 / A Only filled, M2 / B Only blank.
+    expect($rowA['measurement_M1'])->toBe('1');
+    expect($rowA['measurement_M2'])->toBe('');
+    expect($rowA['field_findings_a_only'])->toBe('A val');
+    expect($rowA['field_findings_b_only'])->toBe('');
+
+    expect($rowB['measurement_M1'])->toBe('');
+    expect($rowB['measurement_M2'])->toBe('2');
+    expect($rowB['field_findings_a_only'])->toBe('');
+    expect($rowB['field_findings_b_only'])->toBe('B val');
+
+    // Each row should have the same number of cells as the header.
+    expect(count($rows[1]))->toBe(count($header));
+    expect(count($rows[2]))->toBe(count($header));
 });
 
 it('export respects the same filter scope as the index endpoint', function () {

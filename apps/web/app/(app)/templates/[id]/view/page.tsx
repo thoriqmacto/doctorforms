@@ -27,6 +27,10 @@ import {
 } from '@/lib/template-renderer/mockPreviewContext';
 import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
 import type { HeaderConfig } from '@/lib/template-renderer/schema';
+import {
+    DEFAULT_PDF_LAYOUT_CONFIG,
+    normalizePdfLayoutConfig,
+} from '@/lib/template-renderer/pdfLayoutConfig';
 
 type ViewMode = 'html' | 'pdf' | 'form';
 
@@ -85,6 +89,9 @@ function TemplateViewPageContent() {
     const hospitalAttrs = hospitalRes?.data?.attributes ?? includedHospitalAttrs;
 
     const headerConfig = (tpl?.attributes?.header_config ?? null) as HeaderConfig | null;
+    const layoutConfig = tpl?.attributes?.layout_config
+        ? normalizePdfLayoutConfig(tpl.attributes.layout_config)
+        : DEFAULT_PDF_LAYOUT_CONFIG;
     const previewOperator = userAttrs
         ? {
               name: userAttrs.name,
@@ -207,8 +214,14 @@ function TemplateViewPageContent() {
                                     incomplete.
                                 </p>
                             )}
-                            {mode === 'html' && <HtmlView plan={plan} />}
-                            {mode === 'pdf' && <PdfView plan={plan} />}
+                            {mode === 'html' && <HtmlView plan={plan} layoutConfig={layoutConfig} />}
+                            {mode === 'pdf' && (
+                                <PdfView
+                                    plan={plan}
+                                    templateId={params.id}
+                                    initialLayoutConfig={layoutConfig}
+                                />
+                            )}
                             {mode === 'form' && <FormView groupedSections={grouped} />}
                         </div>
                     )}

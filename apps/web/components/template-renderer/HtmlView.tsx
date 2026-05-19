@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import Image from 'next/image';
 import type {
     ConclusionBlock,
@@ -23,9 +23,19 @@ import {
     SPACING_HTML_CLASS,
 } from '@/lib/template-renderer/schema';
 import { resolveAssetUrl } from '@/lib/assetUrl';
+import {
+    DEFAULT_PDF_LAYOUT_CONFIG,
+    pdfLayoutConfigToCssVars,
+    type PdfLayoutConfig,
+} from '@/lib/template-renderer/pdfLayoutConfig';
 
 type Props = {
     plan: ReportRenderPlan;
+    /**
+     * Optional layout config. Falls back to the historical defaults so
+     * existing reports render exactly as before.
+     */
+    layoutConfig?: PdfLayoutConfig;
 };
 
 function isAbsoluteUrl(value: string | undefined): value is string {
@@ -386,19 +396,45 @@ function renderBlock(block: RenderBlock, key: string | number) {
     }
 }
 
-export default function HtmlView({ plan }: Props) {
+export default function HtmlView({ plan, layoutConfig }: Props) {
+    const config = layoutConfig ?? DEFAULT_PDF_LAYOUT_CONFIG;
+    const cssVars = pdfLayoutConfigToCssVars(config);
+
+    // CSS variables drive the visible layout knobs while the existing
+    // Tailwind classes provide the structural skeleton. We override the
+    // hard-coded padding and add font-size / line-height / block-gap
+    // from the normalized config so the panel's sliders take effect on
+    // the same DOM the PDF generator inspects.
+    const style: CSSProperties = {
+        ...cssVars,
+        fontFamily: 'Calibri, Carlito, Arial, Helvetica, sans-serif',
+        paddingTop: 'var(--report-page-margin-top)',
+        paddingRight: 'var(--report-page-margin-right)',
+        paddingBottom: 'var(--report-page-margin-bottom)',
+        paddingLeft: 'var(--report-page-margin-left)',
+        fontSize: 'var(--report-base-font-size)',
+        lineHeight: 'var(--report-line-height)',
+    };
+
     return (
         <article
-            className="page-a4 mx-auto space-y-2 overflow-hidden border border-slate-400 bg-white !pt-[6mm] !pl-[6mm] !pr-[6mm] text-slate-900 shadow-sm"
-            // Calibri is the requested report font. It ships natively on
-            // Windows/Office machines; on macOS/Linux browsers will fall
-            // back to Carlito (an open Calibri-metric substitute) when
-            // installed, then Arial / Helvetica. The PDF view ships with
-            // the closest standard PDF font (Helvetica) because pdf-lib
-            // cannot embed Calibri without a proprietary TTF.
-            style={{ fontFamily: 'Calibri, Carlito, Arial, Helvetica, sans-serif' }}
+            // `mx-auto` and `page-a4` keep the A4 framing; padding is now
+            // driven by CSS variables instead of the historical
+            // `!pt-[6mm] !pl-[6mm] !pr-[6mm]` shorthand. Children that
+            // already set their own font-size (small print, banners)
+            // continue to win because Tailwind's text-[Npx] is more
+            // specific than the wrapper's inline font-size.
+            className="page-a4 mx-auto flex flex-col overflow-hidden border border-slate-400 bg-white text-slate-900 shadow-sm"
+            style={style}
         >
-            {plan.blocks.map((block, idx) => renderBlock(block, `${block.kind}-${idx}`))}
+            {plan.blocks.map((block, idx) => (
+                <div
+                    key={`${block.kind}-${idx}`}
+                    style={{ marginBottom: idx === plan.blocks.length - 1 ? 0 : 'var(--report-section-gap)' }}
+                >
+                    {renderBlock(block, `${block.kind}-${idx}`)}
+                </div>
+            ))}
         </article>
     );
 }

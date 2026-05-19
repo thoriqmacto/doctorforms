@@ -21,6 +21,7 @@ import {
     SPACING_PT,
 } from '@/lib/template-renderer/schema';
 import { resolveAssetUrl } from '@/lib/assetUrl';
+import type { PdfLayoutOverrides } from '@/lib/template-renderer/pdfLayoutConfig';
 
 const { colors } = reportLayout;
 const TEXT = rgb(...colors.text);
@@ -43,7 +44,21 @@ type Ctx = {
     contentWidth: number;
     pageWidth: number;
     pageHeight: number;
+    /** Alias of marginLeft — existing block drawers use this as the x baseline. */
     margin: number;
+    marginLeft: number;
+    marginRight: number;
+    marginTop: number;
+    marginBottom: number;
+    /**
+     * Multiplier applied to body-text font sizes by drawers that opted in
+     * (drawConclusion / drawFindings / drawGeneric / drawInfoGrid). 1 = no
+     * scaling. Structural fonts (report title, section banner) stay at
+     * their original size so the visual hierarchy holds at any density.
+     */
+    fontScale: number;
+    /** Extra vertical gap inserted between top-level blocks. */
+    sectionGapPt: number;
     /**
      * Sync repaint of the hospital header on the current page. Set after
      * the first header is drawn so ensureSpace() can replay it on each
@@ -57,9 +72,9 @@ function createPage(doc: PDFDocument): PDFPage {
 }
 
 function ensureSpace(ctx: Ctx, required: number): void {
-    if (ctx.cursorY - required < ctx.margin) {
+    if (ctx.cursorY - required < ctx.marginBottom) {
         ctx.page = createPage(ctx.doc);
-        ctx.cursorY = ctx.pageHeight - ctx.margin;
+        ctx.cursorY = ctx.pageHeight - ctx.marginTop;
         // Repaint the hospital header at the top of every new page so a
         // multi-page report keeps its letterhead. The painter is sync and
         // does not call ensureSpace, so this can't recurse.
@@ -393,7 +408,11 @@ function drawReportTitle(ctx: Ctx, block: ReportTitleBlock): void {
 }
 
 function drawInfoGrid(ctx: Ctx, block: InfoGridBlock): void {
-    const { labelFontPt, valueFontPt, paddingPt, rowGapPt } = reportLayout.infoGrid;
+    const baseLabel = reportLayout.infoGrid.labelFontPt;
+    const baseValue = reportLayout.infoGrid.valueFontPt;
+    const { paddingPt, rowGapPt } = reportLayout.infoGrid;
+    const labelFontPt = baseLabel * ctx.fontScale;
+    const valueFontPt = baseValue * ctx.fontScale;
     const cols = block.columns.length;
     const colWidth = ctx.contentWidth / cols;
     const maxRows = Math.max(...block.columns.map((c) => c.length));
@@ -604,7 +623,9 @@ async function drawMeasurementImages(ctx: Ctx, block: MeasurementImagesBlock): P
 function drawFindings(ctx: Ctx, block: FindingsBlock): void {
     drawSectionBanner(ctx, block.title);
 
-    const { labelFontPt, textFontPt, labelWidthRatio, rowGapPt, rowPaddingPt } = reportLayout.findings;
+    const { labelWidthRatio, rowGapPt, rowPaddingPt } = reportLayout.findings;
+    const labelFontPt = reportLayout.findings.labelFontPt * ctx.fontScale;
+    const textFontPt = reportLayout.findings.textFontPt * ctx.fontScale;
     const labelCol = ctx.contentWidth * labelWidthRatio;
     const textCol = ctx.contentWidth - labelCol - 8;
 
@@ -640,7 +661,10 @@ function drawFindings(ctx: Ctx, block: FindingsBlock): void {
 function drawConclusion(ctx: Ctx, block: ConclusionBlock): void {
     drawSectionBanner(ctx, block.title.toUpperCase());
 
-    const { fontPt, lineHeightPt } = reportLayout.conclusion;
+    const fontPt = reportLayout.conclusion.fontPt * ctx.fontScale;
+    // Keep line spacing proportional to the scaled font so compact mode
+    // visibly tightens vertical density (not just font width).
+    const lineHeightPt = reportLayout.conclusion.lineHeightPt * ctx.fontScale;
     // Indent the secondary block so it visually sits inside the
     // surrounding conclusion list, matching the Generic block.
     const secondaryIndentPt = 8;
@@ -764,8 +788,8 @@ async function drawSignature(ctx: Ctx, block: SignatureBlock): Promise<void> {
 function drawGeneric(ctx: Ctx, block: GenericSectionBlock): void {
     drawSectionBanner(ctx, block.title);
 
-    const labelFont = reportLayout.findings.labelFontPt;
-    const textFont = reportLayout.findings.textFontPt;
+    const labelFont = reportLayout.findings.labelFontPt * ctx.fontScale;
+    const textFont = reportLayout.findings.textFontPt * ctx.fontScale;
     const labelCol = ctx.contentWidth * 0.32;
     const valueCol = ctx.contentWidth - labelCol;
     // Indentation for the textarea_free secondary block — slight nudge
@@ -893,8 +917,15 @@ async function drawBlock(ctx: Ctx, block: RenderBlock): Promise<void> {
  * Render a plan to PDF bytes without touching the DOM. The bytes can be
  * fed to <PdfPreview/> for an in-browser viewer or handed to
  * {@link downloadPdfPlan} for the classic download flow.
+ *
+ * `overrides` is optional and additive. When omitted, the renderer uses
+ * exactly the same defaults as before PR #204 so existing reports keep
+ * rendering identically.
  */
-export async function renderPlanToPdfBytes(plan: ReportRenderPlan): Promise<Uint8Array> {
+export async function renderPlanToPdfBytes(
+    plan: ReportRenderPlan,
+    overrides?: PdfLayoutOverrides,
+): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
     // The report's requested font is Calibri. pdf-lib only ships the 14
     // PDF "standard" fonts and cannot embed Calibri without a
@@ -908,22 +939,47 @@ export async function renderPlanToPdfBytes(plan: ReportRenderPlan): Promise<Uint
 
     const pageWidth = reportLayout.page.widthPt;
     const pageHeight = reportLayout.page.heightPt;
-    const margin = reportLayout.page.marginPt;
+    const defaultMargin = reportLayout.page.marginPt;
+    const fallbackUniform = overrides?.pageMarginPt ?? defaultMargin;
+    const marginTop = overrides?.pageMarginTopPt ?? fallbackUniform;
+    const marginRight = overrides?.pageMarginRightPt ?? fallbackUniform;
+    const marginBottom = overrides?.pageMarginBottomPt ?? fallbackUniform;
+    const marginLeft = overrides?.pageMarginLeftPt ?? fallbackUniform;
+
+    // Body text in the existing layout is ~9pt. Treat that as the
+    // baseline; a baseFontPt of 8.25 (≈11px, our default) yields scale
+    // ≈ 0.92. The structural fonts (title, section banners) stay fixed.
+    const baselineBodyPt = 9;
+    const fontScale = overrides?.baseFontPt ? overrides.baseFontPt / baselineBodyPt : 1;
+    const sectionGapPt = overrides?.sectionGapPt ?? 0;
+
     const page = createPage(doc);
 
     const ctx: Ctx = {
         doc,
         page,
         fonts,
-        cursorY: pageHeight - margin,
-        contentWidth: pageWidth - margin * 2,
+        cursorY: pageHeight - marginTop,
+        contentWidth: pageWidth - marginLeft - marginRight,
         pageWidth,
         pageHeight,
-        margin,
+        margin: marginLeft,
+        marginLeft,
+        marginRight,
+        marginTop,
+        marginBottom,
+        fontScale,
+        sectionGapPt,
     };
 
-    for (const block of plan.blocks) {
+    for (let i = 0; i < plan.blocks.length; i++) {
+        const block = plan.blocks[i];
         await drawBlock(ctx, block);
+        // Don't add a tail gap after the last block — keeps the page bottom
+        // clean and avoids spilling onto a fresh page for no content.
+        if (ctx.sectionGapPt > 0 && i < plan.blocks.length - 1) {
+            ctx.cursorY -= ctx.sectionGapPt;
+        }
     }
 
     return doc.save();
@@ -934,8 +990,11 @@ export async function renderPlanToPdfBytes(plan: ReportRenderPlan): Promise<Uint
  * Most UIs should use <PdfPreview/> instead so the file is shown in-browser
  * first and the download is an optional second step.
  */
-export async function downloadPdfPlan(plan: ReportRenderPlan): Promise<void> {
-    const bytes = await renderPlanToPdfBytes(plan);
+export async function downloadPdfPlan(
+    plan: ReportRenderPlan,
+    overrides?: PdfLayoutOverrides,
+): Promise<void> {
+    const bytes = await renderPlanToPdfBytes(plan, overrides);
     const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
 
