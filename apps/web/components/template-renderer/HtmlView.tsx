@@ -159,7 +159,7 @@ function StructuredHospitalHeader({ header }: { header: StructuredHeader }) {
 
 function ReportTitle({ block }: { block: ReportTitleBlock }) {
     return (
-        <h2 className="my-2 text-center text-[16px] font-bold leading-tight text-slate-900">
+        <h2 className="mb-1 text-center text-[15px] font-bold leading-tight text-slate-900">
             {block.text}
         </h2>
     );
