@@ -69,7 +69,7 @@ export const reportLayout = {
     signature: {
         nameFontPt: 10,
         subtitleFontPt: 9,
-        marginTopPt: 10,
+        marginTopPt: 2,
     },
     colors: {
         // 0-1 rgb tuples for pdf-lib
