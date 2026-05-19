@@ -402,7 +402,7 @@ export const uploadReportImage = (
 
 export const updateReportImage = (
     imageId: string | number,
-    payload: { include_in_report?: boolean; sort_order?: number },
+    payload: { include_in_report?: boolean; sort_order?: number; caption?: string | null },
 ) => api.patch(`report-images/${imageId}`, { json: payload }).json<any>();
 
 export const deleteReportImage = (imageId: string | number) =>
