@@ -629,13 +629,16 @@ function drawFindings(ctx: Ctx, block: FindingsBlock): void {
     const labelCol = ctx.contentWidth * labelWidthRatio;
     const textCol = ctx.contentWidth - labelCol - 8;
 
-    for (const row of block.rows) {
+    block.rows.forEach((row, idx) => {
         const textLines = wrapText(row.text, ctx.fonts.regular, textFontPt, textCol);
         const rowHeight = rowPaddingPt * 2 + Math.max(labelFontPt, textLines.length * (textFontPt + rowGapPt));
         ensureSpace(ctx, rowHeight);
 
         const top = ctx.cursorY;
-        ctx.page.drawText(row.label, {
+        // Numbering is regenerated from idx+1 so blank-row filtering
+        // upstream never produces gaps like "14, 16" between visible rows.
+        const numberedLabel = `${idx + 1}. ${row.label}`;
+        ctx.page.drawText(numberedLabel, {
             x: ctx.margin,
             y: top - rowPaddingPt - labelFontPt,
             size: labelFontPt,
@@ -655,7 +658,7 @@ function drawFindings(ctx: Ctx, block: FindingsBlock): void {
             textY -= textFontPt + rowGapPt;
         }
         ctx.cursorY -= rowHeight;
-    }
+    });
 }
 
 function drawConclusion(ctx: Ctx, block: ConclusionBlock): void {

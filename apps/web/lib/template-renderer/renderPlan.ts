@@ -470,6 +470,22 @@ function buildMeasurements(section: PlanSection): MeasurementsBlock {
     };
 }
 
+/**
+ * Strip a leading numeric prefix from a string so the renderer can
+ * reassign sequential numbering after blank-row filtering. Matches
+ * patterns like:
+ *   "15. Aorta"  → "Aorta"
+ *   "15) Aorta"  → "Aorta"
+ *   "15 - Aorta" → "Aorta"
+ *   "15: Aorta"  → "Aorta"
+ *   "15  Aorta"  → "Aorta"
+ * Leaves the string untouched when no leading number is present, so
+ * labels like "Aorta" (no number) survive.
+ */
+function stripLeadingNumberPrefix(value: string): string {
+    return value.replace(/^\s*\d+\s*[.)\-:]?\s+/, '').trim();
+}
+
 function buildFindings(findingsSections: PlanSection[]): FindingsBlock | null {
     if (findingsSections.length === 0) return null;
 
@@ -489,9 +505,17 @@ function buildFindings(findingsSections: PlanSection[]): FindingsBlock | null {
         if (raw === '') return [];
 
         const suffix = section.section.replace(/^findings_/i, '').trim();
-        const label = formatFindingsGroupText(suffix) || resultField.label || section.section;
+        // Strip the leading "NN." that `formatFindingsGroupText` bakes
+        // into the label so the visible numbering can be regenerated
+        // dynamically by the renderer (idx + 1). Same treatment for the
+        // body text in case the doctor typed a leading "16. ..." prefix
+        // that would otherwise visually disagree with the renumbered
+        // label.
+        const formatted = formatFindingsGroupText(suffix) || resultField.label || section.section;
+        const label = stripLeadingNumberPrefix(formatted) || formatted;
+        const text = stripLeadingNumberPrefix(raw) || raw;
 
-        return [{ label, text: raw }];
+        return [{ label, text }];
     });
 
     if (rows.length === 0) return null;

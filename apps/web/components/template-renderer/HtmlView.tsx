@@ -279,8 +279,10 @@ function Findings({ block }: { block: FindingsBlock }) {
             <table className="w-full border-collapse text-[11px]">
                 <tbody>
                     {block.rows.map((row, idx) => (
+                        // Numbering is regenerated from idx+1 so blank-row
+                        // filtering upstream never produces gaps like "14, 16".
                         <tr key={idx} className="align-top">
-                            <td className="w-[24%] py-0.5 pr-2 font-semibold text-slate-900">{row.label}</td>
+                            <td className="w-[24%] py-0.5 pr-2 font-semibold text-slate-900">{`${idx + 1}. ${row.label}`}</td>
                             <td className="py-0.5 text-slate-900">{row.text}</td>
                         </tr>
                     ))}
