@@ -30,7 +30,7 @@ export const reportLayout = {
     },
     reportTitle: {
         fontPt: 14,
-        marginTopPt: 12,
+        marginTopPt: 2,
         marginBottomPt: 2,
     },
     infoGrid: {
