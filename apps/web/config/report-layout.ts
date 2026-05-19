@@ -49,7 +49,7 @@ export const reportLayout = {
     measurementsGrid: {
         cols: 3,
         labelFontPt: 8,
-        valueFontPt: 9,
+        valueFontPt: 8,
         unitFontPt: 8,
         cellPaddingPt: 3,
         rowHeightPt: 12,
