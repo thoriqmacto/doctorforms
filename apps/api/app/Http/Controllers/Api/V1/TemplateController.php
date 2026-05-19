@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TemplateResource;
 use App\Models\Template;
 use App\Services\Templates\TemplateExportService;
+use App\Support\PdfLayoutConfigValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -103,6 +104,13 @@ class TemplateController extends Controller
             'is_enabled'    => ['sometimes', 'boolean'],
         ]);
 
+        $v->after(function ($validator) use ($request) {
+            PdfLayoutConfigValidator::validate(
+                $request->input('layout_config'),
+                fn (string $k, string $m) => $validator->errors()->add($k, $m),
+            );
+        });
+
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
         }
@@ -136,6 +144,13 @@ class TemplateController extends Controller
             'layout_config' => ['sometimes', 'nullable', 'array'],
             'is_enabled'    => ['sometimes', 'boolean'],
         ]);
+
+        $v->after(function ($validator) use ($request) {
+            PdfLayoutConfigValidator::validate(
+                $request->input('layout_config'),
+                fn (string $k, string $m) => $validator->errors()->add($k, $m),
+            );
+        });
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);
@@ -218,6 +233,13 @@ class TemplateController extends Controller
             'fields.*.order'            => ['nullable', 'integer'],
             'fields.*.field_group_order' => ['nullable', 'integer'],
         ]);
+
+        $v->after(function ($validator) use ($request) {
+            PdfLayoutConfigValidator::validate(
+                $request->input('template.layout_config'),
+                fn (string $k, string $m) => $validator->errors()->add('template.'.preg_replace('/^layout_config/', 'layout_config', $k), $m),
+            );
+        });
 
         if ($v->fails()) {
             return response()->json(['status' => 'error', 'errors' => $v->errors()], 422);

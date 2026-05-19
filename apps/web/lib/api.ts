@@ -225,6 +225,15 @@ export const updateTemplate = (
     id: string | number,
     payload: Partial<TemplatePayload>,
 ) => api.patch(`templates/${id}`, { json: payload }).json<any>();
+/**
+ * Persist a normalized PDF layout config on a template. The layout
+ * lives inside templates.layout_config under the `pdf` key so the
+ * structured header_config and other future layout sections can coexist.
+ */
+export const saveTemplateLayoutConfig = (
+    id: string | number,
+    pdfConfig: Record<string, unknown>,
+) => api.patch(`templates/${id}`, { json: { layout_config: pdfConfig } }).json<any>();
 export const deleteTemplate = (id: string | number) =>
     api.delete(`templates/${id}`).json<any>();
 /** Download a template as a TemplateExportV1 JSON envelope. */

@@ -6,6 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import type { ReportRenderPlan } from '@/lib/template-renderer/renderPlan';
 import { downloadPdfPlan, renderPlanToPdfBytes } from '@/lib/pdf';
+import PdfLayoutPanel from '@/components/template-renderer/PdfLayoutPanel';
+import {
+    DEFAULT_PDF_LAYOUT_CONFIG,
+    normalizePdfLayoutConfig,
+    pdfLayoutConfigToPdfOverrides,
+    type PdfLayoutConfig,
+} from '@/lib/template-renderer/pdfLayoutConfig';
 
 /*
  * PdfPreview — in-browser PDF viewer with page navigation, zoom, and
@@ -24,6 +31,10 @@ import { downloadPdfPlan, renderPlanToPdfBytes } from '@/lib/pdf';
 
 type Props = {
     plan: ReportRenderPlan;
+    /** Template id used by the "Save layout" action. When null the panel renders read-only. */
+    templateId?: string | number | null;
+    /** Layout config persisted on the template. Defaults are used when omitted. */
+    initialLayoutConfig?: PdfLayoutConfig | null;
 };
 
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
@@ -43,7 +54,7 @@ async function loadPdfjs() {
     return pdfjs;
 }
 
-export default function PdfPreview({ plan }: Props) {
+export default function PdfPreview({ plan, templateId, initialLayoutConfig }: Props) {
     const [status, setStatus] = useState<'idle' | 'generating' | 'ready' | 'error'>('idle');
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [doc, setDoc] = useState<PdfDocument | null>(null);
@@ -57,10 +68,28 @@ export default function PdfPreview({ plan }: Props) {
     const highlightRef = useRef<HTMLDivElement | null>(null);
     const renderTaskRef = useRef<RenderTask | null>(null);
 
-    /* Stable hash of the plan — avoids regenerating on unrelated rerenders. */
-    const planSignature = useMemo(() => JSON.stringify(plan), [plan]);
+    // Layout state — `live` reflects the panel's current values (drives
+    // the preview), `saved` is the server-persisted baseline (drives the
+    // "Reset" action and the dirty badge).
+    const normalizedInitial = useMemo(
+        () => (initialLayoutConfig ? normalizePdfLayoutConfig(initialLayoutConfig) : DEFAULT_PDF_LAYOUT_CONFIG),
+        [initialLayoutConfig],
+    );
+    const [liveLayout, setLiveLayout] = useState<PdfLayoutConfig>(normalizedInitial);
+    const [savedLayout, setSavedLayout] = useState<PdfLayoutConfig>(normalizedInitial);
+    useEffect(() => {
+        setLiveLayout(normalizedInitial);
+        setSavedLayout(normalizedInitial);
+    }, [normalizedInitial]);
+    const pdfOverrides = useMemo(() => pdfLayoutConfigToPdfOverrides(liveLayout), [liveLayout]);
 
-    // 1) Generate PDF bytes whenever the plan changes.
+    /* Stable hash of the plan + layout — regenerates the PDF only when something visible changed. */
+    const planSignature = useMemo(
+        () => JSON.stringify(plan) + '::' + JSON.stringify(pdfOverrides),
+        [plan, pdfOverrides],
+    );
+
+    // 1) Generate PDF bytes whenever the plan or layout changes.
     useEffect(() => {
         let cancelled = false;
         setStatus('generating');
@@ -69,7 +98,7 @@ export default function PdfPreview({ plan }: Props) {
         (async () => {
             try {
                 const [bytes, pdfjs] = await Promise.all([
-                    renderPlanToPdfBytes(plan),
+                    renderPlanToPdfBytes(plan, pdfOverrides),
                     loadPdfjs(),
                 ]);
                 if (cancelled) return;
@@ -251,6 +280,14 @@ export default function PdfPreview({ plan }: Props) {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+                <PdfLayoutPanel
+                    templateId={templateId ?? null}
+                    value={liveLayout}
+                    onChange={setLiveLayout}
+                    savedValue={savedLayout}
+                    onSaved={(saved) => setSavedLayout(saved)}
+                    disabled={status === 'error'}
+                />
                 {/* Toolbar ---------------------------------------------------- */}
                 <div className="flex flex-wrap items-center gap-2 border-b pb-3">
                     <Button
@@ -350,7 +387,7 @@ export default function PdfPreview({ plan }: Props) {
                         <Button
                             type="button"
                             size="sm"
-                            onClick={() => downloadPdfPlan(plan)}
+                            onClick={() => downloadPdfPlan(plan, pdfOverrides)}
                             disabled={status !== 'ready'}
                         >
                             Download PDF
@@ -366,7 +403,7 @@ export default function PdfPreview({ plan }: Props) {
                         <div className="space-y-2 text-sm text-red-700">
                             <p>Failed to render PDF.</p>
                             <p className="text-xs text-muted-foreground">{errorMsg}</p>
-                            <Button type="button" size="sm" variant="outline" onClick={() => downloadPdfPlan(plan)}>
+                            <Button type="button" size="sm" variant="outline" onClick={() => downloadPdfPlan(plan, pdfOverrides)}>
                                 Download PDF instead
                             </Button>
                         </div>

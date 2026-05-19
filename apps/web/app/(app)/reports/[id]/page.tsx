@@ -27,6 +27,10 @@ import { createTemplateViewModel } from '@/components/template-renderer/Template
 import { buildReportRenderPlan, type SectionKind } from '@/lib/template-renderer/renderPlan';
 import type { HeaderConfig, RenderContexts } from '@/lib/template-renderer/schema';
 import {
+    DEFAULT_PDF_LAYOUT_CONFIG,
+    normalizePdfLayoutConfig,
+} from '@/lib/template-renderer/pdfLayoutConfig';
+import {
     type ReportViewMode,
     normalizeReportViewMode,
     buildReportModeHref,
@@ -146,6 +150,9 @@ export default function ReportDetailPage() {
     const patientAttrs = patientRes?.data?.attributes;
     const userAttrs = userRes?.data?.attributes;
     const headerConfig = (template?.attributes?.header_config ?? null) as HeaderConfig | null;
+    const layoutConfig = template?.attributes?.layout_config
+        ? normalizePdfLayoutConfig(template.attributes.layout_config)
+        : DEFAULT_PDF_LAYOUT_CONFIG;
 
     const renderContexts: RenderContexts = {
         hospital: hospitalAttrs
@@ -280,8 +287,14 @@ export default function ReportDetailPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {mode === 'html' && <HtmlView plan={plan} />}
-                            {mode === 'pdf' && <PdfView plan={plan} />}
+                            {mode === 'html' && <HtmlView plan={plan} layoutConfig={layoutConfig} />}
+                            {mode === 'pdf' && (
+                                <PdfView
+                                    plan={plan}
+                                    templateId={templateId ?? null}
+                                    initialLayoutConfig={layoutConfig}
+                                />
+                            )}
                             {mode === 'form' && (
                                 <FormView
                                     groupedSections={reportFormSections}
